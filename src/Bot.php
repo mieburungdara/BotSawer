@@ -502,7 +502,7 @@ class Bot
                         'status' => 'rejected',
                         'admin_id' => 1,
                         'admin_note' => $reason,
-                        'processed_at' => now()
+                        'processed_at' => \Carbon\Carbon::now()
                     ]);
 
                 $userId = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
@@ -521,7 +521,7 @@ class Bot
                     ->update([
                         'status' => 'rejected',
                         'admin_note' => $reason,
-                        'processed_at' => now()
+                        'processed_at' => \Carbon\Carbon::now()
                     ]);
 
                 // Refund to creator balance
