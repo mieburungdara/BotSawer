@@ -65,6 +65,24 @@ BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
 
 ## 🚀 Quick Start
 
+## 📺 Channel Setup
+
+### Channel Requirements
+- **Public Channel**: Untuk posting konten ke publik (gunakan **channel ID** dimulai dengan `-100`)
+- **Backup Channel**: Untuk arsip media dan informasi pembayaran (gunakan **channel ID** dimulai dengan `-100`)
+
+### Cara Mendapatkan Channel ID
+1. Tambahkan bot `@userinfobot` ke channel Anda
+2. Bot akan memberikan ID channel (format: `-100xxxxxxxxxx`)
+3. Gunakan ID ini di konfigurasi database
+
+### Setup Channel di Database
+```sql
+-- Update settings table
+UPDATE settings SET value = '-1001234567890' WHERE key = 'public_channel';
+UPDATE settings SET value = '-1000987654321' WHERE key = 'backup_channel';
+```
+
 ### Installation
 1. **Clone repository**
    ```bash
