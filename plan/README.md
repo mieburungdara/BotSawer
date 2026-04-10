@@ -72,6 +72,10 @@ BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kre
 
 See `INDEX.md` for complete documentation overview.
 
+## 🚀 Deployment
+
+See `DEPLOYMENT.md` for comprehensive production deployment guide.
+
 ---
 
 **BotSawer** - Monetize your creativity, connect with fans, earn from content! 🎨💰
