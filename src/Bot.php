@@ -344,68 +344,7 @@ class Bot
         }
     }
 
-    private function handleAdminCommand(int $chatId, int $userId, string $text): void
-    {
-        // Check if user is admin using AdminManager
-        if (!AdminManager::isAdmin($userId)) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Akses ditolak. Anda bukan admin.'
-            ]);
-            return;
-        }
 
-        $parts = explode(' ', $text);
-        $command = $parts[1] ?? '';
-
-        switch ($command) {
-            case 'pending':
-                $this->showPendingPayments($chatId);
-                break;
-            case 'confirm':
-                if (count($parts) >= 4) {
-                    $type = $parts[2]; // 'topup' or 'withdraw'
-                    $id = (int)$parts[3];
-                    $this->confirmPayment($chatId, $type, $id);
-                } else {
-                    $this->telegram->sendMessage([
-                        'chat_id' => $chatId,
-                        'text' => '❌ Format: /admin confirm [topup|withdraw] [id]'
-                    ]);
-                }
-                break;
-            case 'reject':
-                if (count($parts) >= 4) {
-                    $type = $parts[2];
-                    $id = (int)$parts[3];
-                    $reason = $parts[4] ?? 'Ditolak oleh admin';
-                    $this->rejectPayment($chatId, $type, $id, $reason);
-                } else {
-                    $this->telegram->sendMessage([
-                        'chat_id' => $chatId,
-                        'text' => '❌ Format: /admin reject [topup|withdraw] [id] [alasan]'
-                    ]);
-                }
-                break;
-            case 'creators':
-                $this->showPendingCreators($chatId);
-                break;
-            case 'verify':
-                if (count($parts) >= 3) {
-                    $creatorId = (int)$parts[2];
-                    $this->verifyCreator($chatId, $creatorId);
-                } else {
-                    $this->telegram->sendMessage([
-                        'chat_id' => $chatId,
-                        'text' => '❌ Format: /admin verify [creator_id]'
-                    ]);
-                }
-                break;
-            default:
-                $this->showAdminHelp($chatId);
-                break;
-        }
-    }
 
     private function showPendingPayments(int $chatId): void
     {
@@ -1032,26 +971,7 @@ class Bot
         ]);
     }
 
-    /**
-     * Post approved content to channel (for moderators)
-     */
-    public function postApprovedContentToChannel(int $contentId, string $channelId): void
-    {
-        $content = \Illuminate\Database\Capsule\Manager::table('media')
-            ->where('id', $contentId)
-            ->where('status', 'approved')
-            ->first();
 
-        if (!$content) {
-            throw new Exception('Content not found or not approved');
-        }
-
-        $this->sendMediaWithSawerButton($channelId, $content);
-        Logger::info('Content posted to channel by moderator', [
-            'content_id' => $contentId,
-            'channel_id' => $channelId
-        ]);
-    }
 
     public function getTelegram(): Api
     {

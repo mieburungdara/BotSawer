@@ -23,8 +23,8 @@ class Wallet
             }
 
             DB::table('wallets')->where('user_id', $userId)->update([
-                'balance' => DB::raw("balance + $amount"),
-                'total_deposit' => DB::raw("total_deposit + $amount")
+                'balance' => DB::raw("balance + ?", [$amount]),
+                'total_deposit' => DB::raw("total_deposit + ?", [$amount])
             ]);
 
             DB::table('transactions')->insert([
@@ -57,8 +57,8 @@ class Wallet
             }
 
             DB::table('wallets')->where('user_id', $userId)->update([
-                'balance' => DB::raw("balance - $amount"),
-                'total_withdraw' => DB::raw("total_withdraw + $amount")
+                'balance' => DB::raw("balance - ?", [$amount]),
+                'total_withdraw' => DB::raw("total_withdraw + ?", [$amount])
             ]);
 
             DB::table('transactions')->insert([
