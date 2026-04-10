@@ -74,14 +74,12 @@ BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
 ### Cara Mendapatkan Channel ID
 1. Tambahkan bot `@userinfobot` ke channel Anda
 2. Bot akan memberikan ID channel (format: `-100xxxxxxxxxx`)
-3. Gunakan ID ini di konfigurasi database
 
-### Setup Channel di Database
-```sql
--- Update settings table
-UPDATE settings SET value = '-1001234567890' WHERE key = 'public_channel';
-UPDATE settings SET value = '-1000987654321' WHERE key = 'backup_channel';
-```
+### Setup Channel via Webapp
+1. Login ke webapp admin (`/public/webapp/`)
+2. Pergi ke **System Settings**
+3. Update `public_channel` dan `backup_channel` dengan ID channel
+4. Untuk payment info: update `payment_info_message_id` dengan message ID dari backup channel
 
 ### Installation
 1. **Clone repository**
