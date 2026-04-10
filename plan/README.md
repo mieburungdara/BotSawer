@@ -75,16 +75,23 @@ BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
 1. Tambahkan bot `@userinfobot` ke channel Anda
 2. Bot akan memberikan ID channel (format: `-100xxxxxxxxxx`)
 
-### Setup Payment Info
-1. Post informasi pembayaran lengkap (teks + QR code) ke backup channel
-2. Dapatkan message ID dari postingan tersebut
-3. Set message ID di `payment_info_message_id` setting
-
-### Setup Channel via Webapp
+### Setup Bot Configuration
 1. Login ke webapp admin (`/public/webapp/`)
-2. Go to System Settings
-3. Update `public_channel` dan `backup_channel` dengan ID channel
-4. Update `payment_info_message_id` dengan message ID dari backup channel
+2. Pergi ke **Bot Management**
+3. Add bot dengan token dari @BotFather
+4. Set bot sebagai active
+
+### Setup Channel & Payment
+1. Post informasi pembayaran lengkap ke backup channel
+2. Dapatkan message ID dari postingan tersebut
+3. Pergi ke **System Settings**
+4. Configure channel IDs dan payment message ID
+
+### Semua Konfigurasi Lainnya
+- Platform commission, min amounts, dll dapat dikonfigurasi via System Settings
+- Bot tokens, usernames, webhook secrets via Bot Management
+- Admin management via Admin Management section
+- Semua perubahan langsung aktif tanpa redeploy aplikasi
 
 ### Installation
 1. **Clone repository**
@@ -104,10 +111,10 @@ BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
    ```
 
 4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env dengan database credentials dan bot token
-   ```
+    ```bash
+    cp .env.example .env
+    # Edit .env hanya untuk database credentials (bot config via webapp)
+    ```
 
 5. **Setup bot webhooks**
    ```bash

@@ -91,13 +91,7 @@ php composer.phar install --no-dev --optimize-autoloader
    DB_USERNAME=botsawer_user
    DB_PASSWORD=your_db_password
 
-   # Telegram Bot Configuration
-   TELEGRAM_USER_BOT_TOKEN=your_user_bot_token
-   TELEGRAM_USER_WEBHOOK_SECRET=user_secret
-   TELEGRAM_MODERATOR_BOT_TOKEN=your_moderator_bot_token
-
-   # Initial Admin (akan diganti dengan database-based system)
-   ADMIN_TELEGRAM_ID=123456789
+    # Bot configuration dilakukan via webapp setelah setup selesai
 
    # Logging (shared hosting friendly)
    LOG_CHANNEL=daily
@@ -122,10 +116,33 @@ Setelah database ter-import, Anda perlu setup admin pertama:
    ```
 
 2. **Verifikasi Admin**:
-   - Pastikan record admin sudah ada di tabel `admins`
-   - Admin dapat mengakses moderator bot setelah setup webhook
+    - Pastikan record admin sudah ada di tabel `admins`
+    - Admin dapat mengakses moderator bot setelah setup webhook
 
-### Step 6: Setup Multiple Admins (Opsional)
+### Step 6: Setup Bot Configuration
+
+1. **Akses Web App**:
+   - Buka `https://yourdomain.com/public/webapp/`
+   - Login dengan akun Telegram admin
+
+2. **Add Bot Configuration**:
+   - Pergi ke **Bot Management**
+   - Click **"Add New Bot"**
+   - Masukkan:
+     - Bot Name: "Bot Sawer 1"
+     - Username: "@your_bot_username" (dari @BotFather)
+     - Token: bot token dari @BotFather
+     - Webhook Secret: string acak aman
+   - Set bot sebagai **Active**
+
+3. **Setup Channel Configuration**:
+   - Pergi ke **System Settings**
+   - Configure:
+     - `public_channel`: ID channel publik (-100xxxxxxxxxx)
+     - `backup_channel`: ID channel backup (-100xxxxxxxxxx)
+     - `payment_info_message_id`: Message ID dari backup channel
+
+### Step 7: Setup Multiple Admins (Opsional)
 
 Untuk menambah admin tambahan:
 
@@ -138,7 +155,7 @@ Untuk menambah admin tambahan:
 - `moderator`: Content management only
 - `finance`: Payment management only
 
-### Step 5: Konfigurasi Web Server
+### Step 8: Konfigurasi Web Server
 
 #### Untuk Shared Hosting (biasanya auto)
 - Pastikan `public/` folder sebagai document root
@@ -153,7 +170,7 @@ Untuk menambah admin tambahan:
 </IfModule>
 ```
 
-### Step 6: Setup Cron Jobs (Alternatif untuk Shared Hosting)
+### Step 9: Setup Cron Jobs (Alternatif untuk Shared Hosting)
 
 #### Via cPanel Cron Jobs
 1. Login cPanel → Cron Jobs
