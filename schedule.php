@@ -14,7 +14,7 @@ Logger::info('Scheduler started');
 
 try {
     // Get current time
-    $now = now();
+    $now = \Carbon\Carbon::now();
 
     // Find media scheduled for posting
     $mediaToPost = \Illuminate\Database\Capsule\Manager::table('media_files')

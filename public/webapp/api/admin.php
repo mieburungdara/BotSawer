@@ -239,7 +239,7 @@ try {
                 ->where('key', $key)
                 ->update([
                     'value' => $value,
-                    'updated_at' => now()
+                    'updated_at' => \Carbon\Carbon::now()
                 ]);
 
                 // Audit log setting change with full context
@@ -448,7 +448,7 @@ try {
                         ->update([
                             'status' => 'approved',
                             'approved_by' => $userId,
-                            'approved_at' => now()
+                            'approved_at' => \Carbon\Carbon::now()
                         ]);
 
                     // Add balance to user
@@ -494,7 +494,7 @@ try {
                         ->update([
                             'status' => 'approved',
                             'approved_by' => $userId,
-                            'approved_at' => now()
+                            'approved_at' => \Carbon\Carbon::now()
                         ]);
 
                     // Deduct balance from user
@@ -550,7 +550,7 @@ try {
                             'status' => 'rejected',
                             'notes' => $reason,
                             'approved_by' => $userId,
-                            'approved_at' => now()
+                            'approved_at' => \Carbon\Carbon::now()
                         ]);
 
                     \BotSawer\AuditLogger::logAdminAction('reject_topup', [
@@ -575,7 +575,7 @@ try {
                             'status' => 'rejected',
                             'notes' => $reason,
                             'approved_by' => $userId,
-                            'approved_at' => now()
+                            'approved_at' => \Carbon\Carbon::now()
                         ]);
 
                     \BotSawer\AuditLogger::logAdminAction('reject_withdrawal', [
@@ -670,7 +670,7 @@ try {
                 ->update([
                     'status' => 'approved',
                     'approved_by' => $userId,
-                    'approved_at' => now()
+                    'approved_at' => \Carbon\Carbon::now()
                 ]);
 
             \BotSawer\AuditLogger::logAdminAction('approve_content', [
@@ -707,7 +707,7 @@ try {
                     'status' => 'rejected',
                     'notes' => $reason,
                     'approved_by' => $userId,
-                    'approved_at' => now()
+                    'approved_at' => \Carbon\Carbon::now()
                 ]);
 
             \BotSawer\AuditLogger::logAdminAction('reject_content', [
@@ -781,7 +781,7 @@ try {
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'posted',
-                    'posted_at' => now(),
+                    'posted_at' => \Carbon\Carbon::now(),
                     'posted_by' => $userId
                 ]);
 
@@ -844,7 +844,7 @@ try {
                 ->update([
                     'is_verified' => 1,
                     'verified_by' => $userId,
-                    'verified_at' => now()
+                    'verified_at' => \Carbon\Carbon::now()
                 ]);
 
             $creator = \Illuminate\Database\Capsule\Manager::table('creators')

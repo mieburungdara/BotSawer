@@ -59,7 +59,7 @@ class Creator
                 return true;
             }
 
-            $updateData['updated_at'] = now();
+            $updateData['updated_at'] = \Carbon\Carbon::now();
 
             $affected = DB::table('creators')->where('id', $creatorId)->update($updateData);
 

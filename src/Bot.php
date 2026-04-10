@@ -59,7 +59,7 @@ class Bot
             // Update last request timestamp
             \Illuminate\Database\Capsule\Manager::table('bots')
                 ->where('id', $this->botId)
-                ->update(['last_request_at' => now()]);
+                ->update(['last_request_at' => \Carbon\Carbon::now()]);
         } catch (Exception $e) {
             Logger::error('Error handling update', [
                 'update_id' => $update->getUpdateId(),
@@ -485,7 +485,7 @@ class Bot
                         ->update([
                             'status' => 'approved',
                             'admin_id' => 1, // Current admin
-                            'processed_at' => now()
+                            'processed_at' => \Carbon\Carbon::now()
                         ]);
                 });
 
@@ -518,7 +518,7 @@ class Bot
                         ->update([
                             'status' => 'completed',
                             'admin_note' => 'Dikonfirmasi admin',
-                            'processed_at' => now()
+                            'processed_at' => \Carbon\Carbon::now()
                         ]);
 
                     // Update transaction status
@@ -861,7 +861,7 @@ class Bot
 
         $nextSchedule = $lastPosted
             ? \Carbon\Carbon::parse($lastPosted)->addMinute()
-            : now();
+            : \Carbon\Carbon::now();
 
         \Illuminate\Database\Capsule\Manager::table('media_files')
             ->where('id', $mediaId)

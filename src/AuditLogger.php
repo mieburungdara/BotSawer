@@ -47,7 +47,7 @@ class AuditLogger
                 'changes' => json_encode($changes),
                 'ip_address' => $ipAddress ?: ($_SERVER['REMOTE_ADDR'] ?? null),
                 'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                'created_at' => now()
+                'created_at' => \Carbon\Carbon::now()
             ]);
 
             Logger::info('Audit log created', [

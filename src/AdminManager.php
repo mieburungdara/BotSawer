@@ -223,7 +223,7 @@ class AdminManager
     {
         DB::table('admins')
             ->where('telegram_id', $telegramId)
-            ->update(['last_login' => now()]);
+            ->update(['last_login' => \Carbon\Carbon::now()]);
     }
 
     /**

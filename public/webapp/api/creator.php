@@ -79,7 +79,7 @@ try {
                 'display_name' => $displayName,
                 'bio' => $bio,
                 'bank_account' => $bankAccount,
-                'updated_at' => now()
+                'updated_at' => \Carbon\Carbon::now()
             ]);
 
         // Audit log
