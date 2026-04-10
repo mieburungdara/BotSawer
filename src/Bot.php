@@ -235,30 +235,37 @@ class Bot
     private function handleTopupCommand(int $chatId): void
     {
         try {
-            // Get admin payment details from settings
-            $adminBankAccount = \Illuminate\Database\Capsule\Manager::table('settings')
-                ->where('key', 'admin_bank_account')
-                ->value('value') ?: 'BCA - 1234567890 - Admin BotSawer';
+            // Get payment info message ID from backup channel
+            $paymentMessageId = \Illuminate\Database\Capsule\Manager::table('settings')
+                ->where('key', 'payment_info_message_id')
+                ->value('value');
 
-            $adminQRData = \Illuminate\Database\Capsule\Manager::table('settings')
-                ->where('key', 'admin_qr_payment')
-                ->value('value') ?: '00020101021126660014BRIN6016ID10230000200000002020200000000000000303UME51440014ID.CO.QRIS.WWW0215ID10230000200000303UME5204581253033605802ID5916Admin BotSawer6013Jakarta Pusat610512340';
+            $backupChannel = \Illuminate\Database\Capsule\Manager::table('settings')
+                ->where('key', 'backup_channel')
+                ->value('value');
 
-            // Generate QR Code URL (using Google Charts API for simplicity)
-            $qrUrl = 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=' . urlencode($adminQRData);
+            if (!$paymentMessageId || !$backupChannel) {
+                throw new Exception('Payment info message ID or backup channel not configured');
+            }
 
-            $message = "💳 TOPUP SALDO\n\n";
-            $message .= "1. Scan QR Code di bawah atau transfer manual\n";
-            $message .= "2. Kirim bukti screenshot transfer beserta nominal ke bot ini\n";
-            $message .= "3. Admin akan memverifikasi dan menambah saldo Anda\n\n";
-            $message .= "💰 Minimal topup: Rp 10.000\n";
-            $message .= "🏦 Rekening: {$adminBankAccount}";
-
-            // Send QR code as photo
-            $this->telegram->sendPhoto([
+            // Forward the payment info message from backup channel to user
+            $this->telegram->forwardMessage([
                 'chat_id' => $chatId,
-                'photo' => $qrUrl,
-                'caption' => $message
+                'from_chat_id' => $backupChannel,
+                'message_id' => (int)$paymentMessageId
+            ]);
+
+            // Send additional instructions
+            $instructions = "💳 CARA TOPUP SALDO\n\n";
+            $instructions .= "1. Transfer sesuai nominal yang diinginkan\n";
+            $instructions .= "2. Screenshot bukti transfer\n";
+            $instructions .= "3. Kirim screenshot ke bot ini dengan caption berisi nominal\n";
+            $instructions .= "4. Admin akan memverifikasi dan menambah saldo Anda\n\n";
+            $instructions .= "💰 Minimal topup: Rp 10.000";
+
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => $instructions
             ]);
 
         } catch (Exception $e) {
