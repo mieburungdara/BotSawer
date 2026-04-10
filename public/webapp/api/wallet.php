@@ -55,7 +55,16 @@ try {
             throw new Exception('Data rekening bank harus lengkap');
         }
 
-        // Check balance
+        // Get platform commission rate (default 10%)
+        $commissionRate = (float) \Illuminate\Database\Capsule\Manager::table('settings')
+            ->where('key', 'platform_commission')
+            ->value('value') ?: 10.00;
+
+        // Calculate commission amount
+        $commissionAmount = ($amount * $commissionRate) / 100;
+        $finalAmount = $amount - $commissionAmount;
+
+        // Check balance (must have enough for full amount including commission)
         $balance = Wallet::getBalance($userId);
         if ($balance < $amount) {
             throw new Exception('Saldo tidak mencukupi');
@@ -89,7 +98,10 @@ try {
                 // Create withdrawal record
                 \Illuminate\Database\Capsule\Manager::table('withdrawals')->insert([
                     'creator_id' => $userId,
-                    'amount' => $amount,
+                    'amount' => $finalAmount,
+                    'original_amount' => $amount,
+                    'commission_rate' => $commissionRate,
+                    'commission_amount' => $commissionAmount,
                     'transaction_id' => $transactionId,
                     'bank_details' => json_encode($formattedBankAccount),
                     'status' => 'pending'
@@ -97,7 +109,10 @@ try {
 
                 // Audit log
                 \BotSawer\AuditLogger::log(\BotSawer\AuditLogger::ACTION_WITHDRAWAL_REQUEST, 'withdrawal', $userId, [], [
-                    'amount' => $amount,
+                    'original_amount' => $amount,
+                    'commission_rate' => $commissionRate,
+                    'commission_amount' => $commissionAmount,
+                    'final_amount' => $finalAmount,
                     'bank_name' => $bankName,
                     'account_number' => '***MASKED***',
                     'account_name' => $accountName

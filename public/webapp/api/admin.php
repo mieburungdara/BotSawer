@@ -395,21 +395,25 @@ try {
                 });
 
             $withdrawals = \Illuminate\Database\Capsule\Manager::table('withdrawals as w')
-                ->join('users as u', 'w.user_id', '=', 'u.id')
+                ->join('users as u', 'w.creator_id', '=', 'u.id')
                 ->where('w.status', 'pending')
                 ->select('w.*', 'u.first_name', 'u.last_name', 'u.username')
                 ->orderBy('w.created_at', 'asc')
                 ->get()
                 ->map(function ($item) {
+                    $bankDetails = json_decode($item->bank_details, true);
                     return [
                         'id' => $item->id,
                         'type' => 'withdraw',
                         'amount' => (int)$item->amount,
+                        'original_amount' => (int)$item->original_amount,
+                        'commission_rate' => (float)$item->commission_rate,
+                        'commission_amount' => (int)$item->commission_amount,
                         'user_name' => trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
                         'username' => $item->username,
-                        'bank_name' => $item->bank_name,
-                        'bank_account' => $item->bank_account,
-                        'account_name' => $item->account_name,
+                        'bank_name' => $bankDetails['bank_name'] ?? '',
+                        'bank_account' => $bankDetails['account_number'] ?? '',
+                        'account_name' => $bankDetails['account_name'] ?? '',
                         'created_at' => $item->created_at
                     ];
                 });

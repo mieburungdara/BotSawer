@@ -160,10 +160,19 @@ class App {
 
             <div class="card">
                 <h3>Penarikan Saldo</h3>
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong>ℹ️ Info Biaya:</strong> Platform mengenakan komisi 10% dari nominal penarikan untuk biaya operasional.
+                </div>
                 <form id="withdrawForm">
                     <div class="form-group">
                         <label>Nominal Penarikan (Min: Rp 50.000)</label>
                         <input type="number" id="withdrawAmount" min="50000" step="1000" required>
+                        <div id="commissionBreakdown" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; display: none;">
+                            <small>
+                                <div id="commissionDetails"></div>
+                                <div id="finalAmount" style="font-weight: bold; margin-top: 5px;"></div>
+                            </small>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Nama Bank</label>
@@ -193,6 +202,12 @@ class App {
                     <div class="form-group">
                         <label>Nama Pemilik Rekening</label>
                         <input type="text" id="accountName" placeholder="Sesuai KTP" required>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" id="withdrawConfirmation" required style="margin-right: 10px;">
+                            Saya setuju dengan biaya komisi 10% dan memahami bahwa admin akan memproses pembayaran dalam 1-3 hari kerja
+                        </label>
                     </div>
                     <button type="submit" class="btn btn-primary">Ajukan Penarikan</button>
                     <div id="withdrawResult" style="margin-top: 10px;"></div>
@@ -1029,6 +1044,14 @@ class App {
                         <div><strong>User:</strong> ${payment.user_name} (@${payment.username})</div>
                         <div><strong>Dibuat:</strong> ${new Date(payment.created_at).toLocaleString('id-ID')}</div>
                         ${payment.type === 'withdraw' ? `<div><strong>Bank:</strong> ${payment.bank_name} - ${payment.account_name} (${payment.bank_account})</div>` : ''}
+                        ${payment.type === 'withdraw' && payment.commission_amount ? `
+                            <div style="background: #fff3cd; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 12px;">
+                                <strong>💰 Detail Komisi:</strong><br>
+                                Jumlah asli: Rp ${this.formatNumber(payment.original_amount)}<br>
+                                Komisi (${payment.commission_rate}%): Rp ${this.formatNumber(payment.commission_amount)}<br>
+                                <strong>Diterima user: Rp ${this.formatNumber(payment.amount)}</strong>
+                            </div>
+                        ` : ''}
                         ${payment.notes ? `<div><strong>Catatan:</strong> ${payment.notes}</div>` : ''}
                     </div>
 
@@ -1361,6 +1384,15 @@ class App {
 
     setupWithdrawalForm() {
         const withdrawForm = document.getElementById('withdrawForm');
+        const withdrawAmount = document.getElementById('withdrawAmount');
+
+        if (withdrawAmount) {
+            // Calculate commission in real-time
+            withdrawAmount.addEventListener('input', () => {
+                this.calculateWithdrawalCommission();
+            });
+        }
+
         if (withdrawForm) {
             withdrawForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -1369,6 +1401,12 @@ class App {
                 const bankName = document.getElementById('bankName').value;
                 const bankAccount = document.getElementById('bankAccount').value;
                 const accountName = document.getElementById('accountName').value;
+                const confirmed = document.getElementById('withdrawConfirmation').checked;
+
+                if (!confirmed) {
+                    alert('Silakan setujui persyaratan penarikan terlebih dahulu.');
+                    return;
+                }
 
                 const resultDiv = document.getElementById('withdrawResult');
 
@@ -1383,6 +1421,7 @@ class App {
 
                     resultDiv.innerHTML = '<div style="color: green;">✅ ' + result.message + '</div>';
                     withdrawForm.reset();
+                    document.getElementById('commissionBreakdown').style.display = 'none';
 
                     // Refresh wallet data
                     if (this.currentPage === 'wallet') {
@@ -1392,6 +1431,28 @@ class App {
                     resultDiv.innerHTML = '<div style="color: red;">❌ ' + error.message + '</div>';
                 }
             });
+        }
+    }
+
+    calculateWithdrawalCommission() {
+        const amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
+        const breakdown = document.getElementById('commissionBreakdown');
+        const details = document.getElementById('commissionDetails');
+        const finalAmount = document.getElementById('finalAmount');
+
+        if (amount >= 50000) {
+            const commissionRate = 10.00; // 10%
+            const commissionAmount = (amount * commissionRate) / 100;
+            const receiveAmount = amount - commissionAmount;
+
+            details.innerHTML = `
+                Jumlah penarikan: Rp ${this.formatNumber(amount)}<br>
+                Komisi platform (10%): Rp ${this.formatNumber(commissionAmount)}
+            `;
+            finalAmount.innerHTML = `💰 Anda akan menerima: Rp ${this.formatNumber(receiveAmount)}`;
+            breakdown.style.display = 'block';
+        } else {
+            breakdown.style.display = 'none';
         }
     }
 
