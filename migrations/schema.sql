@@ -260,7 +260,6 @@ INSERT INTO settings (`key`, `value`, `description`) VALUES
 ('backup_channel', '-1001234567890', 'Channel backup untuk arsip media (gunakan ID channel dimulai dengan -100)'),
 ('payment_info_message_id', '123456789', 'Message ID dari backup channel yang berisi informasi pembayaran'),
 ('admin_bank_account', 'BCA - 1234567890 - Admin BotSawer', 'Rekening admin untuk topup'),
-('admin_qr_payment', '00020101021126660014BRIN6016ID10230000200000002020200000000000000303UME51440014ID.CO.QRIS.WWW0215ID10230000200000303UME5204581253033605802ID5916Admin BotSawer6013Jakarta Pusat610512340', 'QRIS data untuk pembayaran'),
 ('system_name', 'BotSawer', 'Nama sistem'),
 ('support_email', 'support@botsawer.com', 'Email support'),
 ('max_upload_size', '50', 'Max upload size in MB'),

@@ -75,11 +75,16 @@ BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
 1. Tambahkan bot `@userinfobot` ke channel Anda
 2. Bot akan memberikan ID channel (format: `-100xxxxxxxxxx`)
 
+### Setup Payment Info
+1. Post informasi pembayaran lengkap (teks + QR code) ke backup channel
+2. Dapatkan message ID dari postingan tersebut
+3. Set message ID di `payment_info_message_id` setting
+
 ### Setup Channel via Webapp
 1. Login ke webapp admin (`/public/webapp/`)
-2. Pergi ke **System Settings**
+2. Go to System Settings
 3. Update `public_channel` dan `backup_channel` dengan ID channel
-4. Untuk payment info: update `payment_info_message_id` dengan message ID dari backup channel
+4. Update `payment_info_message_id` dengan message ID dari backup channel
 
 ### Installation
 1. **Clone repository**
