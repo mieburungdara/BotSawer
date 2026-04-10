@@ -1,50 +1,209 @@
 # 🚀 BotSawer Deployment Guide
 
-Panduan lengkap untuk deploy BotSawer ke production environment.
+Panduan lengkap untuk deploy BotSawer ke production environment dengan fokus pada **Shared Hosting**.
 
 ## 📋 Prerequisites
 
-### Server Requirements
-- **OS**: Ubuntu 20.04+ / CentOS 7+ / Debian 10+
-- **Web Server**: Apache 2.4+ atau Nginx 1.18+
-- **PHP**: 8.5+ dengan ekstensi: pdo_mysql, mbstring, openssl, curl, json, bcmath, fileinfo
-- **Database**: MySQL 8.0+ atau MariaDB 10.5+
-- **SSL**: Certificate (Let's Encrypt recommended)
-- **Cron**: System cron access
+### Shared Hosting Requirements
+- ✅ **PHP**: 8.1+ (cek via `phpinfo()`)
+- ✅ **Database**: MySQL 5.7+ atau MariaDB 10.0+
+- ✅ **Storage**: 500MB+ untuk aplikasi + 200MB+ untuk database
+- ✅ **Web Server**: Apache/Nginx (pre-configured)
+- ✅ **Access**: cPanel, Plesk, atau DirectAdmin
+- ✅ **SSL**: Auto-SSL dari hosting provider (biasanya gratis)
+- ⚠️ **Cron**: Mungkin terbatas atau tidak tersedia
+- ⚠️ **SSH**: Mungkin tidak tersedia
 
-### Recommended Server Specs
-- **CPU**: 2+ cores
-- **RAM**: 2GB+ (4GB recommended)  
-- **Storage**: 20GB+ SSD
-- **Bandwidth**: 100Mbps+
+### VPS/Dedicated Server Requirements (Advanced)
+- ✅ **OS**: Ubuntu 20.04+ / CentOS 7+ / Debian 10+
+- ✅ **Web Server**: Apache 2.4+ atau Nginx 1.18+
+- ✅ **PHP**: 8.5+ dengan ekstensi lengkap
+- ✅ **Database**: MySQL 8.0+ atau MariaDB 10.5+
+- ✅ **Root Access**: Required untuk konfigurasi server
 
-## 🏗️ Quick Deployment
+## 🏗️ **DEPLOYMENT UNTUK SHARED HOSTING**
 
-### 1. Server Setup
+### Step 1: Persiapan Awal
+
+1. **Cek PHP Version & Extensions**
+   - Akses `phpinfo.php` di browser atau cPanel → PHP Config
+   - Pastikan PHP 8.1+ dengan ekstensi: `pdo_mysql`, `mbstring`, `curl`, `json`, `bcmath`
+
+2. **Buat Database**
+   - Login ke cPanel → MySQL Databases
+   - Create database: `botsawer_db`
+   - Create user: `botsawer_user`
+   - Set permissions: Full access ke database
+
+3. **Siapkan Domain/Subdomain**
+   - Point domain ke hosting account
+   - Enable SSL (biasanya auto dari hosting provider)
+
+### Step 2: Upload Files
+
+#### Via cPanel File Manager
+1. Login cPanel → File Manager
+2. Navigate ke `public_html/` atau folder website
+3. Upload semua files dari repository (gunakan zip jika banyak)
+4. Extract files di folder utama
+
+#### Via FTP/SFTP
 ```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
+# Connect via FTP client (FileZilla, WinSCP, etc.)
+# Upload semua files ke public_html/ atau www/
+# Pastikan folder structure terjaga
+```
 
-# Install LAMP stack
+### Step 3: Install Dependencies
+
+#### Via SSH (jika tersedia)
+```bash
+cd public_html
+curl -sS https://getcomposer.org/installer | php
+php composer.phar install --no-dev --optimize-autoloader
+```
+
+#### Via Manual Upload (jika tidak ada SSH)
+1. Download `composer.phar` dari https://getcomposer.org/
+2. Upload ke server via FTP
+3. Jalankan via browser atau cron job
+4. Upload hasil `vendor/` folder
+
+### Step 4: Konfigurasi Environment
+
+1. **Copy .env file**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit .env untuk shared hosting**
+   ```env
+   APP_NAME=BotSawer
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_URL=https://yourdomain.com
+
+   # Database (dari cPanel)
+   DB_CONNECTION=mysql
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_DATABASE=botsawer_db
+   DB_USERNAME=botsawer_user
+   DB_PASSWORD=your_db_password
+
+   # Telegram Bot
+   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   TELEGRAM_WEBHOOK_SECRET=webhook_secret_1
+
+   # Admin
+   ADMIN_TELEGRAM_ID=123456789
+
+   # Logging (shared hosting friendly)
+   LOG_CHANNEL=daily
+   LOG_LEVEL=warning
+   ```
+
+3. **Import Database Schema**
+   - Akses phpMyAdmin via cPanel
+   - Import file `migrations/schema.sql`
+   - Verifikasi semua tabel terbuat
+
+### Step 5: Konfigurasi Web Server
+
+#### Untuk Shared Hosting (biasanya auto)
+- Pastikan `public/` folder sebagai document root
+- Enable mod_rewrite untuk Apache
+- Pastikan .htaccess terbaca
+
+#### Jika perlu custom .htaccess
+```apache
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+```
+
+### Step 6: Setup Cron Jobs (Alternatif untuk Shared Hosting)
+
+#### Via cPanel Cron Jobs
+1. Login cPanel → Cron Jobs
+2. Add new cron job:
+   ```
+   Command: wget -q -O /dev/null https://yourdomain.com/cron.php
+   Schedule: Every 1 minute (* * * * *)
+   ```
+
+#### Via External Cron Service
+Jika hosting tidak support cron, gunakan:
+- **Cron-job.org** (gratis)
+- **EasyCron** (berbayar)
+- **GitHub Actions** untuk scheduling
+
+#### Buat cron.php file
+```php
+<?php
+// cron.php - Alternative cron runner for shared hosting
+require_once __DIR__ . '/vendor/autoload.php';
+BotSawer\Database::init();
+
+// Run scheduler
+exec('php ' . __DIR__ . '/schedule.php');
+echo "Cron executed at " . date('Y-m-d H:i:s');
+```
+
+### Step 7: Bot Configuration
+
+#### Set Webhook via Browser (shared hosting friendly)
+Buat file `set_webhook.php`:
+
+```php
+<?php
+// set_webhook.php - Set Telegram webhook
+$botToken = 'YOUR_BOT_TOKEN';
+$webhookUrl = 'https://yourdomain.com/public/webhook.php?secret=webhook_secret_1';
+
+$url = "https://api.telegram.org/bot{$botToken}/setWebhook?url=" . urlencode($webhookUrl);
+
+$response = file_get_contents($url);
+echo $response;
+```
+
+Akses `https://yourdomain.com/set_webhook.php` via browser untuk set webhook.
+
+### Step 8: Testing & Verification
+
+#### Test Files
+1. **Health Check**: `https://yourdomain.com/public/health.php`
+2. **Database Test**: Buat `test_db.php`:
+   ```php
+   <?php
+   require 'vendor/autoload.php';
+   BotSawer\Database::init();
+   echo "Database connected successfully";
+   ```
+
+3. **Bot Test**: Kirim `/start` ke bot via Telegram
+
+#### Manual Testing Checklist
+- [ ] Website accessible via HTTPS
+- [ ] Database connection works
+- [ ] Bot responds to commands
+- [ ] Web app loads (Mini App)
+- [ ] Admin panel accessible
+- [ ] Logs ter-generate
+
+## 🏗️ **DEPLOYMENT UNTUK VPS/DEDICATED SERVER** (Advanced)
+
+### Quick VPS Setup
+```bash
+# Ubuntu/Debian VPS
+sudo apt update && sudo apt upgrade -y
 sudo apt install -y apache2 mysql-server php8.1 php8.1-mysql php8.1-mbstring php8.1-curl php8.1-xml php8.1-bcmath curl unzip
 
 # Install Composer
-curl -sS https://getcomposer.org/installer | php && sudo mv composer.phar /usr/local/bin/composer
-```
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
 
-### 2. Database Setup
-```bash
-# Create database
-sudo mysql -e "CREATE DATABASE botsawer CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-sudo mysql -e "CREATE USER 'botsawer'@'localhost' IDENTIFIED BY 'secure_password';"
-sudo mysql -e "GRANT ALL PRIVILEGES ON botsawer.* TO 'botsawer'@'localhost';"
-
-# Import schema
-mysql -u botsawer -p botsawer < migrations/schema.sql
-```
-
-### 3. Application Deployment
-```bash
 # Clone and setup
 cd /var/www
 sudo git clone https://github.com/mieburungdara/BotSawer.git
@@ -54,123 +213,108 @@ cd BotSawer
 # Install dependencies
 sudo -u www-data composer install --no-dev --optimize-autoloader
 
-# Configure environment
-sudo -u www-data cp .env.example .env
-# Edit .env with production values
-```
+# Database setup
+sudo mysql -e "CREATE DATABASE botsawer CHARACTER SET utf8mb4;"
+sudo mysql -e "CREATE USER 'botsawer'@'localhost' IDENTIFIED BY 'secure_password';"
+sudo mysql -e "GRANT ALL ON botsawer.* TO 'botsawer'@'localhost';"
+mysql -u botsawer -p botsawer < migrations/schema.sql
 
-### 4. Web Server Setup
-```bash
-# Apache virtual host
+# Web server config
 sudo nano /etc/apache2/sites-available/botsawer.conf
-```
+# ... (Apache config as before)
 
-```apache
-<VirtualHost *:80>
-    ServerName yourdomain.com
-    DocumentRoot /var/www/BotSawer/public
-    
-    <Directory /var/www/BotSawer/public>
-        AllowOverride All
-        Require all granted
-    </Directory>
-</VirtualHost>
-```
-
-```bash
-sudo a2ensite botsawer && sudo systemctl reload apache2
-```
-
-### 5. SSL Setup
-```bash
+# SSL Setup
 sudo apt install certbot python3-certbot-apache
 sudo certbot --apache -d yourdomain.com
-```
 
-### 6. Cron & Permissions
-```bash
-# Set permissions
-sudo chown -R www-data:www-data /var/www/BotSawer
-sudo chmod -R 755 /var/www/BotSawer
-sudo chmod -R 775 /var/www/BotSawer/logs
-
-# Add cron job
+# Cron setup
 echo "* * * * * cd /var/www/BotSawer && php schedule.php" | sudo crontab -
 ```
 
-### 7. Bot Configuration
-```bash
-# Set Telegram webhook
-curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://yourdomain.com/public/webhook.php?secret=key"
-```
+## 🔧 **Konfigurasi Environment**
 
-## 🔧 Configuration Files
-
-### .env Production Settings
+### Shared Hosting .env
 ```env
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://yourdomain.com
 
 DB_HOST=localhost
-DB_NAME=botsawer
-DB_USER=botsawer
-DB_PASSWORD=your_secure_password
+DB_DATABASE=botsawer_db
+DB_USERNAME=botsawer_user
+DB_PASSWORD=your_db_password
 
-TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_BOT_TOKEN=your_token
 ADMIN_TELEGRAM_ID=123456789
+
+LOG_CHANNEL=daily
+LOG_LEVEL=warning
 ```
 
-## 🧪 Testing
+### VPS .env
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://yourdomain.com
 
+DB_HOST=localhost
+DB_DATABASE=botsawer
+DB_USERNAME=botsawer
+DB_PASSWORD=secure_password
+
+TELEGRAM_BOT_TOKEN=your_token
+ADMIN_TELEGRAM_ID=123456789
+
+LOG_CHANNEL=stack
+LOG_LEVEL=error
+```
+
+## 🧪 **Testing Deployment**
+
+### Automated Tests
 ```bash
-# Health check
+# Run basic tests
+php test.php
+
+# Test health endpoint
 curl https://yourdomain.com/public/health.php
-
-# Database test
-cd /var/www/BotSawer && php test.php
-
-# Web app access
-# https://yourdomain.com/public/webapp/
 ```
 
-## 📊 Monitoring
+### Manual Tests
+1. **Web Access**: `https://yourdomain.com/public/health.php`
+2. **Bot Response**: Kirim `/start` ke bot
+3. **Database**: Cek via phpMyAdmin
+4. **Logs**: Cek `logs/app.log`
+5. **Web App**: `https://yourdomain.com/public/webapp/`
 
-- **Health Check**: `/public/health.php`
-- **Logs**: `logs/app.log`, `logs/errors.log`
-- **Cron Logs**: `/var/log/botsawer_cron.log`
+## 📊 **Monitoring & Maintenance**
 
-## 🚨 Troubleshooting
+### Shared Hosting Monitoring
+- **Uptime**: Gunakan external monitoring (UptimeRobot gratis)
+- **Logs**: Cek via cPanel error logs
+- **Database**: Monitor via phpMyAdmin
+- **Bot Status**: Test manual commands
 
-### Common Issues
-1. **500 Error**: Check PHP logs, file permissions
-2. **Database Error**: Verify connection settings
-3. **Webhook Failed**: Check SSL and URL format
-4. **Cron Issues**: Check `/var/log/syslog` for cron errors
+### VPS Monitoring
+- **Server Monitoring**: `htop`, `df -h`, `free -h`
+- **Application Logs**: `tail -f logs/app.log`
+- **Database**: `mysqladmin processlist`
+- **Web Server**: Apache/Nginx status
 
-### Performance Tuning
-```bash
-# PHP OPcache
-echo "opcache.enable=1" >> /etc/php/8.1/apache2/php.ini
-sudo systemctl restart apache2
+## 🚨 **Troubleshooting Shared Hosting**
+
+### Common Issues & Solutions
+
+#### 1. **PHP Version Too Low**
+```
+Solution: Upgrade PHP via cPanel → PHP Config
+Alternative: Contact hosting support
 ```
 
-## 🔒 Security
+#### 2. **Memory Limit Error**
+```
+Solution: Edit .htaccess or php.ini via cPanel
+Add: php_value memory_limit 256M
+```
 
-- Enable firewall: `sudo ufw enable`
-- SSL certificate required
-- File permissions: 644 files, 755 directories
-- Database user with minimal privileges
-- PHP disable_functions configured
-
-## 📞 Support
-
-For deployment issues:
-- Check logs in `logs/` directory
-- Verify server requirements
-- Test with `php test.php`
-- Check GitHub repository for updates
-
----
-
-**🎯 Deployment selesai? BotSawer siap production!**
+#### 3. 
