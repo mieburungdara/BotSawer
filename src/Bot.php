@@ -346,12 +346,8 @@ class Bot
 
     private function handleAdminCommand(int $chatId, int $userId, string $text): void
     {
-        // Check if user is admin (simple check - should be configurable)
-        $user = \Illuminate\Database\Capsule\Manager::table('users')
-            ->where('id', $userId)
-            ->first();
-
-        if (!$user || !in_array($user->telegram_id, [ADMIN_TELEGRAM_ID])) {
+        // Check if user is admin using AdminManager
+        if (!AdminManager::isAdmin($userId)) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => '❌ Akses ditolak. Anda bukan admin.'
@@ -481,16 +477,7 @@ class Bot
 
                 Database::transaction(function () use ($proof) {
                     // Add to user balance
-                    Wallet::updateBalance($proof->user_id, $proof->amount);
-
-                    // Record transaction
-                    \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
-                        'user_id' => $proof->user_id,
-                        'type' => 'deposit',
-                        'amount' => $proof->amount,
-                        'status' => 'success',
-                        'description' => 'Topup via bukti pembayaran'
-                    ]);
+                    Wallet::addBalance($proof->user_id, $proof->amount, 'Topup via bukti pembayaran');
 
                     // Update proof status
                     \Illuminate\Database\Capsule\Manager::table('payment_proofs')
@@ -604,7 +591,7 @@ class Bot
                     ->first();
 
                 if ($withdrawal) {
-                    Wallet::updateBalance($withdrawal->creator_id, $withdrawal->amount);
+                    Wallet::addBalance($withdrawal->creator_id, $withdrawal->amount, 'Refund penarikan ditolak');
 
                     $this->telegram->sendMessage([
                         'chat_id' => $withdrawal->creator_id,
@@ -662,7 +649,10 @@ class Bot
         $success = Creator::verifyCreator($creatorId, true);
 
         if ($success) {
-            NotificationManager::notifyCreatorVerified($creator->user_id);
+            $creator = Creator::getProfile($creatorId);
+            if ($creator) {
+                NotificationManager::notifyCreatorVerified($creator->user_id);
+            }
 
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
@@ -929,10 +919,10 @@ class Bot
             if ($media) {
                 Database::transaction(function () use ($userId, $media, $amount) {
                     // Deduct from donor
-                    Wallet::updateBalance($userId, -$amount);
+                    Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
 
                     // Add to creator
-                    Wallet::updateBalance($media->creator_id, $amount);
+                    Wallet::addBalance($media->creator_id, $amount, 'Donasi dari user');
 
                     // Record transaction
                     \Illuminate\Database\Capsule\Manager::table('transactions')->insert([

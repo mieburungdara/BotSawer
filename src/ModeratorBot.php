@@ -11,12 +11,10 @@ use Exception;
 class ModeratorBot
 {
     private Api $telegram;
-    private int $adminId;
 
     public function __construct(int $botId = 1)
     {
         $this->initializeBot($botId);
-        // Admin ID will be validated per message, not stored
     }
 
     private function initializeBot(int $botId): void
@@ -51,14 +49,6 @@ class ModeratorBot
             if ($update->has('message')) {
                 $message = $update->getMessage();
                 $userId = $message->getFrom()->getId();
-
-                if ($userId !== $this->adminId) {
-                    Logger::warning('Unauthorized access to moderator bot', [
-                        'user_id' => $userId,
-                        'admin_id' => $this->adminId
-                    ]);
-                    return; // Ignore non-admin users
-                }
 
                 $this->handleAdminMessage($message);
             }
@@ -106,12 +96,9 @@ class ModeratorBot
 
     private function sendWebPanelRedirect(int $chatId, object $admin): void
     {
-        $roleText = match($admin->role) {
-            AdminManager::ROLE_SUPER_ADMIN => '👑 Super Admin',
-            AdminManager::ROLE_MODERATOR => '🔧 Moderator',
-            AdminManager::ROLE_FINANCE => '💰 Finance Admin',
-            default => '👤 Admin'
-        };
+        $roleText = $admin->role === AdminManager::ROLE_SUPER_ADMIN ? '👑 Super Admin' :
+                    ($admin->role === AdminManager::ROLE_MODERATOR ? '🔧 Moderator' :
+                    ($admin->role === AdminManager::ROLE_FINANCE ? '💰 Finance Admin' : '👤 Admin'));
 
         $message = "🤖 <b>MODERATOR BOT</b>\n";
         $message .= "Role: <b>{$roleText}</b>\n\n";
@@ -151,102 +138,7 @@ class ModeratorBot
         ]);
     }
 
-    // All command methods removed - operations moved to web panel
-    // Commands removed: /mod_start, /mod_stats, /mod_queue, /mod_post, /admin *
 
-        if (AdminManager::canHandleFinance($admin->telegram_id)) {
-            $message .= "• 💰 Payment Confirmations\n";
-            $message .= "• 📈 Financial Reports\n";
-            $message .= "• 💳 Wallet Adjustments\n";
-        }
-
-        if (AdminManager::isSuperAdmin($admin->telegram_id)) {
-            $message .= "• 👑 Admin User Management\n";
-            $message .= "• ⚙️ System Settings\n";
-            $message .= "• 🤖 Bot Configuration\n";
-            $message .= "• 📋 Audit Logs Review\n";
-        }
-
-        $message .= "\n🔐 <b>Access verified untuk role: {$roleText}</b>";
-
-        $this->telegram->sendMessage([
-            'chat_id' => $chatId,
-            'text' => $message,
-            'parse_mode' => 'HTML'
-        ]);
-    }
-
-        if (AdminManager::isSuperAdmin($admin->telegram_id)) {
-            $message .= "\n🔧 <b>Admin Management:</b>\n";
-            $message .= "/admin add [telegram_id] [role] - Add admin\n";
-            $message .= "/admin list - List admins\n";
-            $message .= "/admin remove [id] - Remove admin\n";
-        }
-
-        $message .= "\n💡 <i>Kirim media untuk test posting</i>";
-
-        $this->telegram->sendMessage([
-            'chat_id' => $chatId,
-            'text' => $message,
-            'parse_mode' => 'HTML'
-        ]);
-    }
-
-    // Removed: Manual post handling - done via web panel
-    {
-        $parts = explode(' ', $text);
-        if (count($parts) < 2) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Format: /mod_post [media_id]'
-            ]);
-            return;
-        }
-
-        $mediaId = (int) $parts[1];
-
-        try {
-            $media = \Illuminate\Database\Capsule\Manager::table('media_files')
-                ->where('id', $mediaId)
-                ->where('status', 'scheduled')
-                ->first();
-
-            if (!$media) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '❌ Media tidak ditemukan atau tidak dalam status scheduled'
-                ]);
-                return;
-            }
-
-            // Force post this media
-            $this->postMediaToChannel($media);
-
-            \Illuminate\Database\Capsule\Manager::table('media_files')
-                ->where('id', $mediaId)
-                ->update([
-                    'status' => 'posted',
-                    'posted_at' => now()
-                ]);
-
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => "✅ Media #{$mediaId} berhasil di-post ke channel publik"
-            ]);
-
-            AuditLogger::logAdminAction('manual_post', [
-                'media_id' => $mediaId,
-                'forced' => true
-            ], $adminId);
-
-        } catch (Exception $e) {
-            Logger::error('Manual post failed', ['error' => $e->getMessage()]);
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Gagal post media'
-            ]);
-        }
-    }
 
     private function postMediaToChannel($media): void
     {
@@ -459,12 +351,9 @@ class ModeratorBot
         $message = "👥 <b>DAFTAR ADMIN</b>\n\n";
         foreach ($admins as $admin) {
             $status = $admin->is_active ? '✅' : '❌';
-            $roleEmoji = match($admin->role) {
-                AdminManager::ROLE_SUPER_ADMIN => '👑',
-                AdminManager::ROLE_MODERATOR => '🔧',
-                AdminManager::ROLE_FINANCE => '💰',
-                default => '👤'
-            };
+            $roleEmoji = $admin->role === AdminManager::ROLE_SUPER_ADMIN ? '👑' :
+                         ($admin->role === AdminManager::ROLE_MODERATOR ? '🔧' :
+                         ($admin->role === AdminManager::ROLE_FINANCE ? '💰' : '👤'));
 
             $message .= "{$status} {$roleEmoji} {$admin->full_name}\n";
             $message .= "├ ID: {$admin->telegram_id}\n";
