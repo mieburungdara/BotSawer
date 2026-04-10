@@ -40,17 +40,18 @@ try {
     $userId = $input['userId'];
     $action = $input['action'];
 
-// Check if user is admin (simple check)
+// Check if user is admin using AdminManager
     $user = \Illuminate\Database\Capsule\Manager::table('users')
         ->where('id', $input['userId'])
         ->first();
 
-    // Define admin IDs (should be in config)
-    $adminIds = [123456789]; // Replace with actual admin telegram IDs
+    if (!$user || !AdminManager::isAdmin($user->telegram_id)) {
+        throw new Exception('Unauthorized');
+    }
 
-            if (!$user || !in_array($user->telegram_id, $adminIds)) {
-                throw new Exception('Unauthorized');
-            }
+    // Get admin role for permission checks
+    $adminData = AdminManager::getAdmin($user->telegram_id);
+    $adminRole = $adminData->role;
 
             // Audit log admin access
             \BotSawer\AuditLogger::logAdminAction('access_admin_panel', [
@@ -70,12 +71,21 @@ try {
             $pendingWithdrawals = \Illuminate\Database\Capsule\Manager::table('withdrawals')
                 ->where('status', 'pending')->count();
 
+            // Additional stats for moderators
+            $pendingContent = \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('status', 'pending')->count();
+            $approvedToday = \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('status', 'approved')
+                ->whereDate('updated_at', date('Y-m-d'))->count();
+
             $response = [
                 'total_users' => $totalUsers,
                 'total_transactions' => $totalTransactions,
                 'total_balance' => (int)$totalBalance,
                 'pending_topups' => $pendingTopups,
-                'pending_withdrawals' => $pendingWithdrawals
+                'pending_withdrawals' => $pendingWithdrawals,
+                'pending_content' => $pendingContent,
+                'approved_today' => $approvedToday
             ];
             break;
 
@@ -99,12 +109,22 @@ try {
                 ]);
             });
 
-            // Audit log
-            \BotSawer\AuditLogger::logAdminAction('adjust_balance', [
-                'target_user_id' => $input['targetUserId'],
-                'amount' => $input['amount'],
-                'description' => $input['description']
-            ], $userId);
+                // Get user info for detailed logging
+                $targetUser = \Illuminate\Database\Capsule\Manager::table('users')
+                    ->where('id', $input['targetUserId'])
+                    ->first();
+
+                // Audit log with full context
+                \BotSawer\AuditLogger::logAdminAction('adjust_balance', [
+                    'target_user_id' => $input['targetUserId'],
+                    'target_user_telegram_id' => $targetUser ? $targetUser->telegram_id : 'unknown',
+                    'target_user_username' => $targetUser ? $targetUser->username : 'unknown',
+                    'adjustment_amount' => $input['amount'],
+                    'previous_balance' => \BotSawer\Wallet::getBalance($input['targetUserId']) - $input['amount'],
+                    'new_balance' => \BotSawer\Wallet::getBalance($input['targetUserId']),
+                    'description' => $input['description'],
+                    'admin_role' => $admin->role
+                ], $userId);
 
             $response = ['message' => 'Saldo berhasil disesuaikan'];
             break;
@@ -222,12 +242,15 @@ try {
                     'updated_at' => now()
                 ]);
 
-            // Audit log setting change
-            \BotSawer\AuditLogger::logAdminAction('update_setting', [
-                'key' => $key,
-                'old_value' => $oldSetting ? $oldSetting->value : null,
-                'new_value' => $value
-            ], $userId);
+                // Audit log setting change with full context
+                \BotSawer\AuditLogger::logAdminAction('update_setting', [
+                    'setting_key' => $key,
+                    'old_value' => $oldSetting ? $oldSetting->value : null,
+                    'new_value' => $value,
+                    'setting_description' => $oldSetting ? $oldSetting->description : 'Unknown',
+                    'admin_role' => $admin->role,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+                ], $userId);
 
             $response = ['message' => 'Setting updated successfully'];
             break;
@@ -290,91 +313,584 @@ try {
             $response = ['message' => 'Bot status updated'];
             break;
 
-        case 'get_audit_logs':
-            $limit = min((int)($input['limit'] ?? 50), 200);
-            $entityType = $input['entity_type'] ?? null;
-            $userIdFilter = isset($input['user_id']) ? (int)$input['user_id'] : null;
+        case 'approve_payment':
+            if (!\BotSawer\AdminManager::canHandleFinance($userId)) {
+                throw new Exception('Access denied: Finance admin required');
+            }
 
-            $logs = \BotSawer\AuditLogger::getLogs($entityType, null, $userIdFilter, $limit);
+            $proofId = (int)($input['proof_id'] ?? 0);
+            $this->approvePayment($proofId, $userId, $admin);
+            $response = ['message' => 'Payment approved successfully'];
+            break;
 
-            $response = array_map(function($log) {
+        case 'reject_payment':
+            if (!\BotSawer\AdminManager::canHandleFinance($userId)) {
+                throw new Exception('Access denied: Finance admin required');
+            }
+
+            $proofId = (int)($input['proof_id'] ?? 0);
+            $reason = $input['reason'] ?? 'Rejected by admin';
+            $this->rejectPayment($proofId, $reason, $userId, $admin);
+            $response = ['message' => 'Payment rejected successfully'];
+            break;
+
+        case 'get_pending_payments':
+            if (!\BotSawer\AdminManager::canHandleFinance($userId)) {
+                throw new Exception('Access denied: Finance admin required');
+            }
+
+            $payments = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                ->join('users', 'payment_proofs.user_id', '=', 'users.id')
+                ->where('payment_proofs.status', 'pending')
+                ->select('payment_proofs.*', 'users.first_name', 'users.last_name', 'users.username')
+                ->orderBy('payment_proofs.created_at', 'desc')
+                ->get()
+                ->toArray();
+
+            $response = array_map(function($payment) {
                 return [
-                    'id' => $log->id,
-                    'user_id' => $log->user_id,
-                    'action' => $log->action,
-                    'entity_type' => $log->entity_type,
-                    'entity_id' => $log->entity_id,
-                    'changes' => json_decode($log->changes, true),
-                    'ip_address' => $log->ip_address,
-                    'created_at' => $log->created_at
+                    'id' => $payment->id,
+                    'user_id' => $payment->user_id,
+                    'user_name' => trim(($payment->first_name ?? '') . ' ' . ($payment->last_name ?? '')),
+                    'username' => $payment->username,
+                    'amount' => (float)$payment->amount,
+                    'created_at' => $payment->created_at,
+                    'has_file' => !empty($payment->telegram_file_id)
                 ];
-            }, $logs);
+            }, $payments);
             break;
 
-        case 'get_admins':
-            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
-                throw new Exception('Access denied: Super admin required');
+        case 'get_pending_payments':
+            // Check finance permission
+            if (!AdminManager::canHandleFinance($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
             }
 
-            $admins = \BotSawer\AdminManager::getAllAdmins();
-            $response = array_map(function($admin) {
-                return [
-                    'id' => $admin->id,
-                    'telegram_id' => $admin->telegram_id,
-                    'telegram_username' => $admin->telegram_username,
-                    'full_name' => $admin->full_name,
-                    'role' => $admin->role,
-                    'is_active' => (bool)$admin->is_active,
-                    'last_login' => $admin->last_login,
-                    'created_at' => $admin->created_at
-                ];
-            }, $admins);
+            $topups = \Illuminate\Database\Capsule\Manager::table('payment_proofs as pp')
+                ->join('users as u', 'pp.user_id', '=', 'u.id')
+                ->where('pp.status', 'pending')
+                ->select('pp.*', 'u.first_name', 'u.last_name', 'u.username')
+                ->orderBy('pp.created_at', 'asc')
+                ->get()
+                ->map(function ($item) {
+                    // Get bot token for file URL (assuming first active bot)
+                    $bot = \Illuminate\Database\Capsule\Manager::table('bots')->where('is_active', 1)->first();
+                    $fileUrl = null;
+                    if ($bot) {
+                        // For now, we'll use a placeholder. In production, you'd need to get file path from Telegram API
+                        $fileUrl = "https://api.telegram.org/file/bot{$bot->token}/{$item->telegram_file_id}";
+                    }
+
+                    return [
+                        'id' => $item->id,
+                        'type' => 'topup',
+                        'amount' => (int)$item->amount,
+                        'user_name' => trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
+                        'username' => $item->username,
+                        'notes' => $item->note,
+                        'proof_file_id' => $item->telegram_file_id,
+                        'proof_url' => $fileUrl,
+                        'created_at' => $item->created_at
+                    ];
+                });
+
+            $withdrawals = \Illuminate\Database\Capsule\Manager::table('withdrawals as w')
+                ->join('users as u', 'w.user_id', '=', 'u.id')
+                ->where('w.status', 'pending')
+                ->select('w.*', 'u.first_name', 'u.last_name', 'u.username')
+                ->orderBy('w.created_at', 'asc')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'type' => 'withdraw',
+                        'amount' => (int)$item->amount,
+                        'user_name' => trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
+                        'username' => $item->username,
+                        'bank_name' => $item->bank_name,
+                        'bank_account' => $item->bank_account,
+                        'account_name' => $item->account_name,
+                        'created_at' => $item->created_at
+                    ];
+                });
+
+            $response = array_merge($topups->toArray(), $withdrawals->toArray());
             break;
 
-        case 'add_admin':
-            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
-                throw new Exception('Access denied: Super admin required');
+        case 'approve_payment':
+            if (!AdminManager::canHandleFinance($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
             }
 
-            $telegramId = (int)($input['telegram_id'] ?? 0);
-            $role = $input['role'] ?? '';
-            $username = $input['username'] ?? '';
-            $fullName = $input['full_name'] ?? '';
-
-            if (\BotSawer\AdminManager::addAdmin($telegramId, $username, $fullName, $role, $userId)) {
-                $response = ['message' => 'Admin added successfully'];
-            } else {
-                throw new Exception('Failed to add admin');
+            if (!isset($input['payment_id']) || !isset($input['payment_type'])) {
+                throw new Exception('Missing parameters');
             }
+
+            Database::transaction(function () use ($input, $userId) {
+                if ($input['payment_type'] === 'topup') {
+                    // Approve topup
+                    $payment = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                        ->where('id', $input['payment_id'])
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if (!$payment) {
+                        throw new Exception('Payment not found or already processed');
+                    }
+
+                    // Update payment status
+                    \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                        ->where('id', $input['payment_id'])
+                        ->update([
+                            'status' => 'approved',
+                            'approved_by' => $userId,
+                            'approved_at' => now()
+                        ]);
+
+                    // Add balance to user
+                    Wallet::updateBalance($payment->user_id, $payment->amount);
+
+                    // Record transaction
+                    \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
+                        'user_id' => $payment->user_id,
+                        'type' => 'deposit',
+                        'amount' => $payment->amount,
+                        'status' => 'success',
+                        'description' => 'Topup via payment proof (Admin approved)',
+                        'from_user_id' => $userId
+                    ]);
+
+                    // Audit log
+                    \BotSawer\AuditLogger::logAdminAction('approve_topup', [
+                        'payment_id' => $input['payment_id'],
+                        'user_id' => $payment->user_id,
+                        'amount' => $payment->amount
+                    ], $userId);
+
+                } elseif ($input['payment_type'] === 'withdraw') {
+                    // Approve withdrawal
+                    $withdrawal = \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                        ->where('id', $input['payment_id'])
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if (!$withdrawal) {
+                        throw new Exception('Withdrawal not found or already processed');
+                    }
+
+                    // Check if user has sufficient balance
+                    $wallet = Wallet::getBalance($withdrawal->user_id);
+                    if ($wallet < $withdrawal->amount) {
+                        throw new Exception('Insufficient balance');
+                    }
+
+                    // Update withdrawal status
+                    \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                        ->where('id', $input['payment_id'])
+                        ->update([
+                            'status' => 'approved',
+                            'approved_by' => $userId,
+                            'approved_at' => now()
+                        ]);
+
+                    // Deduct balance from user
+                    Wallet::updateBalance($withdrawal->user_id, -$withdrawal->amount);
+
+                    // Record transaction
+                    \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
+                        'user_id' => $withdrawal->user_id,
+                        'type' => 'withdraw',
+                        'amount' => $withdrawal->amount,
+                        'status' => 'success',
+                        'description' => 'Withdrawal (Admin approved)',
+                        'from_user_id' => $userId
+                    ]);
+
+                    // Audit log
+                    \BotSawer\AuditLogger::logAdminAction('approve_withdrawal', [
+                        'withdrawal_id' => $input['payment_id'],
+                        'user_id' => $withdrawal->user_id,
+                        'amount' => $withdrawal->amount
+                    ], $userId);
+                }
+            });
+
+            $response = ['message' => 'Payment approved successfully'];
             break;
 
-        case 'update_admin_role':
-            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
-                throw new Exception('Access denied: Super admin required');
+        case 'reject_payment':
+            if (!AdminManager::canHandleFinance($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
             }
 
-            $adminId = (int)($input['admin_id'] ?? 0);
-            $newRole = $input['role'] ?? '';
-
-            if (\BotSawer\AdminManager::updateAdminRole($adminId, $newRole, $userId)) {
-                $response = ['message' => 'Admin role updated successfully'];
-            } else {
-                throw new Exception('Failed to update admin role');
+            if (!isset($input['payment_id']) || !isset($input['payment_type'])) {
+                throw new Exception('Missing parameters');
             }
+
+            Database::transaction(function () use ($input, $userId) {
+                $reason = $input['reason'] ?? 'Rejected by admin';
+
+                if ($input['payment_type'] === 'topup') {
+                    $payment = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                        ->where('id', $input['payment_id'])
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if (!$payment) {
+                        throw new Exception('Payment not found');
+                    }
+
+                    \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                        ->where('id', $input['payment_id'])
+                        ->update([
+                            'status' => 'rejected',
+                            'notes' => $reason,
+                            'approved_by' => $userId,
+                            'approved_at' => now()
+                        ]);
+
+                    \BotSawer\AuditLogger::logAdminAction('reject_topup', [
+                        'payment_id' => $input['payment_id'],
+                        'user_id' => $payment->user_id,
+                        'reason' => $reason
+                    ], $userId);
+
+                } elseif ($input['payment_type'] === 'withdraw') {
+                    $withdrawal = \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                        ->where('id', $input['payment_id'])
+                        ->where('status', 'pending')
+                        ->first();
+
+                    if (!$withdrawal) {
+                        throw new Exception('Withdrawal not found');
+                    }
+
+                    \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                        ->where('id', $input['payment_id'])
+                        ->update([
+                            'status' => 'rejected',
+                            'notes' => $reason,
+                            'approved_by' => $userId,
+                            'approved_at' => now()
+                        ]);
+
+                    \BotSawer\AuditLogger::logAdminAction('reject_withdrawal', [
+                        'withdrawal_id' => $input['payment_id'],
+                        'user_id' => $withdrawal->user_id,
+                        'reason' => $reason
+                    ], $userId);
+                }
+            });
+
+            $response = ['message' => 'Payment rejected successfully'];
             break;
 
-        case 'deactivate_admin':
-            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
-                throw new Exception('Access denied: Super admin required');
+        case 'get_pending_content':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
             }
 
-            $adminId = (int)($input['admin_id'] ?? 0);
+            $content = \Illuminate\Database\Capsule\Manager::table('media as m')
+                ->join('users as u', 'm.user_id', '=', 'u.id')
+                ->join('creators as c', 'c.user_id', '=', 'u.id')
+                ->where('m.status', 'pending')
+                ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
+                ->orderBy('m.created_at', 'asc')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'file_type' => $item->file_type,
+                        'file_size' => $item->file_size,
+                        'caption' => $item->caption,
+                        'creator_name' => $item->display_name ?: trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
+                        'creator_username' => $item->username,
+                        'created_at' => $item->created_at,
+                        'status' => 'pending'
+                    ];
+                });
 
-            if (\BotSawer\AdminManager::deactivateAdmin($adminId, $userId)) {
-                $response = ['message' => 'Admin deactivated successfully'];
-            } else {
-                throw new Exception('Failed to deactivate admin');
+            $response = $content->toArray();
+            break;
+
+        case 'get_approved_content':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
             }
+
+            $content = \Illuminate\Database\Capsule\Manager::table('media as m')
+                ->join('users as u', 'm.user_id', '=', 'u.id')
+                ->join('creators as c', 'c.user_id', '=', 'u.id')
+                ->where('m.status', 'approved')
+                ->whereNull('m.posted_at') // Not yet posted
+                ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
+                ->orderBy('m.approved_at', 'asc')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'file_type' => $item->file_type,
+                        'file_size' => $item->file_size,
+                        'caption' => $item->caption,
+                        'creator_name' => $item->display_name ?: trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
+                        'creator_username' => $item->username,
+                        'created_at' => $item->created_at,
+                        'approved_at' => $item->approved_at,
+                        'status' => 'approved'
+                    ];
+                });
+
+            $response = $content->toArray();
+            break;
+
+        case 'approve_content':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
+            }
+
+            if (!isset($input['content_id'])) {
+                throw new Exception('Missing content_id');
+            }
+
+            $content = \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('id', $input['content_id'])
+                ->where('status', 'pending')
+                ->first();
+
+            if (!$content) {
+                throw new Exception('Content not found or already processed');
+            }
+
+            \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('id', $input['content_id'])
+                ->update([
+                    'status' => 'approved',
+                    'approved_by' => $userId,
+                    'approved_at' => now()
+                ]);
+
+            \BotSawer\AuditLogger::logAdminAction('approve_content', [
+                'content_id' => $input['content_id'],
+                'creator_id' => $content->user_id
+            ], $userId);
+
+            $response = ['message' => 'Content approved successfully'];
+            break;
+
+        case 'reject_content':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
+            }
+
+            if (!isset($input['content_id'])) {
+                throw new Exception('Missing content_id');
+            }
+
+            $reason = $input['reason'] ?? 'Rejected by moderator';
+
+            $content = \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('id', $input['content_id'])
+                ->where('status', 'pending')
+                ->first();
+
+            if (!$content) {
+                throw new Exception('Content not found');
+            }
+
+            \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('id', $input['content_id'])
+                ->update([
+                    'status' => 'rejected',
+                    'notes' => $reason,
+                    'approved_by' => $userId,
+                    'approved_at' => now()
+                ]);
+
+            \BotSawer\AuditLogger::logAdminAction('reject_content', [
+                'content_id' => $input['content_id'],
+                'creator_id' => $content->user_id,
+                'reason' => $reason
+            ], $userId);
+
+            $response = ['message' => 'Content rejected successfully'];
+            break;
+
+        case 'get_content_details':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
+            }
+
+            if (!isset($input['content_id'])) {
+                throw new Exception('Missing content_id');
+            }
+
+            $content = \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('id', $input['content_id'])
+                ->first();
+
+            if (!$content) {
+                throw new Exception('Content not found');
+            }
+
+            $response = [
+                'id' => $content->id,
+                'file_type' => $content->file_type,
+                'file_url' => $content->file_path, // Assuming file_path contains URL
+                'caption' => $content->caption,
+                'status' => $content->status
+            ];
+            break;
+
+        case 'post_content_to_channel':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
+            }
+
+            if (!isset($input['content_id'])) {
+                throw new Exception('Missing content_id');
+            }
+
+            $content = \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('id', $input['content_id'])
+                ->where('status', 'approved')
+                ->first();
+
+            if (!$content) {
+                throw new Exception('Content not found or not approved');
+            }
+
+            // Get bot configuration for posting
+            $botConfig = \Illuminate\Database\Capsule\Manager::table('bot_configs')
+                ->where('is_active', 1)
+                ->first();
+
+            if (!$botConfig || !$botConfig->channel_id) {
+                throw new Exception('Bot configuration not found or channel not set');
+            }
+
+            // Use Bot class to post content
+            $bot = new Bot($botConfig->id);
+            $bot->postApprovedContentToChannel($content->id, $botConfig->channel_id);
+
+            // Update content status to posted
+            \Illuminate\Database\Capsule\Manager::table('media')
+                ->where('id', $input['content_id'])
+                ->update([
+                    'status' => 'posted',
+                    'posted_at' => now(),
+                    'posted_by' => $userId
+                ]);
+
+            \BotSawer\AuditLogger::logAdminAction('post_content_to_channel', [
+                'content_id' => $input['content_id'],
+                'channel_id' => $botConfig->channel_id,
+                'creator_id' => $content->user_id
+            ], $userId);
+
+            $response = ['message' => 'Content posted to channel successfully'];
+            break;
+
+        case 'get_creators':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
+            }
+
+            $creators = \Illuminate\Database\Capsule\Manager::table('creators as c')
+                ->join('users as u', 'c.user_id', '=', 'u.id')
+                ->leftJoin('media as m', 'm.user_id', '=', 'u.id')
+                ->select(
+                    'c.*',
+                    'u.first_name',
+                    'u.last_name',
+                    'u.username',
+                    \Illuminate\Database\Capsule\Manager::raw('COUNT(m.id) as total_content'),
+                    \Illuminate\Database\Capsule\Manager::raw('COALESCE(SUM(m.total_donations), 0) as total_earnings')
+                )
+                ->groupBy('c.id', 'u.id', 'u.first_name', 'u.last_name', 'u.username')
+                ->orderBy('c.created_at', 'desc')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'user_id' => $item->user_id,
+                        'display_name' => $item->display_name,
+                        'user_name' => trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
+                        'username' => $item->username,
+                        'is_verified' => (bool)$item->is_verified,
+                        'total_content' => (int)$item->total_content,
+                        'total_earnings' => (int)$item->total_earnings,
+                        'created_at' => $item->created_at
+                    ];
+                });
+
+            $response = $creators->toArray();
+            break;
+
+        case 'verify_creator':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
+            }
+
+            if (!isset($input['creator_id'])) {
+                throw new Exception('Missing creator_id');
+            }
+
+            \Illuminate\Database\Capsule\Manager::table('creators')
+                ->where('id', $input['creator_id'])
+                ->update([
+                    'is_verified' => 1,
+                    'verified_by' => $userId,
+                    'verified_at' => now()
+                ]);
+
+            $creator = \Illuminate\Database\Capsule\Manager::table('creators')
+                ->where('id', $input['creator_id'])
+                ->first();
+
+            \BotSawer\AuditLogger::logAdminAction('verify_creator', [
+                'creator_id' => $input['creator_id'],
+                'user_id' => $creator->user_id
+            ], $userId);
+
+            $response = ['message' => 'Creator verified successfully'];
+            break;
+
+        case 'get_creator_profile':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Insufficient permissions');
+            }
+
+            if (!isset($input['creator_id'])) {
+                throw new Exception('Missing creator_id');
+            }
+
+            $profile = \Illuminate\Database\Capsule\Manager::table('creators as c')
+                ->join('users as u', 'c.user_id', '=', 'u.id')
+                ->leftJoin('media as m', 'm.user_id', '=', 'u.id')
+                ->where('c.id', $input['creator_id'])
+                ->select(
+                    'c.*',
+                    'u.first_name',
+                    'u.last_name',
+                    'u.username',
+                    \Illuminate\Database\Capsule\Manager::raw('COUNT(m.id) as total_content'),
+                    \Illuminate\Database\Capsule\Manager::raw('COALESCE(SUM(m.total_donations), 0) as total_earnings')
+                )
+                ->first();
+
+            if (!$profile) {
+                throw new Exception('Creator not found');
+            }
+
+            $response = [
+                'id' => $profile->id,
+                'display_name' => $profile->display_name ?: trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? '')),
+                'bio' => $profile->bio,
+                'bank_account' => $profile->bank_account,
+                'total_content' => (int)$profile->total_content,
+                'total_earnings' => (int)$profile->total_earnings,
+                'is_verified' => (bool)$profile->is_verified
+            ];
             break;
 
         default:

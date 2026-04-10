@@ -1,230 +1,454 @@
-# 🤖 BotSawer - Telegram Content Monetization Bot
+# 🚀 BotSawer Deployment Guide
 
-BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kreator konten untuk menerima donasi dari penggemar secara anonim dan otomatis.
+Panduan lengkap untuk deploy BotSawer ke production environment dengan fokus pada **Shared Hosting**.
 
-## ✨ Fitur Utama
+## 📋 Prerequisites
 
-### 👤 Untuk Kreator
-- ✅ Upload foto/video langsung via Telegram
-- ✅ Sistem antrian posting otomatis
-- ✅ Terima donasi anonim dari penggemar
-- ✅ Dashboard analytics dengan grafik
-- ✅ Manajemen profil dan rekening bank
-- ✅ Riwayat pendapatan lengkap
+### Shared Hosting Requirements
+- ✅ **PHP**: 8.1+ (cek via `phpinfo()`)
+- ✅ **Database**: MySQL 5.7+ atau MariaDB 10.0+
+- ✅ **Storage**: 500MB+ untuk aplikasi + 200MB+ untuk database
+- ✅ **Web Server**: Apache/Nginx (pre-configured)
+- ✅ **Access**: cPanel, Plesk, DirectAdmin, atau FTP
+- ✅ **SSL**: Auto-SSL dari hosting provider (biasanya gratis)
+- ⚠️ **Cron**: Mungkin terbatas atau tidak tersedia
+- ⚠️ **SSH**: Mungkin tidak tersedia
 
-### 💰 Untuk Pengguna
-- ✅ Jelajahi konten kreator favorit
-- ✅ Donasi dengan berbagai nominal
-- ✅ Sistem topup saldo via QR code
-- ✅ Riwayat transaksi lengkap
-- ✅ Akses konten premium
+### VPS/Dedicated Server Requirements (Advanced)
+- ✅ **OS**: Ubuntu 20.04+ / CentOS 7+ / Debian 10+
+- ✅ **Root Access**: Required untuk konfigurasi lengkap
+- ✅ **Web Server**: Apache 2.4+ atau Nginx 1.18+
+- ✅ **PHP**: 8.5+ dengan ekstensi lengkap
+- ✅ **Database**: MySQL 8.0+ atau MariaDB 10.5+
+- ✅ **Cron Jobs**: Full access
 
-### 🔧 Untuk Admin
-- ✅ Panel admin lengkap via web
-- ✅ Konfirmasi pembayaran manual
-- ✅ Manajemen user dan kreator
-- ✅ Audit logs semua aktivitas
-- ✅ Multi-bot support
-- ✅ System monitoring
+## 🏗️ **DEPLOYMENT UNTUK SHARED HOSTING**
 
-## 🚀 Quick Start
+### Step 1: Persiapan Awal
 
-### Prerequisites
-- PHP 8.5+
-- MySQL 8.0+
-- Composer
-- Cron job access
-- Telegram Bot Token
+1. **Cek PHP Version & Extensions**
+   - Akses `phpinfo.php` di browser atau cPanel → PHP Config
+   - Pastikan PHP 8.1+ dengan ekstensi: `pdo_mysql`, `mbstring`, `curl`, `json`, `bcmath`
 
-### Installation
+2. **Buat Database**
+   - Login ke cPanel → MySQL Databases
+   - Create database: `botsawer_db`
+   - Create user: `botsawer_user`
+   - Set permissions: Full access ke database
 
-1. **Clone repository**
+3. **Siapkan Domain/Subdomain**
+   - Point domain ke hosting account
+   - Enable SSL (biasanya auto dari hosting provider)
+
+### Step 2: Upload Files
+
+#### Via cPanel File Manager
+1. Login cPanel → File Manager
+2. Navigate ke `public_html/` atau folder website
+3. Upload semua files dari repository (gunakan zip jika banyak)
+4. Extract files di folder utama
+
+#### Via FTP/SFTP
 ```bash
-git clone https://github.com/yourusername/botsawer.git
-cd botsawer
+# Connect via FTP client (FileZilla, WinSCP, etc.)
+# Upload semua files ke public_html/ atau www/
+# Pastikan folder structure terjaga
 ```
 
-2. **Install dependencies**
+### Step 3: Install Dependencies
+
+#### Via SSH (jika tersedia)
 ```bash
-composer install
+cd public_html
+curl -sS https://getcomposer.org/installer | php
+php composer.phar install --no-dev --optimize-autoloader
 ```
 
-3. **Setup database**
+#### Via Manual Upload (jika tidak ada SSH)
+1. Download `composer.phar` dari https://getcomposer.org/
+2. Upload ke server via FTP
+3. Jalankan via browser atau cron job
+4. Upload hasil `vendor/` folder
+
+### Step 4: Konfigurasi Environment
+
+1. **Copy .env file**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit .env untuk shared hosting**
+   ```env
+   APP_NAME=BotSawer
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_URL=https://yourdomain.com
+
+   # Database (dari cPanel)
+   DB_CONNECTION=mysql
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_DATABASE=botsawer_db
+   DB_USERNAME=botsawer_user
+   DB_PASSWORD=your_db_password
+
+   # Telegram Bot
+   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   TELEGRAM_WEBHOOK_SECRET=webhook_secret_1
+
+   # Admin
+   ADMIN_TELEGRAM_ID=123456789
+
+   # Logging (shared hosting friendly)
+   LOG_CHANNEL=daily
+   LOG_LEVEL=error
+   ```
+
+3. **Import Database Schema**
+   - Akses phpMyAdmin via cPanel
+   - Import file `migrations/schema.sql`
+   - Verifikasi semua tabel terbuat
+
+### Step 5: Konfigurasi Web Server
+
+#### Untuk Shared Hosting (biasanya auto)
+- Pastikan `public/` folder sebagai document root
+- Enable mod_rewrite untuk Apache
+- Pastikan .htaccess terbaca
+
+#### Jika perlu custom .htaccess
+```apache
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+```
+
+### Step 6: Setup Cron Jobs (Alternatif untuk Shared Hosting)
+
+#### Via cPanel Cron Jobs
+1. Login cPanel → Cron Jobs
+2. Add new cron job:
+   ```
+   Command: wget -q -O /dev/null https://yourdomain.com/cron.php
+   Schedule: Every 1 minute (* * * * *)
+   ```
+
+#### Via External Cron Service
+Jika hosting tidak support cron, gunakan:
+- **Cron-job.org** (gratis)
+- **EasyCron** (berbayar)
+- **GitHub Actions** untuk scheduling
+
+#### Buat cron.php file
+```php
+<?php
+// cron.php - Alternative cron runner for shared hosting
+require_once __DIR__ . '/vendor/autoload.php';
+BotSawer\Database::init();
+
+// Run scheduler
+exec('php ' . __DIR__ . '/schedule.php');
+echo "Cron executed at " . date('Y-m-d H:i:s');
+```
+
+### Step 7: Bot Configuration
+
+#### Set Webhook via Browser (shared hosting friendly)
+Buat file `set_webhook.php`:
+
+```php
+<?php
+// set_webhook.php - Set Telegram webhook
+$botToken = 'YOUR_BOT_TOKEN';
+$webhookUrl = 'https://yourdomain.com/public/webhook.php?secret=webhook_secret_1';
+
+$url = "https://api.telegram.org/bot{$botToken}/setWebhook?url=" . urlencode($webhookUrl);
+
+$response = file_get_contents($url);
+echo $response;
+```
+
+Akses `https://yourdomain.com/set_webhook.php` via browser untuk set webhook.
+
+### Step 8: Testing & Verification
+
+#### Test Files
+1. **Health Check**: `https://yourdomain.com/public/health.php`
+2. **Database Test**: Buat `test_db.php`:
+   ```php
+   <?php
+   require 'vendor/autoload.php';
+   BotSawer\Database::init();
+   echo "Database connected successfully";
+   ```
+
+3. **Bot Test**: Kirim `/start` ke bot via Telegram
+
+#### Manual Testing Checklist
+- [ ] Website accessible via HTTPS
+- [ ] Database connection works
+- [ ] Bot responds to commands
+- [ ] Web app loads (Mini App)
+- [ ] Admin panel accessible
+- [ ] Logs ter-generate
+
+## 🏗️ **DEPLOYMENT UNTUK VPS/DEDICATED SERVER** (Advanced)
+
+### Quick VPS Setup
 ```bash
-mysql -u root -p < migrations/schema.sql
+# Ubuntu/Debian VPS
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y apache2 mysql-server php8.1 php8.1-mysql php8.1-mbstring php8.1-curl php8.1-xml php8.1-bcmath curl unzip
+
+# Install Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# Clone and setup
+cd /var/www
+sudo git clone https://github.com/mieburungdara/BotSawer.git
+sudo chown -R www-data:www-data BotSawer
+cd BotSawer
+
+# Install dependencies
+sudo -u www-data composer install --no-dev --optimize-autoloader
+
+# Database setup
+sudo mysql -e "CREATE DATABASE botsawer CHARACTER SET utf8mb4;"
+sudo mysql -e "CREATE USER 'botsawer'@'localhost' IDENTIFIED BY 'secure_password';"
+sudo mysql -e "GRANT ALL ON botsawer.* TO 'botsawer'@'localhost';"
+mysql -u botsawer -p botsawer < migrations/schema.sql
+
+# Web server config
+sudo nano /etc/apache2/sites-available/botsawer.conf
+# ... (Apache config as before)
+
+# SSL Setup
+sudo apt install certbot python3-certbot-apache
+sudo certbot --apache -d yourdomain.com
+
+# Cron setup
+echo "* * * * * cd /var/www/BotSawer && php schedule.php" | sudo crontab -
 ```
 
-4. **Configure environment**
-```bash
-cp .env.example .env
-# Edit .env dengan database credentials dan bot token
-```
+## 🔧 **Konfigurasi Environment**
 
-5. **Setup bot webhook**
-```bash
-# Set webhook URL ke: https://yourdomain.com/public/webhook.php?secret=your_secret
-```
-
-6. **Setup cron job**
-```bash
-# Jalankan setiap menit untuk posting antrian
-* * * * * cd /path/to/botsawer && php schedule.php
-```
-
-7. **Test installation**
-```bash
-php test.php
-```
-
-## 📱 Web App Access
-
-Akses dashboard via: `https://yourdomain.com/public/webapp/`
-
-## 🤖 Bot Commands
-
-- `/start` - Mulai menggunakan bot
-- `/register [nama]` - Daftar sebagai kreator
-- `/saldo` - Cek saldo
-- `/topup` - Isi saldo via QR
-- `/admin` - Panel admin (admin only)
-
-## 🏗️ Architecture
-
-```
-BotSawer/
-├── plan/                    # 📚 All documentation
-│   ├── INDEX.md            # Documentation index
-│   ├── README.md           # Main project README
-│   ├── API_DOCUMENTATION.md # API reference
-│   └── ...                 # Other docs
-├── src/                     # PHP source code
-├── public/                  # Web accessible files
-├── migrations/              # Database schema
-├── logs/                    # Application logs
-└── vendor/                  # Composer dependencies
-```
-
-## 🔐 Security Features
-
-- ✅ Rate limiting untuk semua API
-- ✅ Audit logging untuk admin actions
-- ✅ Input validation dan sanitization
-- ✅ CSRF protection
-- ✅ Secure webhook verification
-- ✅ Encrypted sensitive data
-
-## 📊 Database Schema
-
-### Core Tables
-- `users` - Telegram users
-- `creators` - Verified content creators
-- `media_files` - Uploaded content
-- `wallets` - User balances
-- `transactions` - All financial transactions
-- `payment_proofs` - Topup payment proofs
-- `withdrawals` - Creator withdrawal requests
-- `bots` - Multi-bot support
-- `settings` - System configuration
-- `audit_logs` - Activity audit trails
-
-## 🔧 Configuration
-
-### Environment Variables (.env)
+### Shared Hosting .env
 ```env
-# Database
-DB_HOST=localhost
-DB_NAME=botsawer
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_CHARSET=utf8mb4
-
-# App
 APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://yourdomain.com
 
-# Admin
+DB_HOST=localhost
+DB_DATABASE=botsawer_db
+DB_USERNAME=botsawer_user
+DB_PASSWORD=your_password
+
+TELEGRAM_BOT_TOKEN=your_token
 ADMIN_TELEGRAM_ID=123456789
 
-# Bot
-TELEGRAM_BOT_TOKEN=your_bot_token
+LOG_CHANNEL=daily
+LOG_LEVEL=warning
 ```
 
-### System Settings (via admin panel)
-- Platform commission rates
-- Minimum deposit/withdrawal amounts
-- Channel configurations
-- QR payment data
+### VPS .env
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://yourdomain.com
 
-## 📈 Monitoring
+DB_HOST=localhost
+DB_DATABASE=botsawer
+DB_USERNAME=botsawer
+DB_PASSWORD=secure_password
 
-### Health Check
-```
-GET /public/health.php
-```
-Returns system status and metrics.
+TELEGRAM_BOT_TOKEN=your_token
+ADMIN_TELEGRAM_ID=123456789
 
-### Logs
-- Application logs: `logs/app.log`
-- Audit logs: Database `audit_logs` table
-- Log viewer: `/public/logs/view.php?key=ai_inspection_2026`
-
-## 🚀 Deployment
-
-### Production Setup
-1. Setup web server (Apache/Nginx) pointing to `public/` directory
-2. Configure SSL certificate
-3. Set proper file permissions
-4. Configure cron jobs
-5. Setup log rotation
-6. Configure firewall
-
-### Docker (Optional)
-```dockerfile
-FROM php:8.5-fpm
-COPY . /var/www/html
-RUN composer install --no-dev --optimize-autoloader
-EXPOSE 9000
+LOG_CHANNEL=stack
+LOG_LEVEL=error
 ```
 
-## 🧪 Testing
+## 🧪 **Testing Deployment**
 
+### Automated Tests
 ```bash
 # Run basic tests
 php test.php
 
-# Run PHPUnit tests (when implemented)
-vendor/bin/phpunit
+# Test health endpoint
+curl https://yourdomain.com/public/health.php
 ```
 
-## 📚 API Documentation
+### Manual Tests
+1. **Web Access**: `https://yourdomain.com/public/health.php`
+2. **Bot Response**: Kirim `/start` ke bot
+3. **Database**: Cek via phpMyAdmin
+4. **Logs**: Cek `logs/app.log`
+5. **Web App**: `https://yourdomain.com/public/webapp/`
 
-See `API_DOCUMENTATION.md` for complete API reference.
+## 📊 **Monitoring & Maintenance**
 
-## 🤝 Contributing
+### Shared Hosting Monitoring
+- **Uptime**: Gunakan external monitoring (UptimeRobot gratis)
+- **Logs**: Cek via cPanel error logs
+- **Database**: Monitor via phpMyAdmin
+- **Bot Status**: Test manual commands
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+### VPS Monitoring
+- **Server Monitoring**: `htop`, `df -h`, `free -h`
+- **Application Logs**: `tail -f logs/app.log`
+- **Database**: `mysqladmin processlist`
+- **Web Server**: Apache/Nginx status
 
-## 📝 License
+## 🚨 **Troubleshooting Shared Hosting**
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Common Issues & Solutions
 
-## 🆘 Support
+#### 1. **PHP Version Too Low**
+```
+Solution: Upgrade PHP via cPanel → PHP Config
+Alternative: Contact hosting support
+```
 
-- 📧 Email: support@botsawer.com
-- 💬 Telegram: @BotSawerSupport
-- 📖 Docs: https://docs.botsawer.com
+#### 2. **Memory Limit Error**
+```
+Solution: Edit .htaccess or php.ini via cPanel
+Add: php_value memory_limit 256M
+```
 
-## 🙏 Acknowledgments
+#### 3. **Database Connection Failed**
+```
+Check:
+- Database credentials in .env
+- Database exists in cPanel
+- User has correct permissions
+- Host is 'localhost' (not server IP)
+```
 
-- Telegram Bot API
-- Laravel Illuminate Database
-- Monolog Logging
-- Chart.js for analytics
+#### 4. **Bot Webhook Not Working**
+```
+Check:
+- SSL certificate valid
+- Webhook URL accessible
+- Bot token correct
+- Secret key matches
+```
+
+#### 5. **Cron Job Not Running**
+```
+Solutions:
+- Use cPanel cron jobs
+- Use external cron service
+- Create cron.php for browser access
+- Use GitHub Actions for scheduling
+```
+
+#### 6. **File Permissions**
+```
+Fix via FTP:
+- Files: 644
+- Directories: 755
+- Special: logs/, storage/ = 775
+```
+
+#### 7. **Composer Install Failed**
+```
+Solutions:
+- Increase PHP memory limit
+- Use alternative composer mirror
+- Manual upload vendor/ folder
+- Contact hosting support
+```
+
+### Performance Optimization (Shared Hosting)
+
+#### 1. **Enable OPcache** (via cPanel)
+```
+OPcache Settings:
+- Enable OPcache: On
+- Memory: 128MB
+- Max files: 4000
+```
+
+#### 2. **Database Optimization**
+```sql
+-- Add to phpMyAdmin SQL tab
+SET GLOBAL query_cache_size = 268435456;
+SET GLOBAL query_cache_type = ON;
+```
+
+#### 3. **File Optimization**
+- Enable GZIP compression via .htaccess
+- Use CDN untuk static files (optional)
+- Optimize images sebelum upload
+
+## 🔒 **Security untuk Shared Hosting**
+
+### Basic Security
+- ✅ Gunakan HTTPS (SSL)
+- ✅ Jaga kerahasiaan bot token
+- ✅ Update password secara berkala
+- ✅ Monitor logs regularly
+
+### Advanced Security (jika memungkinkan)
+- ✅ Disable directory listing
+- ✅ Add security headers via .htaccess
+- ✅ Use strong passwords
+- ✅ Regular backup
+
+## 📞 **Support & Resources**
+
+### Shared Hosting Support
+- **cPanel Documentation**: https://docs.cpanel.net/
+- **Hosting Support**: Contact provider
+- **PHP Configuration**: Check via `phpinfo()`
+- **Bot Issues**: Test via @BotFather
+
+### Community Resources
+- **Telegram Bot API**: https://core.telegram.org/bots/api
+- **Laravel Docs**: https://laravel.com/docs
+- **PHP Manual**: https://php.net/manual
+
+### Emergency Contacts
+- **Bot Issues**: Check @BotFather
+- **Domain Issues**: Contact domain registrar
+- **Hosting Issues**: Contact hosting provider
 
 ---
 
-**BotSawer** - Monetize your creativity, connect with fans, earn from content! 🎨💰</content>
-<parameter name="filePath">plan/README.md
+## ✅ **Deployment Checklist**
+
+### Shared Hosting
+- [ ] PHP 8.1+ dengan ekstensi lengkap
+- [ ] Database MySQL 5.7+ dibuat
+- [ ] Domain dengan SSL aktif
+- [ ] Files diupload ke public_html/
+- [ ] Dependencies terinstall (Composer)
+- [ ] .env terkonfigurasi dengan benar
+- [ ] Database schema terimport
+- [ ] Bot webhook ter-set
+- [ ] Cron job ter-setup (atau alternatif)
+- [ ] Health check accessible
+- [ ] Bot merespons commands
+
+### VPS/Dedicated
+- [ ] Server memenuhi requirements
+- [ ] Root access available
+- [ ] Web server terinstall & configured
+- [ ] SSL certificate terinstall
+- [ ] Firewall ter-configure
+- [ ] Automatic backups ter-setup
+- [ ] Monitoring tools terinstall
+
+---
+
+**🎯 Pilih deployment method sesuai kebutuhan Anda:**
+
+- **Shared Hosting**: Untuk yang baru mulai, mudah & murah
+- **VPS**: Untuk traffic sedang, lebih fleksibel
+- **Dedicated**: Untuk high traffic, full control
+
+**🚀 Siap deploy? Follow step-by-step guide di atas!**</content>
+<parameter name="filePath">plan/DEPLOYMENT.md

@@ -105,7 +105,10 @@ class AdminManager
 
             AuditLogger::logAdminAction('add_admin', [
                 'new_admin_telegram_id' => $telegramId,
-                'role' => $role
+                'new_admin_username' => $username,
+                'new_admin_full_name' => $fullName,
+                'assigned_role' => $role,
+                'assigned_by_admin_id' => $createdBy
             ], $createdBy);
 
             Logger::info('New admin added', [
@@ -143,10 +146,18 @@ class AdminManager
                 ->where('id', $adminId)
                 ->update(['role' => $newRole]);
 
-            AuditLogger::logAdminAction('update_admin_role', [
-                'admin_id' => $adminId,
-                'new_role' => $newRole
-            ], $updatedBy);
+            // Get admin info for logging
+            $targetAdmin = DB::table('admins')->where('id', $adminId)->first();
+            if ($targetAdmin) {
+                AuditLogger::logAdminAction('update_admin_role', [
+                    'target_admin_id' => $adminId,
+                    'target_admin_telegram_id' => $targetAdmin->telegram_id,
+                    'target_admin_username' => $targetAdmin->telegram_username,
+                    'old_role' => $targetAdmin->role,
+                    'new_role' => $newRole,
+                    'updated_by_admin_id' => $updatedBy
+                ], $updatedBy);
+            }
 
             return true;
         } catch (Exception $e) {
@@ -172,9 +183,17 @@ class AdminManager
                 ->where('id', $adminId)
                 ->update(['is_active' => 0]);
 
-            AuditLogger::logAdminAction('deactivate_admin', [
-                'admin_id' => $adminId
-            ], $deactivatedBy);
+            // Get admin info for logging
+            $targetAdmin = DB::table('admins')->where('id', $adminId)->first();
+            if ($targetAdmin) {
+                AuditLogger::logAdminAction('deactivate_admin', [
+                    'target_admin_id' => $adminId,
+                    'target_admin_telegram_id' => $targetAdmin->telegram_id,
+                    'target_admin_username' => $targetAdmin->telegram_username,
+                    'target_admin_role' => $targetAdmin->role,
+                    'deactivated_by_admin_id' => $deactivatedBy
+                ], $deactivatedBy);
+            }
 
             return true;
         } catch (Exception $e) {

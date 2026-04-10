@@ -1035,6 +1035,27 @@ class Bot
         ]);
     }
 
+    /**
+     * Post approved content to channel (for moderators)
+     */
+    public function postApprovedContentToChannel(int $contentId, string $channelId): void
+    {
+        $content = \Illuminate\Database\Capsule\Manager::table('media')
+            ->where('id', $contentId)
+            ->where('status', 'approved')
+            ->first();
+
+        if (!$content) {
+            throw new Exception('Content not found or not approved');
+        }
+
+        $this->sendMediaWithSawerButton($channelId, $content);
+        Logger::info('Content posted to channel by moderator', [
+            'content_id' => $contentId,
+            'channel_id' => $channelId
+        ]);
+    }
+
     public function getTelegram(): Api
     {
         return $this->telegram;

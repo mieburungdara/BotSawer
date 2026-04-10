@@ -88,43 +88,23 @@ class ModeratorBot
         $admin = AdminManager::getAdmin($userId);
         AdminManager::updateLastLogin($userId);
 
-        Logger::info('Moderator bot admin command', [
+        // Log admin access to moderator bot
+        AuditLogger::logAdminAction('access_moderator_bot', [
+            'message_text' => $text,
+            'has_media' => $message->has('photo') || $message->has('video') || $message->has('document')
+        ], $userId);
+
+        Logger::info('Moderator bot admin access', [
             'admin_id' => $userId,
             'admin_role' => $admin->role,
-            'command' => $text
+            'message' => substr($text, 0, 100) // Log first 100 chars only
         ]);
 
-        // Admin commands for moderator bot
-        if ($text === '/mod_start') {
-            $this->sendModeratorWelcome($chatId, $admin);
-        } elseif (str_starts_with($text, '/mod_post')) {
-            if (AdminManager::canModerate($userId)) {
-                $this->handleManualPost($chatId, $text, $userId);
-            } else {
-                $this->sendPermissionDenied($chatId);
-            }
-        } elseif (str_starts_with($text, '/mod_stats')) {
-            $this->sendModeratorStats($chatId, $admin);
-        } elseif (str_starts_with($text, '/mod_queue')) {
-            if (AdminManager::canModerate($userId)) {
-                $this->showPostingQueue($chatId);
-            } else {
-                $this->sendPermissionDenied($chatId);
-            }
-        } elseif (str_starts_with($text, '/admin')) {
-            $this->handleAdvancedAdminCommands($chatId, $text, $userId, $admin);
-        } elseif ($message->has('photo') || $message->has('video') || $message->has('document')) {
-            if (AdminManager::canModerate($userId)) {
-                $this->handleAdminMediaUpload($message);
-            } else {
-                $this->sendPermissionDenied($chatId);
-            }
-        } else {
-            $this->sendModeratorHelp($chatId, $admin);
-        }
+        // Inform admin to use web panel
+        $this->sendWebPanelRedirect($chatId, $admin);
     }
 
-    private function sendModeratorWelcome(int $chatId, object $admin): void
+    private function sendWebPanelRedirect(int $chatId, object $admin): void
     {
         $roleText = match($admin->role) {
             AdminManager::ROLE_SUPER_ADMIN => '👑 Super Admin',
@@ -135,15 +115,66 @@ class ModeratorBot
 
         $message = "🤖 <b>MODERATOR BOT</b>\n";
         $message .= "Role: <b>{$roleText}</b>\n\n";
-        $message .= "Bot ini khusus untuk admin mengelola content posting.\n\n";
-        $message .= "📋 <b>Perintah Moderator:</b>\n";
-        $message .= "/mod_start - Info bot moderator\n";
-        $message .= "/mod_stats - Statistik posting\n";
+        $message .= "✅ <b>Selamat datang, {$admin->full_name}!</b>\n\n";
+        $message .= "Bot ini hanya untuk verifikasi admin access.\n";
+        $message .= "Semua admin operations dilakukan via <b>Web Panel</b>.\n\n";
+        $message .= "🌐 <b>Akses Web Panel:</b>\n";
+        $message .= "https://yourdomain.com/public/webapp/\n\n";
+        $message .= "📱 <b>Fitur tersedia di Web Panel:</b>\n";
 
         if (AdminManager::canModerate($admin->telegram_id)) {
-            $message .= "/mod_queue - Lihat antrian posting\n";
-            $message .= "/mod_post [media_id] - Post manual\n";
+            $message .= "• 📊 Dashboard & Statistics\n";
+            $message .= "• 📋 Posting Queue Management\n";
+            $message .= "• ✏️ Manual Content Posting\n";
+            $message .= "• 👥 User & Creator Management\n";
         }
+
+        if (AdminManager::canHandleFinance($admin->telegram_id)) {
+            $message .= "• 💰 Payment Confirmations\n";
+            $message .= "• 📈 Financial Reports\n";
+            $message .= "• 💳 Wallet Adjustments\n";
+        }
+
+        if (AdminManager::isSuperAdmin($admin->telegram_id)) {
+            $message .= "• 👑 Admin User Management\n";
+            $message .= "• ⚙️ System Settings\n";
+            $message .= "• 🤖 Bot Configuration\n";
+            $message .= "• 📋 Audit Logs Review\n";
+        }
+
+        $message .= "\n🔐 <b>Access verified untuk role: {$roleText}</b>";
+
+        $this->telegram->sendMessage([
+            'chat_id' => $chatId,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        ]);
+    }
+
+    // All command methods removed - operations moved to web panel
+    // Commands removed: /mod_start, /mod_stats, /mod_queue, /mod_post, /admin *
+
+        if (AdminManager::canHandleFinance($admin->telegram_id)) {
+            $message .= "• 💰 Payment Confirmations\n";
+            $message .= "• 📈 Financial Reports\n";
+            $message .= "• 💳 Wallet Adjustments\n";
+        }
+
+        if (AdminManager::isSuperAdmin($admin->telegram_id)) {
+            $message .= "• 👑 Admin User Management\n";
+            $message .= "• ⚙️ System Settings\n";
+            $message .= "• 🤖 Bot Configuration\n";
+            $message .= "• 📋 Audit Logs Review\n";
+        }
+
+        $message .= "\n🔐 <b>Access verified untuk role: {$roleText}</b>";
+
+        $this->telegram->sendMessage([
+            'chat_id' => $chatId,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        ]);
+    }
 
         if (AdminManager::isSuperAdmin($admin->telegram_id)) {
             $message .= "\n🔧 <b>Admin Management:</b>\n";
@@ -161,7 +192,7 @@ class ModeratorBot
         ]);
     }
 
-    private function handleManualPost(int $chatId, string $text, int $adminId): void
+    // Removed: Manual post handling - done via web panel
     {
         $parts = explode(' ', $text);
         if (count($parts) < 2) {

@@ -64,9 +64,15 @@ try {
         $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 0];
     }
 
-    // Check if admin (simple check - can be improved)
-    $adminIds = [123456789]; // Replace with actual admin telegram IDs
-    $isAdmin = in_array($userData['id'], $adminIds);
+    // Check if admin using AdminManager
+    $isAdmin = AdminManager::isAdmin($userData['id']);
+    $adminData = null;
+    $adminRole = null;
+
+    if ($isAdmin) {
+        $adminData = AdminManager::getAdmin($userData['id']);
+        $adminRole = $adminData->role;
+    }
 
     // Check if creator
     $isCreator = (bool) \Illuminate\Database\Capsule\Manager::table('creators')
@@ -83,6 +89,7 @@ try {
             'last_name' => $userData['last_name'] ?? '',
             'username' => $userData['username'] ?? '',
             'is_admin' => $isAdmin,
+            'admin_role' => $adminRole,
             'is_creator' => $isCreator
         ]
     ]);
