@@ -336,6 +336,54 @@ class App {
                         <label>Webhook Secret (optional)</label>
                         <input type="text" id="botWebhookSecret">
                     </div>
+                    <button type="submit" class="btn btn-primary" onclick="app.addBot()">Add Bot</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('addBotForm').style.display='none'">Cancel</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Admin Management</h3>
+                <button class="btn btn-secondary" onclick="app.loadAdmins()">Load Admins</button>
+                <div id="adminsContainer" style="margin-top: 15px;"></div>
+                <div id="addAdminForm" style="margin-top: 15px; display: none;">
+                    <h4>Add New Admin</h4>
+                    <div class="form-group">
+                        <label>Telegram ID</label>
+                        <input type="number" id="adminTelegramId" placeholder="Contoh: 123456789" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="adminUsername" placeholder="@username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="adminFullName" placeholder="Nama Lengkap" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="adminRole" required>
+                            <option value="">Select Role</option>
+                            <option value="moderator">Moderator (Content Management)</option>
+                            <option value="finance">Finance (Payment Management)</option>
+                            <option value="super_admin">Super Admin (Full Access)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" onclick="app.addAdmin()">Add Admin</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('addAdminForm').style.display='none'">Cancel</button>
+                </div>
+            </div>
+                    <div class="form-group">
+                        <label>Username (without @)</label>
+                        <input type="text" id="botUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Bot Token</label>
+                        <input type="text" id="botToken" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Webhook Secret (optional)</label>
+                        <input type="text" id="botWebhookSecret">
+                    </div>
                     <button class="btn btn-primary" onclick="app.addBot()">Add Bot</button>
                     <button class="btn btn-secondary" onclick="document.getElementById('addBotForm').style.display='none'">Cancel</button>
                 </div>
@@ -729,6 +777,113 @@ class App {
             this.loadBots();
         } catch (error) {
             alert('Error toggling bot: ' + error.message);
+        }
+    }
+
+    async loadAdmins() {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_admins'
+            });
+
+            this.displayAdmins(result);
+        } catch (error) {
+            alert('Error loading admins: ' + error.message);
+        }
+    }
+
+    displayAdmins(admins) {
+        const container = document.getElementById('adminsContainer');
+        const form = document.getElementById('addAdminForm');
+
+        let html = '<button class="btn btn-success" onclick="document.getElementById(\'addAdminForm\').style.display=\'block\'">Add New Admin</button>';
+        html += '<div style="margin-top: 15px;">';
+
+        if (!admins || admins.length === 0) {
+            html += '<p>No admins found</p>';
+        } else {
+            html += '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>';
+
+            admins.forEach(admin => {
+                const statusText = admin.is_active ? 'Active' : 'Inactive';
+                const statusClass = admin.is_active ? 'status-success' : 'status-failed';
+                const roleEmoji = admin.role === 'super_admin' ? '👑' :
+                                 admin.role === 'moderator' ? '🔧' :
+                                 admin.role === 'finance' ? '💰' : '👤';
+
+                const lastLogin = admin.last_login ? new Date(admin.last_login).toLocaleDateString() : 'Never';
+
+                html += `<tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${admin.full_name}<br>
+                        <small>${admin.telegram_username} (${admin.telegram_id})</small>
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${roleEmoji} ${admin.role}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${lastLogin}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${admin.is_active ? `<button class="btn btn-danger btn-sm" onclick="app.deactivateAdmin(${admin.id})">Deactivate</button>` : '<span style="color: #999;">Inactive</span>'}
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    async addAdmin() {
+        const telegramId = document.getElementById('adminTelegramId').value;
+        const username = document.getElementById('adminUsername').value;
+        const fullName = document.getElementById('adminFullName').value;
+        const role = document.getElementById('adminRole').value;
+
+        if (!telegramId || !username || !fullName || !role) {
+            alert('All fields are required');
+            return;
+        }
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'add_admin',
+                telegram_id: parseInt(telegramId),
+                username: username,
+                full_name: fullName,
+                role: role
+            });
+
+            alert(result.message);
+            document.getElementById('addAdminForm').style.display = 'none';
+            // Clear form
+            document.getElementById('adminTelegramId').value = '';
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminFullName').value = '';
+            document.getElementById('adminRole').value = '';
+            // Reload admins
+            this.loadAdmins();
+        } catch (error) {
+            alert('Error adding admin: ' + error.message);
+        }
+    }
+
+    async deactivateAdmin(adminId) {
+        if (!confirm('Are you sure you want to deactivate this admin?')) {
+            return;
+        }
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'deactivate_admin',
+                admin_id: adminId
+            });
+
+            alert(result.message);
+            this.loadAdmins();
+        } catch (error) {
+            alert('Error deactivating admin: ' + error.message);
         }
     }
 

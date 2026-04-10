@@ -158,7 +158,45 @@ CREATE TABLE `bots` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------
--- TABEL 9: settings
+-- TABEL 9: admins
+-- Admin users dengan role-based access
+-- -----------------------------------------------------
+CREATE TABLE `admins` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `telegram_id` BIGINT UNSIGNED NOT NULL UNIQUE,
+  `telegram_username` VARCHAR(255) NULL,
+  `full_name` VARCHAR(255) NULL,
+  `role` ENUM('super_admin','moderator','finance') DEFAULT 'moderator',
+  `is_active` TINYINT(1) DEFAULT 1,
+  `last_login` TIMESTAMP NULL,
+  `created_by` BIGINT UNSIGNED NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`created_by`) REFERENCES `admins`(`id`) ON DELETE SET NULL,
+  INDEX `idx_role_active` (`role`, `is_active`),
+  INDEX `idx_telegram_id` (`telegram_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- TABEL 10: bot_configs
+-- Extended bot configuration
+-- -----------------------------------------------------
+CREATE TABLE `bot_configs` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `bot_id` BIGINT UNSIGNED NOT NULL,
+  `config_key` VARCHAR(100) NOT NULL,
+  `config_value` TEXT NULL,
+  `description` TEXT NULL,
+  `updated_by` BIGINT UNSIGNED NULL,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`bot_id`) REFERENCES `bots`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`updated_by`) REFERENCES `admins`(`id`) ON DELETE SET NULL,
+  UNIQUE KEY `unique_bot_config` (`bot_id`, `config_key`),
+  INDEX `idx_bot_key` (`bot_id`, `config_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- TABEL 11: settings
 -- ✅ REDUNDANT FIELD DIHAPUS: commission_rate, min_withdraw
 -- Semua pengaturan disini saja
 -- -----------------------------------------------------
@@ -205,6 +243,10 @@ DELIMITER ;
 -- -----------------------------------------------------
 -- DATA AWAL
 -- -----------------------------------------------------
+-- Super admin pertama (ganti telegram_id dengan ID admin Anda)
+INSERT INTO admins (telegram_id, telegram_username, full_name, role, is_active) VALUES
+(123456789, '@admin_username', 'Super Admin', 'super_admin', 1);
+
 INSERT INTO settings (`key`, `value`, `description`) VALUES
 ('platform_commission', '10.00', 'Persentase komisi default platform'),
 ('min_deposit', '10000.00', 'Minimum deposit pengguna'),
@@ -214,7 +256,12 @@ INSERT INTO settings (`key`, `value`, `description`) VALUES
 ('public_channel', '@your_public_channel', 'Channel publik untuk posting konten'),
 ('backup_channel', '@your_backup_channel', 'Channel backup untuk arsip media'),
 ('admin_bank_account', 'BCA - 1234567890 - Admin BotSawer', 'Rekening admin untuk topup'),
-('admin_qr_payment', '00020101021126660014BRIN6016ID10230000200000002020200000000000000303UME51440014ID.CO.QRIS.WWW0215ID10230000200000303UME5204581253033605802ID5916Admin BotSawer6013Jakarta Pusat610512340', 'QRIS data untuk pembayaran');
+('admin_qr_payment', '00020101021126660014BRIN6016ID10230000200000002020200000000000000303UME51440014ID.CO.QRIS.WWW0215ID10230000200000303UME5204581253033605802ID5916Admin BotSawer6013Jakarta Pusat610512340', 'QRIS data untuk pembayaran'),
+('system_name', 'BotSawer', 'Nama sistem'),
+('support_email', 'support@botsawer.com', 'Email support'),
+('max_upload_size', '50', 'Max upload size in MB'),
+('rate_limit_requests', '100', 'Rate limit requests per window'),
+('rate_limit_window', '3600', 'Rate limit window in seconds');
 
 -- Sample bot entry (update with real bot data)
 -- Optimized: Removed unused fields from bots table (request_count, last_request_at)

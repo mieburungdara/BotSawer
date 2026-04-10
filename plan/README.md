@@ -23,6 +23,7 @@ BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kre
 - ✅ Panel admin lengkap via web
 - ✅ Konfirmasi pembayaran manual
 - ✅ Manajemen user dan kreator
+- ✅ **Multi-admin support dengan role-based access**
 - ✅ Audit logs semua aktivitas
 - ✅ Multi-bot support
 - ✅ System monitoring
@@ -40,14 +41,26 @@ BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
 
 ### 👑 **Moderator Bot** (Bot Admin)
 - **Function**: Mengelola content posting dan admin controls
-- **Webhook**: `https://domain.com/public/moderator.php?secret=moderator_secret`
-- **Commands**: `/mod_start`, `/mod_stats`, `/mod_queue`, `/mod_post`
-- **Features**: Manual posting, queue management, statistics
-- **Access**: Admin only (hanya menerima pesan dari admin ID)
+- **Webhook**: `https://domain.com/public/moderator.php?secret=moderator_YYYY-MM-DD`
+- **Commands**: `/mod_start`, `/mod_stats`, `/mod_queue`, `/mod_post`, `/admin *`
+- **Features**: Manual posting, queue management, statistics, admin management
+- **Access**: **Database-verified admins only**
+
+### 👥 **Admin System (Database-based)**
+- **Multi-Admin**: Support multiple admins dengan role berbeda
+- **Roles**: Super Admin, Moderator, Finance Admin
+- **Permissions**: Role-based access control
+- **Management**: Add/remove admins via web panel atau bot
+
+#### **Admin Roles:**
+- **👑 Super Admin**: Full access, manage other admins
+- **🔧 Moderator**: Content management, posting controls
+- **💰 Finance Admin**: Payment confirmations, financial operations
 
 ### 🔐 **Security Concept**
 - User bot: Tidak ada admin commands (redirect ke moderator bot)
-- Moderator bot: Hanya menerima pesan dari admin ID terverifikasi
+- Moderator bot: Only accepts messages from verified admins in database
+- Role-based permissions untuk granular access control
 - Pemisahan fungsi untuk keamanan maksimal dan rate limit management
 
 ## 🚀 Quick Start

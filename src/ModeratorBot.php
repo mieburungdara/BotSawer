@@ -16,7 +16,7 @@ class ModeratorBot
     public function __construct(int $botId = 1)
     {
         $this->initializeBot($botId);
-        $this->adminId = (int) ($_ENV['ADMIN_TELEGRAM_ID'] ?? 0);
+        // Admin ID will be validated per message, not stored
     }
 
     private function initializeBot(int $botId): void
@@ -76,37 +76,83 @@ class ModeratorBot
         $text = $message->getText();
         $userId = $message->getFrom()->getId();
 
+        // Verify admin access
+        if (!AdminManager::isAdmin($userId)) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Akses ditolak. Anda bukan admin terdaftar.'
+            ]);
+            return;
+        }
+
+        $admin = AdminManager::getAdmin($userId);
+        AdminManager::updateLastLogin($userId);
+
         Logger::info('Moderator bot admin command', [
             'admin_id' => $userId,
+            'admin_role' => $admin->role,
             'command' => $text
         ]);
 
         // Admin commands for moderator bot
         if ($text === '/mod_start') {
-            $this->sendModeratorWelcome($chatId);
+            $this->sendModeratorWelcome($chatId, $admin);
         } elseif (str_starts_with($text, '/mod_post')) {
-            $this->handleManualPost($chatId, $text);
+            if (AdminManager::canModerate($userId)) {
+                $this->handleManualPost($chatId, $text, $userId);
+            } else {
+                $this->sendPermissionDenied($chatId);
+            }
         } elseif (str_starts_with($text, '/mod_stats')) {
-            $this->sendModeratorStats($chatId);
+            $this->sendModeratorStats($chatId, $admin);
         } elseif (str_starts_with($text, '/mod_queue')) {
-            $this->showPostingQueue($chatId);
+            if (AdminManager::canModerate($userId)) {
+                $this->showPostingQueue($chatId);
+            } else {
+                $this->sendPermissionDenied($chatId);
+            }
+        } elseif (str_starts_with($text, '/admin')) {
+            $this->handleAdvancedAdminCommands($chatId, $text, $userId, $admin);
         } elseif ($message->has('photo') || $message->has('video') || $message->has('document')) {
-            $this->handleAdminMediaUpload($message);
+            if (AdminManager::canModerate($userId)) {
+                $this->handleAdminMediaUpload($message);
+            } else {
+                $this->sendPermissionDenied($chatId);
+            }
         } else {
-            $this->sendModeratorHelp($chatId);
+            $this->sendModeratorHelp($chatId, $admin);
         }
     }
 
-    private function sendModeratorWelcome(int $chatId): void
+    private function sendModeratorWelcome(int $chatId, object $admin): void
     {
-        $message = "🤖 <b>MODERATOR BOT</b>\n\n";
+        $roleText = match($admin->role) {
+            AdminManager::ROLE_SUPER_ADMIN => '👑 Super Admin',
+            AdminManager::ROLE_MODERATOR => '🔧 Moderator',
+            AdminManager::ROLE_FINANCE => '💰 Finance Admin',
+            default => '👤 Admin'
+        };
+
+        $message = "🤖 <b>MODERATOR BOT</b>\n";
+        $message .= "Role: <b>{$roleText}</b>\n\n";
         $message .= "Bot ini khusus untuk admin mengelola content posting.\n\n";
         $message .= "📋 <b>Perintah Moderator:</b>\n";
         $message .= "/mod_start - Info bot moderator\n";
         $message .= "/mod_stats - Statistik posting\n";
-        $message .= "/mod_queue - Lihat antrian posting\n";
-        $message .= "/mod_post [media_id] - Post manual\n\n";
-        $message .= "💡 <i>Kirim media untuk test posting</i>";
+
+        if (AdminManager::canModerate($admin->telegram_id)) {
+            $message .= "/mod_queue - Lihat antrian posting\n";
+            $message .= "/mod_post [media_id] - Post manual\n";
+        }
+
+        if (AdminManager::isSuperAdmin($admin->telegram_id)) {
+            $message .= "\n🔧 <b>Admin Management:</b>\n";
+            $message .= "/admin add [telegram_id] [role] - Add admin\n";
+            $message .= "/admin list - List admins\n";
+            $message .= "/admin remove [id] - Remove admin\n";
+        }
+
+        $message .= "\n💡 <i>Kirim media untuk test posting</i>";
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
@@ -115,7 +161,7 @@ class ModeratorBot
         ]);
     }
 
-    private function handleManualPost(int $chatId, string $text): void
+    private function handleManualPost(int $chatId, string $text, int $adminId): void
     {
         $parts = explode(' ', $text);
         if (count($parts) < 2) {
@@ -160,7 +206,7 @@ class ModeratorBot
             AuditLogger::logAdminAction('manual_post', [
                 'media_id' => $mediaId,
                 'forced' => true
-            ], $this->adminId);
+            ], $adminId);
 
         } catch (Exception $e) {
             Logger::error('Manual post failed', ['error' => $e->getMessage()]);
@@ -200,7 +246,7 @@ class ModeratorBot
         }
     }
 
-    private function sendModeratorStats(int $chatId): void
+    private function sendModeratorStats(int $chatId, object $admin): void
     {
         try {
             $stats = [
@@ -302,21 +348,183 @@ class ModeratorBot
         }
     }
 
-    private function sendModeratorHelp(int $chatId): void
+    private function handleAdvancedAdminCommands(int $chatId, string $text, int $adminId, object $admin): void
     {
-        $message = "🤖 <b>MODERATOR BOT HELP</b>\n\n";
-        $message .= "Bot ini <b>EKSKLUSIF untuk admin</b> mengelola content posting.\n\n";
-        $message .= "🔧 <b>Commands:</b>\n";
-        $message .= "/mod_start - Welcome message\n";
-        $message .= "/mod_stats - Posting statistics\n";
-        $message .= "/mod_queue - View posting queue\n";
-        $message .= "/mod_post [id] - Manual post media\n\n";
-        $message .= "⚠️ <i>Bot ini mengabaikan pesan dari non-admin</i>";
+        if (!AdminManager::isSuperAdmin($adminId)) {
+            $this->sendPermissionDenied($chatId);
+            return;
+        }
+
+        $parts = explode(' ', $text);
+        $command = $parts[1] ?? '';
+
+        switch ($command) {
+            case 'add':
+                if (count($parts) >= 4) {
+                    $telegramId = (int)($parts[2] ?? 0);
+                    $role = $parts[3] ?? '';
+                    $this->addAdmin($chatId, $telegramId, $role, $adminId);
+                } else {
+                    $this->telegram->sendMessage([
+                        'chat_id' => $chatId,
+                        'text' => '❌ Format: /admin add [telegram_id] [role: super_admin|moderator|finance]'
+                    ]);
+                }
+                break;
+
+            case 'list':
+                $this->listAdmins($chatId);
+                break;
+
+            case 'remove':
+                if (count($parts) >= 3) {
+                    $adminToRemove = (int)($parts[2] ?? 0);
+                    $this->removeAdmin($chatId, $adminToRemove, $adminId);
+                } else {
+                    $this->telegram->sendMessage([
+                        'chat_id' => $chatId,
+                        'text' => '❌ Format: /admin remove [admin_id]'
+                    ]);
+                }
+                break;
+
+            default:
+                $this->sendAdminHelp($chatId);
+                break;
+        }
+    }
+
+    private function addAdmin(int $chatId, int $telegramId, string $role, int $addedBy): void
+    {
+        // Get user info from telegram (this is simplified, in real implementation you'd need to get user info)
+        $username = "@user{$telegramId}"; // Placeholder
+        $fullName = "Admin User"; // Placeholder
+
+        if (AdminManager::addAdmin($telegramId, $username, $fullName, $role, $addedBy)) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => "✅ Admin berhasil ditambahkan!\n\nID: {$telegramId}\nRole: {$role}\n\nUser perlu restart bot untuk akses."
+            ]);
+        } else {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Gagal menambahkan admin.'
+            ]);
+        }
+    }
+
+    private function listAdmins(int $chatId): void
+    {
+        $admins = AdminManager::getAllAdmins();
+
+        if (empty($admins)) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Tidak ada admin terdaftar.'
+            ]);
+            return;
+        }
+
+        $message = "👥 <b>DAFTAR ADMIN</b>\n\n";
+        foreach ($admins as $admin) {
+            $status = $admin->is_active ? '✅' : '❌';
+            $roleEmoji = match($admin->role) {
+                AdminManager::ROLE_SUPER_ADMIN => '👑',
+                AdminManager::ROLE_MODERATOR => '🔧',
+                AdminManager::ROLE_FINANCE => '💰',
+                default => '👤'
+            };
+
+            $message .= "{$status} {$roleEmoji} {$admin->full_name}\n";
+            $message .= "├ ID: {$admin->telegram_id}\n";
+            $message .= "├ Role: {$admin->role}\n";
+            $message .= "└ Dibuat: " . date('d/m/Y', strtotime($admin->created_at)) . "\n\n";
+        }
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
             'text' => $message,
             'parse_mode' => 'HTML'
+        ]);
+    }
+
+    private function removeAdmin(int $chatId, int $adminToRemove, int $removedBy): void
+    {
+        // Prevent self-removal
+        $remover = AdminManager::getAdmin($removedBy);
+        if ($remover && $remover->id == $adminToRemove) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Anda tidak bisa menghapus diri sendiri.'
+            ]);
+            return;
+        }
+
+        if (AdminManager::deactivateAdmin($adminToRemove, $removedBy)) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '✅ Admin berhasil dinonaktifkan.'
+            ]);
+        } else {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Gagal menonaktifkan admin.'
+            ]);
+        }
+    }
+
+    private function sendAdminHelp(int $chatId): void
+    {
+        $message = "🔧 <b>ADMIN MANAGEMENT HELP</b>\n\n";
+        $message .= "<b>Commands (Super Admin Only):</b>\n";
+        $message .= "/admin add [telegram_id] [role] - Add new admin\n";
+        $message .= "/admin list - List all admins\n";
+        $message .= "/admin remove [admin_id] - Deactivate admin\n\n";
+        $message .= "<b>Roles:</b>\n";
+        $message .= "• super_admin - Full access\n";
+        $message .= "• moderator - Content management\n";
+        $message .= "• finance - Payment management";
+
+        $this->telegram->sendMessage([
+            'chat_id' => $chatId,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        ]);
+    }
+
+    private function sendModeratorHelp(int $chatId, object $admin): void
+    {
+        $message = "🤖 <b>MODERATOR BOT HELP</b>\n\n";
+        $message .= "Bot ini <b>EKSKLUSIF untuk admin</b> mengelola content posting.\n";
+        $message .= "Role Anda: <b>{$admin->role}</b>\n\n";
+        $message .= "🔧 <b>Commands:</b>\n";
+        $message .= "/mod_start - Welcome message\n";
+        $message .= "/mod_stats - Posting statistics\n";
+
+        if (AdminManager::canModerate($admin->telegram_id)) {
+            $message .= "/mod_queue - View posting queue\n";
+            $message .= "/mod_post [id] - Manual post media\n";
+        }
+
+        if (AdminManager::isSuperAdmin($admin->telegram_id)) {
+            $message .= "\n👑 <b>Super Admin Commands:</b>\n";
+            $message .= "/admin add/list/remove - Manage admins\n";
+        }
+
+        $message .= "\n⚠️ <i>Bot ini mengabaikan pesan dari non-admin</i>";
+
+        $this->telegram->sendMessage([
+            'chat_id' => $chatId,
+            'text' => $message,
+            'parse_mode' => 'HTML'
+        ]);
+    }
+
+    private function sendPermissionDenied(int $chatId): void
+    {
+        $this->telegram->sendMessage([
+            'chat_id' => $chatId,
+            'text' => '❌ Akses ditolak. Anda tidak memiliki permission untuk command ini.'
         ]);
     }
 

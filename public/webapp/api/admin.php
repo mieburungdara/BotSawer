@@ -311,6 +311,72 @@ try {
             }, $logs);
             break;
 
+        case 'get_admins':
+            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
+            $admins = \BotSawer\AdminManager::getAllAdmins();
+            $response = array_map(function($admin) {
+                return [
+                    'id' => $admin->id,
+                    'telegram_id' => $admin->telegram_id,
+                    'telegram_username' => $admin->telegram_username,
+                    'full_name' => $admin->full_name,
+                    'role' => $admin->role,
+                    'is_active' => (bool)$admin->is_active,
+                    'last_login' => $admin->last_login,
+                    'created_at' => $admin->created_at
+                ];
+            }, $admins);
+            break;
+
+        case 'add_admin':
+            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
+            $telegramId = (int)($input['telegram_id'] ?? 0);
+            $role = $input['role'] ?? '';
+            $username = $input['username'] ?? '';
+            $fullName = $input['full_name'] ?? '';
+
+            if (\BotSawer\AdminManager::addAdmin($telegramId, $username, $fullName, $role, $userId)) {
+                $response = ['message' => 'Admin added successfully'];
+            } else {
+                throw new Exception('Failed to add admin');
+            }
+            break;
+
+        case 'update_admin_role':
+            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
+            $adminId = (int)($input['admin_id'] ?? 0);
+            $newRole = $input['role'] ?? '';
+
+            if (\BotSawer\AdminManager::updateAdminRole($adminId, $newRole, $userId)) {
+                $response = ['message' => 'Admin role updated successfully'];
+            } else {
+                throw new Exception('Failed to update admin role');
+            }
+            break;
+
+        case 'deactivate_admin':
+            if (!\BotSawer\AdminManager::isSuperAdmin($userId)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
+            $adminId = (int)($input['admin_id'] ?? 0);
+
+            if (\BotSawer\AdminManager::deactivateAdmin($adminId, $userId)) {
+                $response = ['message' => 'Admin deactivated successfully'];
+            } else {
+                throw new Exception('Failed to deactivate admin');
+            }
+            break;
+
         default:
             throw new Exception('Unknown action');
     }

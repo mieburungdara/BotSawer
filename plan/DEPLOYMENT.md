@@ -91,11 +91,12 @@ php composer.phar install --no-dev --optimize-autoloader
    DB_USERNAME=botsawer_user
    DB_PASSWORD=your_db_password
 
-   # Telegram Bot
-   TELEGRAM_BOT_TOKEN=your_bot_token_here
-   TELEGRAM_WEBHOOK_SECRET=webhook_secret_1
+   # Telegram Bot Configuration
+   TELEGRAM_USER_BOT_TOKEN=your_user_bot_token
+   TELEGRAM_USER_WEBHOOK_SECRET=user_secret
+   TELEGRAM_MODERATOR_BOT_TOKEN=your_moderator_bot_token
 
-   # Admin
+   # Initial Admin (akan diganti dengan database-based system)
    ADMIN_TELEGRAM_ID=123456789
 
    # Logging (shared hosting friendly)
@@ -106,7 +107,36 @@ php composer.phar install --no-dev --optimize-autoloader
 3. **Import Database Schema**
    - Akses phpMyAdmin via cPanel
    - Import file `migrations/schema.sql`
-   - Verifikasi semua tabel terbuat
+   - Verifikasi semua tabel terbuat termasuk `admins`, `audit_logs`, `bot_configs`
+
+### Step 5: Setup Admin Pertama
+
+Setelah database ter-import, Anda perlu setup admin pertama:
+
+1. **Via phpMyAdmin** (cPanel):
+   ```sql
+   -- Ganti 123456789 dengan Telegram ID Anda
+   -- Ganti '@yourusername' dengan username Telegram Anda
+   INSERT INTO admins (telegram_id, telegram_username, full_name, role, is_active)
+   VALUES (123456789, '@yourusername', 'Super Admin', 'super_admin', 1);
+   ```
+
+2. **Verifikasi Admin**:
+   - Pastikan record admin sudah ada di tabel `admins`
+   - Admin dapat mengakses moderator bot setelah setup webhook
+
+### Step 6: Setup Multiple Admins (Opsional)
+
+Untuk menambah admin tambahan:
+
+1. **Via Web App**: Login sebagai super admin → Admin Management → Add Admin
+2. **Via Moderator Bot**: `/admin add [telegram_id] [role]`
+3. **Via phpMyAdmin**: Insert langsung ke tabel `admins`
+
+**Role Options**:
+- `super_admin`: Full access, manage admins
+- `moderator`: Content management only
+- `finance`: Payment management only
 
 ### Step 5: Konfigurasi Web Server
 
