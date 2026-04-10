@@ -1,0 +1,236 @@
+# 🤖 BotSawer - Telegram Content Monetization Bot
+
+BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kreator konten untuk menerima donasi dari penggemar secara anonim dan otomatis.
+
+## ✨ Fitur Utama
+
+### 👤 Untuk Kreator
+- ✅ Upload foto/video langsung via Telegram
+- ✅ Sistem antrian posting otomatis
+- ✅ Terima donasi anonim dari penggemar
+- ✅ Dashboard analytics dengan grafik
+- ✅ Manajemen profil dan rekening bank
+- ✅ Riwayat pendapatan lengkap
+
+### 💰 Untuk Pengguna
+- ✅ Jelajahi konten kreator favorit
+- ✅ Donasi dengan berbagai nominal
+- ✅ Sistem topup saldo via QR code
+- ✅ Riwayat transaksi lengkap
+- ✅ Akses konten premium
+
+### 🔧 Untuk Admin
+- ✅ Panel admin lengkap via web
+- ✅ Konfirmasi pembayaran manual
+- ✅ Manajemen user dan kreator
+- ✅ Audit logs semua aktivitas
+- ✅ Multi-bot support
+- ✅ System monitoring
+
+## 🚀 Quick Start
+
+### Prerequisites
+- PHP 8.5+
+- MySQL 8.0+
+- Composer
+- Cron job access
+- Telegram Bot Token
+
+### Installation
+
+1. **Clone repository**
+```bash
+git clone https://github.com/yourusername/botsawer.git
+cd botsawer
+```
+
+2. **Install dependencies**
+```bash
+composer install
+```
+
+3. **Setup database**
+```bash
+mysql -u root -p < migrations/schema.sql
+```
+
+4. **Configure environment**
+```bash
+cp .env.example .env
+# Edit .env dengan database credentials dan bot token
+```
+
+5. **Setup bot webhook**
+```bash
+# Set webhook URL ke: https://yourdomain.com/saweria/public/webhook.php?secret=your_secret
+```
+
+6. **Setup cron job**
+```bash
+# Jalankan setiap menit untuk posting antrian
+* * * * * cd /path/to/botsawer && php schedule.php
+```
+
+7. **Test installation**
+```bash
+php test.php
+```
+
+## 📱 Web App Access
+
+Akses dashboard via: `https://yourdomain.com/saweria/webapp/`
+
+## 🤖 Bot Commands
+
+- `/start` - Mulai menggunakan bot
+- `/register [nama]` - Daftar sebagai kreator
+- `/saldo` - Cek saldo
+- `/topup` - Isi saldo via QR
+- `/admin` - Panel admin (admin only)
+
+## 🏗️ Architecture
+
+```
+BotSawer/
+├── src/                    # PHP source code
+│   ├── Bot.php            # Telegram bot handler
+│   ├── Wallet.php         # Wallet management
+│   ├── Creator.php        # Creator management
+│   ├── Database.php       # Database connection
+│   ├── Logger.php         # Logging system
+│   ├── AuditLogger.php    # Audit trails
+│   └── NotificationManager.php # Push notifications
+├── public/                # Web accessible files
+│   ├── webhook.php        # Telegram webhook
+│   ├── webapp/           # Mini web app
+│   ├── health.php        # Health check
+│   └── maintenance.html  # Maintenance page
+├── migrations/            # Database schema
+├── logs/                  # Application logs
+└── vendor/               # Composer dependencies
+```
+
+## 🔐 Security Features
+
+- ✅ Rate limiting untuk semua API
+- ✅ Audit logging untuk admin actions
+- ✅ Input validation dan sanitization
+- ✅ CSRF protection
+- ✅ Secure webhook verification
+- ✅ Encrypted sensitive data
+
+## 📊 Database Schema
+
+### Core Tables
+- `users` - Telegram users
+- `creators` - Verified content creators
+- `media_files` - Uploaded content
+- `wallets` - User balances
+- `transactions` - All financial transactions
+- `payment_proofs` - Topup payment proofs
+- `withdrawals` - Creator withdrawal requests
+- `bots` - Multi-bot support
+- `settings` - System configuration
+- `audit_logs` - Activity audit trails
+
+## 🔧 Configuration
+
+### Environment Variables (.env)
+```env
+# Database
+DB_HOST=localhost
+DB_NAME=botsawer
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_CHARSET=utf8mb4
+
+# App
+APP_ENV=production
+
+# Admin
+ADMIN_TELEGRAM_ID=123456789
+
+# Bot
+TELEGRAM_BOT_TOKEN=your_bot_token
+```
+
+### System Settings (via admin panel)
+- Platform commission rates
+- Minimum deposit/withdrawal amounts
+- Channel configurations
+- QR payment data
+
+## 📈 Monitoring
+
+### Health Check
+```
+GET /health.php
+```
+Returns system status and metrics.
+
+### Logs
+- Application logs: `logs/errors.log`
+- Audit logs: Database `audit_logs` table
+- Log viewer: `/logs/view.php?key=ai_inspection_2026`
+
+## 🚀 Deployment
+
+### Production Setup
+1. Setup web server (Apache/Nginx) pointing to `public/` directory
+2. Configure SSL certificate
+3. Set proper file permissions
+4. Configure cron jobs
+5. Setup log rotation
+6. Configure firewall
+
+### Docker (Optional)
+```dockerfile
+FROM php:8.5-fpm
+COPY . /var/www/html
+RUN composer install --no-dev --optimize-autoloader
+EXPOSE 9000
+```
+
+## 🧪 Testing
+
+```bash
+# Run basic tests
+php test.php
+
+# Run PHPUnit tests (when implemented)
+vendor/bin/phpunit
+```
+
+## 📚 API Documentation
+
+See `API_DOCUMENTATION.md` for complete API reference.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+- 📧 Email: support@botsawer.com
+- 💬 Telegram: @BotSawerSupport
+- 📖 Docs: https://docs.botsawer.com
+
+## 🙏 Acknowledgments
+
+- Telegram Bot API
+- Laravel Illuminate Database
+- Monolog Logging
+- Chart.js for analytics
+
+---
+
+**BotSawer** - Monetize your creativity, connect with fans, earn from content! 🎨💰</content>
+<parameter name="filePath">README.md

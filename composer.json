@@ -1,0 +1,34 @@
+{
+    "name": "botsawer/telegram-creator-payment",
+    "description": "Bot Telegram sistem pembayaran otomatis untuk kreator konten foto dan video",
+    "type": "project",
+    "require": {
+        "php": "^8.5",
+        "ext-mysqli": "*",
+        "ext-json": "*",
+        "ext-curl": "*",
+        "irazasyed/telegram-bot-sdk": "^3.14",
+        "illuminate/database": "^11.0",
+        "vlucas/phpdotenv": "^5.6",
+        "monolog/monolog": "^3.7",
+        "respect/validation": "^2.3",
+        "midtrans/midtrans-php": "^2.5",
+        "guzzlehttp/guzzle": "^7.8"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "symfony/var-dumper": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "BotSawer\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

@@ -1,0 +1,928 @@
+// Main App JavaScript
+class App {
+    constructor() {
+        this.telegram = new TelegramWebApp();
+        this.currentPage = 'dashboard';
+        this.userData = null;
+        this.init();
+    }
+
+    async init() {
+        // Hide loading
+        document.getElementById('loading').style.display = 'none';
+
+        // Check authentication
+        if (!this.telegram.isValid()) {
+            document.getElementById('authError').style.display = 'block';
+            return;
+        }
+
+        // Authenticate with server
+        try {
+            const response = await this.apiCall('auth.php', {
+                initData: this.telegram.getInitData()
+            });
+
+            if (response.success) {
+                this.userData = response.user;
+                this.showMainApp();
+                this.loadPage('dashboard');
+            } else {
+                throw new Error(response.message || 'Authentication failed');
+            }
+        } catch (error) {
+            console.error('Auth error:', error);
+            this.telegram.showAlert('Gagal mengautentikasi: ' + error.message);
+            document.getElementById('authError').style.display = 'block';
+        }
+    }
+
+    showMainApp() {
+        document.getElementById('mainApp').style.display = 'block';
+
+        // Update user info
+        const userName = this.userData.first_name + (this.userData.last_name ? ' ' + this.userData.last_name : '');
+        document.getElementById('userName').textContent = userName;
+
+        // Show admin buttons if admin
+        if (this.userData.is_admin) {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+        }
+
+        // Show creator buttons if creator
+        if (this.userData.is_creator) {
+            document.querySelectorAll('.creator-only').forEach(el => el.style.display = 'block');
+        }
+
+        // Setup navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                this.loadPage(page);
+            });
+        });
+
+        // Setup form handlers
+        this.setupFormHandlers();
+
+        // Setup withdrawal form handler
+        this.setupWithdrawalForm();
+
+        // Setup creator profile form handler
+        this.setupCreatorProfileForm();
+    }
+
+    async loadPage(pageName) {
+        this.currentPage = pageName;
+
+        // Update active nav
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.page === pageName);
+        });
+
+        const content = document.getElementById('pageContent');
+
+        try {
+            let html = '';
+
+            switch (pageName) {
+                case 'dashboard':
+                    html = await this.loadDashboard();
+                    break;
+                case 'wallet':
+                    html = await this.loadWallet();
+                    break;
+                case 'history':
+                    html = await this.loadHistory();
+                    break;
+                case 'creator':
+                    html = await this.loadCreator();
+                    break;
+                case 'admin':
+                    html = await this.loadAdmin();
+                    break;
+                default:
+                    html = '<div class="card"><h3>Halaman tidak ditemukan</h3></div>';
+            }
+
+            content.innerHTML = html;
+        } catch (error) {
+            console.error('Load page error:', error);
+            content.innerHTML = '<div class="card"><h3>Error</h3><p>Gagal memuat halaman</p></div>';
+        }
+    }
+
+    async loadDashboard() {
+        const walletData = await this.apiCall('wallet.php');
+
+        return `
+            <div class="card balance-card">
+                <h3>Saldo Dompet</h3>
+                <div class="balance-amount">Rp ${this.formatNumber(walletData.balance || 0)}</div>
+                <p>Total Deposit: Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
+                <p>Total Penarikan: Rp ${this.formatNumber(walletData.total_withdraw || 0)}</p>
+            </div>
+
+            <div class="card">
+                <h3>Statistik</h3>
+                <p>Donasi Sukses: ${walletData.total_donations || 0}</p>
+                <p>Media Diunggah: ${walletData.total_media || 0}</p>
+            </div>
+
+            <div class="card">
+                <h3>Aksi Cepat</h3>
+                <button class="btn btn-primary" onclick="window.Telegram.WebApp.close()">Tutup App</button>
+            </div>
+        `;
+    }
+
+    async loadWallet() {
+        const walletData = await this.apiCall('wallet.php');
+
+        return `
+            <div class="card">
+                <h3>Informasi Dompet</h3>
+                <p><strong>Saldo Tersedia:</strong> Rp ${this.formatNumber(walletData.balance || 0)}</p>
+                <p><strong>Total Deposit:</strong> Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
+                <p><strong>Total Penarikan:</strong> Rp ${this.formatNumber(walletData.total_withdraw || 0)}</p>
+            </div>
+
+            <div class="card">
+                <h3>Topup Saldo</h3>
+                <form id="topupForm">
+                    <div class="form-group">
+                        <label>Nominal Topup</label>
+                        <input type="number" id="topupAmount" min="10000" step="1000" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Ajukan Topup</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>Penarikan Saldo</h3>
+                <form id="withdrawForm">
+                    <div class="form-group">
+                        <label>Nominal Penarikan (Min: Rp 50.000)</label>
+                        <input type="number" id="withdrawAmount" min="50000" step="1000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Bank</label>
+                        <select id="bankName" required>
+                            <option value="">Pilih Bank</option>
+                            <option value="BCA">BCA</option>
+                            <option value="Mandiri">Mandiri</option>
+                            <option value="BRI">BRI</option>
+                            <option value="BNI">BNI</option>
+                            <option value="CIMB">CIMB Niaga</option>
+                            <option value="Danamon">Danamon</option>
+                            <option value="Permata">Permata</option>
+                            <option value="BSI">BSI</option>
+                            <option value="OCBC">OCBC NISP</option>
+                            <option value="Maybank">Maybank</option>
+                            <option value="Panin">Panin</option>
+                            <option value="Mega">Mega</option>
+                            <option value="Bukopin">Bukopin</option>
+                            <option value="Sahabat Sampoerna">Sahabat Sampoerna</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nomor Rekening</label>
+                        <input type="text" id="bankAccount" placeholder="Contoh: 1234567890" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Pemilik Rekening</label>
+                        <input type="text" id="accountName" placeholder="Sesuai KTP" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Ajukan Penarikan</button>
+                    <div id="withdrawResult" style="margin-top: 10px;"></div>
+                </form>
+            </div>
+        `;
+    }
+
+    async loadHistory() {
+        const transactions = await this.apiCall('transactions.php');
+
+        let tableRows = '';
+        if (transactions && transactions.length > 0) {
+            transactions.forEach(tx => {
+                const statusClass = tx.status === 'success' ? 'status-success' :
+                                  tx.status === 'pending' ? 'status-pending' : 'status-failed';
+                tableRows += `
+                    <tr>
+                        <td>${new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
+                        <td>${tx.description}</td>
+                        <td>Rp ${this.formatNumber(tx.amount)}</td>
+                        <td><span class="status-badge ${statusClass}">${tx.status}</span></td>
+                    </tr>
+                `;
+            });
+        } else {
+            tableRows = '<tr><td colspan="4">Belum ada transaksi</td></tr>';
+        }
+
+        return `
+            <div class="card">
+                <h3>Riwayat Transaksi</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Deskripsi</th>
+                            <th>Jumlah</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    async loadAdmin() {
+        if (!this.userData.is_admin) {
+            return '<div class="card"><h3>Akses Ditolak</h3><p>Anda bukan admin</p></div>';
+        }
+
+        const adminData = await this.apiCall('admin.php', { action: 'stats' });
+
+        return `
+            <div class="card">
+                <h3>Statistik Sistem</h3>
+                <p>Total User: ${adminData.total_users || 0}</p>
+                <p>Total Transaksi: ${adminData.total_transactions || 0}</p>
+                <p>Saldo Sistem: Rp ${this.formatNumber(adminData.total_balance || 0)}</p>
+            </div>
+
+            <div class="card">
+                <h3>Konfirmasi Pending</h3>
+                <p>Topup Pending: ${adminData.pending_topups || 0}</p>
+                <p>Penarikan Pending: ${adminData.pending_withdrawals || 0}</p>
+                <button class="btn btn-primary" onclick="app.loadPendingConfirmations()">Lihat Semua</button>
+            </div>
+
+            <div class="card">
+                <h3>Cari User</h3>
+                <div class="form-group">
+                    <input type="text" id="userSearchQuery" placeholder="Cari nama atau username..." style="margin-bottom: 10px;">
+                    <button class="btn btn-secondary" onclick="app.searchUsers()">Cari</button>
+                </div>
+                <div id="userSearchResults"></div>
+            </div>
+
+            <div class="card">
+                <h3>Manajemen Saldo</h3>
+                <form id="adjustBalanceForm">
+                    <div class="form-group">
+                        <label>User ID</label>
+                        <input type="number" id="adjustUserId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jumlah (positif = tambah, negatif = kurang)</label>
+                        <input type="number" id="adjustAmount" step="1000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Deskripsi</label>
+                        <input type="text" id="adjustDescription" required>
+                    </div>
+                    <button type="submit" class="btn btn-danger">Sesuaikan Saldo</button>
+                </form>
+                <div id="adjustResult" style="margin-top: 10px;"></div>
+            </div>
+
+            <div class="card">
+                <h3>Pengaturan Sistem</h3>
+                <button class="btn btn-secondary" onclick="app.loadSettings()">Load Settings</button>
+                <div id="settingsContainer" style="margin-top: 15px;"></div>
+            </div>
+
+            <div class="card">
+                <h3>Audit Logs</h3>
+                <div style="margin-bottom: 15px;">
+                    <select id="auditEntityType" style="margin-right: 10px;">
+                        <option value="">All Types</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                        <option value="creator">Creator</option>
+                    </select>
+                    <input type="number" id="auditUserId" placeholder="User ID (optional)" style="margin-right: 10px;">
+                    <button class="btn btn-secondary" onclick="app.loadAuditLogs()">Load Logs</button>
+                </div>
+                <div id="auditLogsContainer"></div>
+            </div>
+
+            <div class="card">
+                <h3>Bot Management</h3>
+                <button class="btn btn-secondary" onclick="app.loadBots()">Load Bots</button>
+                <div id="botsContainer" style="margin-top: 15px;"></div>
+                <div id="addBotForm" style="margin-top: 15px; display: none;">
+                    <h4>Add New Bot</h4>
+                    <div class="form-group">
+                        <label>Bot Name</label>
+                        <input type="text" id="botName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Username (without @)</label>
+                        <input type="text" id="botUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Bot Token</label>
+                        <input type="text" id="botToken" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Webhook Secret (optional)</label>
+                        <input type="text" id="botWebhookSecret">
+                    </div>
+                    <button class="btn btn-primary" onclick="app.addBot()">Add Bot</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('addBotForm').style.display='none'">Cancel</button>
+                </div>
+            </div>
+        `;
+    }
+
+    async loadCreator() {
+        if (!this.userData.is_creator) {
+            return '<div class="card"><h3>Akses Ditolak</h3><p>Anda bukan kreator terverifikasi</p></div>';
+        }
+
+        const creatorData = await this.apiCall('creator.php');
+
+        return `
+            <div class="card">
+                <h3>Statistik Kreator</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #34c759;">${creatorData.total_media || 0}</div>
+                        <div style="font-size: 12px; color: #666;">Konten</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #007aff;">Rp ${this.formatNumber(creatorData.total_earnings || 0)}</div>
+                        <div style="font-size: 12px; color: #666;">Pendapatan</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #ff9500;">${creatorData.total_donations || 0}</div>
+                        <div style="font-size: 12px; color: #666;">Donasi</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Donasi 7 Hari Terakhir</h3>
+                <canvas id="donationsChart" width="400" height="200"></canvas>
+            </div>
+
+            <div class="card">
+                <h3>Distribusi Nominal Donasi</h3>
+                <canvas id="amountChart" width="400" height="200"></canvas>
+            </div>
+
+            <div class="card">
+                <h3>Konten Terbaru</h3>
+                ${this.renderContentList(creatorData.recent_content || [])}
+            </div>
+
+            <div class="card">
+                <h3>Top Konten</h3>
+                ${this.renderTopContent(creatorData.top_content || [])}
+            </div>
+
+            <div class="card">
+                <h3>Pengaturan Profil</h3>
+                <form id="creatorProfileForm">
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" id="creatorDisplayName" value="${creatorData.profile?.display_name || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Bio</label>
+                        <textarea id="creatorBio" rows="3">${creatorData.profile?.bio || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Rekening Bank (untuk penarikan)</label>
+                        <input type="text" id="creatorBankAccount" value="${creatorData.profile?.bank_account || ''}" placeholder="Contoh: BCA - 1234567890 - Nama Pemilik">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Profil</button>
+                    <div id="profileResult" style="margin-top: 10px;"></div>
+                </form>
+            </div>
+        `;
+
+        // Render charts after DOM is updated
+        setTimeout(() => {
+            this.renderCreatorCharts(creatorData.analytics);
+        }, 100);
+    }
+
+    renderContentList(content) {
+        if (!content.length) {
+            return '<p>Belum ada konten</p>';
+        }
+
+        return `<div style="max-height: 300px; overflow-y: auto;">
+            ${content.map(item => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
+                    <div>
+                        <div style="font-weight: 600;">Media #${item.id}</div>
+                        <div style="font-size: 12px; color: #666;">${new Date(item.created_at).toLocaleDateString('id-ID')}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 600; color: #34c759;">Rp ${this.formatNumber(item.total_donations || 0)}</div>
+                        <div style="font-size: 12px; color: #666;">${item.donation_count || 0} donasi</div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>`;
+    }
+
+    renderTopContent(content) {
+        if (!content.length) {
+            return '<p>Belum ada data</p>';
+        }
+
+        return `<div style="max-height: 300px; overflow-y: auto;">
+            ${content.map(item => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
+                    <div>
+                        <div style="font-weight: 600;">Media #${item.id}</div>
+                        <div style="font-size: 12px; color: #666;">${item.file_type}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 600; color: #ff9500;">Rp ${this.formatNumber(item.total_donations || 0)}</div>
+                        <div style="font-size: 12px; color: #666;">${item.donation_count || 0} donasi</div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>`;
+    }
+
+    async searchUsers() {
+        const query = document.getElementById('userSearchQuery').value.trim();
+        if (!query) {
+            alert('Masukkan query pencarian');
+            return;
+        }
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'search_users',
+                query: query
+            });
+
+            this.displayUserSearchResults(result);
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    displayUserSearchResults(users) {
+        const container = document.getElementById('userSearchResults');
+
+        if (!users || users.length === 0) {
+            container.innerHTML = '<p>Tidak ada user ditemukan</p>';
+            return;
+        }
+
+        let html = '<div style="max-height: 300px; overflow-y: auto;">';
+        users.forEach(user => {
+            const banBtnText = user.is_banned ? 'Unban' : 'Ban';
+            const banBtnClass = user.is_banned ? 'btn-success' : 'btn-danger';
+
+            html += `
+                <div style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${user.name}</strong> ${user.is_creator ? '(Kreator' + (user.is_verified ? ' ✓' : ' ⚠️') + ')' : ''}
+                            <br><small>@${user.username} | ID: ${user.id}</small>
+                            <br><small>Saldo: Rp ${this.formatNumber(user.balance)}</small>
+                        </div>
+                        <div>
+                            <button class="btn ${banBtnClass}" onclick="app.toggleUserBan(${user.id}, ${user.is_banned})">${banBtnText}</button>
+                            <button class="btn btn-primary" onclick="app.adjustUserBalance(${user.id}, '${user.name}')">Adjust Saldo</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    async toggleUserBan(userId, currentlyBanned) {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'ban_user',
+                targetUserId: userId,
+                ban: !currentlyBanned
+            });
+
+            alert(result.message);
+            // Refresh search results
+            this.searchUsers();
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    adjustUserBalance(userId, userName) {
+        document.getElementById('adjustUserId').value = userId;
+        document.getElementById('adjustDescription').value = `Adjustment for ${userName}`;
+        // Scroll to adjust form
+        document.getElementById('adjustBalanceForm').scrollIntoView();
+    }
+
+    async loadSettings() {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_settings'
+            });
+
+            this.displaySettings(result);
+        } catch (error) {
+            alert('Error loading settings: ' + error.message);
+        }
+    }
+
+    displaySettings(settings) {
+        const container = document.getElementById('settingsContainer');
+
+        let html = '<div style="max-height: 400px; overflow-y: auto;">';
+        Object.values(settings).forEach(setting => {
+            html += `
+                <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 8px;">
+                    <div style="margin-bottom: 5px;">
+                        <strong>${setting.key}</strong>
+                        <br><small style="color: #666;">${setting.description}</small>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="setting_${setting.key}" value="${setting.value || ''}" style="flex: 1;">
+                        <button class="btn btn-sm btn-primary" onclick="app.updateSetting('${setting.key}')">Update</button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    async     updateSetting(key) {
+        const value = document.getElementById(`setting_${key}`).value;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'update_setting',
+                key: key,
+                value: value
+            });
+
+            alert(result.message);
+        } catch (error) {
+            alert('Error updating setting: ' + error.message);
+        }
+    }
+
+    async loadAuditLogs() {
+        const entityType = document.getElementById('auditEntityType').value;
+        const userId = document.getElementById('auditUserId').value;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_audit_logs',
+                entity_type: entityType || undefined,
+                user_id: userId || undefined,
+                limit: 100
+            });
+
+            this.displayAuditLogs(result);
+        } catch (error) {
+            alert('Error loading audit logs: ' + error.message);
+        }
+    }
+
+    displayAuditLogs(logs) {
+        const container = document.getElementById('auditLogsContainer');
+
+        if (!logs || logs.length === 0) {
+            container.innerHTML = '<p>Tidak ada audit logs</p>';
+            return;
+        }
+
+        let html = '<div style="max-height: 400px; overflow-y: auto; font-size: 12px;">';
+        html += '<table style="width: 100%; border-collapse: collapse;">';
+        html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #ddd;">Time</th><th>Action</th><th>Entity</th><th>User</th><th>Details</th></tr></thead><tbody>';
+
+        logs.forEach(log => {
+            const changes = log.changes || {};
+            const changesText = Object.keys(changes).length > 0
+                ? Object.entries(changes).map(([k, v]) => `${k}: ${v.old || 'null'} → ${v.new || 'null'}`).join('; ')
+                : 'No changes';
+
+            html += `<tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${new Date(log.created_at).toLocaleString()}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.action}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.entity_type}:${log.entity_id}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.user_id || 'System'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; max-width: 300px; word-wrap: break-word;">${changesText}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    async loadBots() {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_bots'
+            });
+
+            this.displayBots(result);
+        } catch (error) {
+            alert('Error loading bots: ' + error.message);
+        }
+    }
+
+    displayBots(bots) {
+        const container = document.getElementById('botsContainer');
+        const form = document.getElementById('addBotForm');
+
+        let html = '<button class="btn btn-success" onclick="document.getElementById(\'addBotForm\').style.display=\'block\'">Add New Bot</button>';
+        html += '<div style="margin-top: 15px;">';
+
+        if (!bots || bots.length === 0) {
+            html += '<p>No bots configured</p>';
+        } else {
+            html += '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #ddd;">ID</th><th>Name</th><th>Username</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+
+            bots.forEach(bot => {
+                const statusText = bot.is_active ? 'Active' : 'Inactive';
+                const statusClass = bot.is_active ? 'status-success' : 'status-failed';
+                const toggleText = bot.is_active ? 'Deactivate' : 'Activate';
+                const toggleClass = bot.is_active ? 'btn-danger' : 'btn-success';
+
+                html += `<tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${bot.id}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${bot.name}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">@${bot.username}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
+                        <button class="btn ${toggleClass}" onclick="app.toggleBot(${bot.id}, ${!bot.is_active})">${toggleText}</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    async addBot() {
+        const name = document.getElementById('botName').value;
+        const username = document.getElementById('botUsername').value;
+        const token = document.getElementById('botToken').value;
+        const webhookSecret = document.getElementById('botWebhookSecret').value;
+
+        if (!name || !username || !token) {
+            alert('Name, username, and token are required');
+            return;
+        }
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'add_bot',
+                name: name,
+                username: username,
+                token: token,
+                webhook_secret: webhookSecret
+            });
+
+            alert(result.message);
+            document.getElementById('addBotForm').style.display = 'none';
+            // Clear form
+            document.getElementById('botName').value = '';
+            document.getElementById('botUsername').value = '';
+            document.getElementById('botToken').value = '';
+            document.getElementById('botWebhookSecret').value = '';
+            // Reload bots
+            this.loadBots();
+        } catch (error) {
+            alert('Error adding bot: ' + error.message);
+        }
+    }
+
+    async toggleBot(botId, active) {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'toggle_bot',
+                bot_id: botId,
+                active: active
+            });
+
+            alert(result.message);
+            this.loadBots();
+        } catch (error) {
+            alert('Error toggling bot: ' + error.message);
+        }
+    }
+
+    renderCreatorCharts(analytics) {
+        // Donations last 7 days chart
+        const donationsCtx = document.getElementById('donationsChart');
+        if (donationsCtx && analytics.donations_last_7_days) {
+            new Chart(donationsCtx, {
+                type: 'line',
+                data: {
+                    labels: analytics.donations_last_7_days.map(d => new Date(d.date).toLocaleDateString('id-ID')),
+                    datasets: [{
+                        label: 'Donasi (Rp)',
+                        data: analytics.donations_last_7_days.map(d => d.amount),
+                        borderColor: '#007aff',
+                        backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Donations by amount chart
+        const amountCtx = document.getElementById('amountChart');
+        if (amountCtx && analytics.donations_by_amount) {
+            new Chart(amountCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: analytics.donations_by_amount.map(d => d.range),
+                    datasets: [{
+                        data: analytics.donations_by_amount.map(d => d.count),
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    async loadPendingConfirmations() {
+        // This would load pending payments for confirmation in webapp
+        alert('Fitur konfirmasi pending akan diimplementasikan di webapp');
+    }
+
+    setupFormHandlers() {
+        // Balance adjustment form
+        const adjustForm = document.getElementById('adjustBalanceForm');
+        if (adjustForm) {
+            adjustForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(adjustForm);
+                const data = {
+                    action: 'adjust_balance',
+                    targetUserId: parseInt(formData.get('adjustUserId')),
+                    amount: parseInt(formData.get('adjustAmount')),
+                    description: formData.get('adjustDescription')
+                };
+
+                try {
+                    const result = await this.apiCall('admin.php', data);
+                    document.getElementById('adjustResult').innerHTML =
+                        '<div style="color: green;">✅ ' + result.message + '</div>';
+                    adjustForm.reset();
+                } catch (error) {
+                    document.getElementById('adjustResult').innerHTML =
+                        '<div style="color: red;">❌ ' + error.message + '</div>';
+                }
+            });
+        }
+    }
+
+    setupWithdrawalForm() {
+        const withdrawForm = document.getElementById('withdrawForm');
+        if (withdrawForm) {
+            withdrawForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const amount = parseInt(document.getElementById('withdrawAmount').value);
+                const bankName = document.getElementById('bankName').value;
+                const bankAccount = document.getElementById('bankAccount').value;
+                const accountName = document.getElementById('accountName').value;
+
+                const resultDiv = document.getElementById('withdrawResult');
+
+                try {
+                    const result = await this.apiCall('wallet.php', {
+                        action: 'withdraw',
+                        amount: amount,
+                        bankName: bankName,
+                        bankAccount: bankAccount,
+                        accountName: accountName
+                    });
+
+                    resultDiv.innerHTML = '<div style="color: green;">✅ ' + result.message + '</div>';
+                    withdrawForm.reset();
+
+                    // Refresh wallet data
+                    if (this.currentPage === 'wallet') {
+                        this.loadPage('wallet');
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = '<div style="color: red;">❌ ' + error.message + '</div>';
+                }
+            });
+        }
+    }
+
+    setupCreatorProfileForm() {
+        const profileForm = document.getElementById('creatorProfileForm');
+        if (profileForm) {
+            profileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const displayName = document.getElementById('creatorDisplayName').value;
+                const bio = document.getElementById('creatorBio').value;
+                const bankAccount = document.getElementById('creatorBankAccount').value;
+
+                const resultDiv = document.getElementById('profileResult');
+
+                try {
+                    const result = await this.apiCall('creator.php', {
+                        action: 'update_profile',
+                        displayName: displayName,
+                        bio: bio,
+                        bankAccount: bankAccount
+                    });
+
+                    resultDiv.innerHTML = '<div style="color: green;">✅ ' + result.message + '</div>';
+                } catch (error) {
+                    resultDiv.innerHTML = '<div style="color: red;">❌ ' + error.message + '</div>';
+                }
+            });
+        }
+    }
+    }
+
+    async apiCall(endpoint, data = {}) {
+        const response = await fetch(`api/${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...data,
+                userId: this.telegram.getUserId(),
+                initData: this.telegram.getInitData()
+            })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.message || 'API call failed');
+        }
+        return result.data;
+    }
+
+    formatNumber(num) {
+        return new Intl.NumberFormat('id-ID').format(num);
+    }
+}
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new App();
+});
