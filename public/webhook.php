@@ -29,10 +29,18 @@ try {
     // Convert to Update object
     $updateObject = new Update($update);
 
-    // Get bot ID from webhook secret or default to 1
-    $botId = 1; // Default bot
-    $webhookSecret = $_GET['secret'] ?? null;
+    // Route based on webhook type
+    $webhookSecret = $_GET['secret'] ?? '';
 
+    if (str_starts_with($webhookSecret, 'moderator_')) {
+        // This is moderator bot - redirect to moderator handler
+        Logger::info('Redirecting to moderator bot handler');
+        require_once __DIR__ . '/moderator.php';
+        exit;
+    }
+
+    // Regular user bot
+    $botId = 1; // Default bot
     if ($webhookSecret) {
         $botData = \Illuminate\Database\Capsule\Manager::table('bots')
             ->where('webhook_secret', $webhookSecret)
@@ -43,7 +51,7 @@ try {
         }
     }
 
-    // Initialize bot
+    // Initialize regular bot
     $bot = new Bot($botId);
 
     // Handle the update

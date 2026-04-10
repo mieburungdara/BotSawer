@@ -27,6 +27,29 @@ BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kre
 - ✅ Multi-bot support
 - ✅ System monitoring
 
+## 🤖 Bot System Architecture
+
+BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
+
+### 🤖 **User Bot** (Bot Interaksi)
+- **Function**: Interaksi dengan user biasa dan kreator
+- **Webhook**: `https://domain.com/public/webhook.php?secret=user_secret`
+- **Commands**: `/start`, `/register`, `/saldo`, `/topup`
+- **Features**: Upload media, cek saldo, topup via QR
+- **Access**: Semua user
+
+### 👑 **Moderator Bot** (Bot Admin)
+- **Function**: Mengelola content posting dan admin controls
+- **Webhook**: `https://domain.com/public/moderator.php?secret=moderator_secret`
+- **Commands**: `/mod_start`, `/mod_stats`, `/mod_queue`, `/mod_post`
+- **Features**: Manual posting, queue management, statistics
+- **Access**: Admin only (hanya menerima pesan dari admin ID)
+
+### 🔐 **Security Concept**
+- User bot: Tidak ada admin commands (redirect ke moderator bot)
+- Moderator bot: Hanya menerima pesan dari admin ID terverifikasi
+- Pemisahan fungsi untuk keamanan maksimal dan rate limit management
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -52,9 +75,15 @@ BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kre
    # Edit .env dengan database credentials dan bot token
    ```
 
-5. **Setup bot webhook**
+5. **Setup bot webhooks**
    ```bash
-   # Set webhook URL ke: https://yourdomain.com/public/webhook.php?secret=your_secret
+   # User Bot Webhook
+   curl -X POST "https://api.telegram.org/bot<USER_BOT_TOKEN>/setWebhook" \
+        -d "url=https://yourdomain.com/public/webhook.php?secret=user_secret"
+
+   # Moderator Bot Webhook (Admin Only)
+   curl -X POST "https://api.telegram.org/bot<MODERATOR_BOT_TOKEN>/setWebhook" \
+        -d "url=https://yourdomain.com/public/moderator.php?secret=moderator_$(date +%Y-%m-%d)"
    ```
 
 6. **Setup cron job**

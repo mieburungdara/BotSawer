@@ -95,7 +95,10 @@ class Bot
         } elseif (str_starts_with($text, '/register')) {
             $this->handleRegisterCommand($chatId, $userId, $text);
         } elseif (str_starts_with($text, '/admin')) {
-            $this->handleAdminCommand($chatId, $userId, $text);
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Admin commands tidak tersedia di bot ini. Gunakan bot moderator.'
+            ]);
         } elseif ($message->has('photo') || $message->has('video') || $message->has('document')) {
             $this->handleMediaUpload($message);
         } elseif ($this->isPaymentProof($message)) {

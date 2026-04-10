@@ -151,24 +151,54 @@ exec('php ' . __DIR__ . '/schedule.php');
 echo "Cron executed at " . date('Y-m-d H:i:s');
 ```
 
-### Step 7: Bot Configuration
+### Step 7: Dual Bot Configuration
 
-#### Set Webhook via Browser (shared hosting friendly)
-Buat file `set_webhook.php`:
+BotSawer menggunakan **dual bot system** untuk keamanan maksimal:
+
+#### **Bot 1: User Bot** (untuk interaksi user)
+```bash
+# Set webhook untuk user bot
+curl -X POST "https://api.telegram.org/bot<USER_BOT_TOKEN>/setWebhook" \
+     -d "url=https://yourdomain.com/public/webhook.php?secret=user_secret"
+```
+
+#### **Bot 2: Moderator Bot** (untuk admin & content management)
+```bash
+# Set webhook untuk moderator bot (admin only)
+# Secret berubah setiap hari untuk keamanan
+curl -X POST "https://api.telegram.org/bot<MODERATOR_BOT_TOKEN>/setWebhook" \
+     -d "url=https://yourdomain.com/public/moderator.php?secret=moderator_$(date +%Y-%m-%d)"
+```
+
+#### **Browser-based Setup (Shared Hosting)**
+Buat file `set_webhooks.php`:
 
 ```php
 <?php
-// set_webhook.php - Set Telegram webhook
-$botToken = 'YOUR_BOT_TOKEN';
-$webhookUrl = 'https://yourdomain.com/public/webhook.php?secret=webhook_secret_1';
+// set_webhooks.php - Set both bot webhooks automatically
+$userBotToken = 'YOUR_USER_BOT_TOKEN';
+$moderatorBotToken = 'YOUR_MODERATOR_BOT_TOKEN';
+$domain = 'https://yourdomain.com';
 
-$url = "https://api.telegram.org/bot{$botToken}/setWebhook?url=" . urlencode($webhookUrl);
+// Set user bot webhook
+$userUrl = "https://api.telegram.org/bot{$userBotToken}/setWebhook?url=" . urlencode("{$domain}/public/webhook.php?secret=user_secret");
+$userResponse = json_decode(file_get_contents($userUrl), true);
 
-$response = file_get_contents($url);
-echo $response;
+// Set moderator bot webhook (daily rotating secret)
+$moderatorSecret = 'moderator_' . date('Y-m-d');
+$moderatorUrl = "https://api.telegram.org/bot{$moderatorBotToken}/setWebhook?url=" . urlencode("{$domain}/public/moderator.php?secret={$moderatorSecret}");
+$moderatorResponse = json_decode(file_get_contents($moderatorUrl), true);
+
+echo "<h2>🤖 Dual Bot Webhook Setup Results</h2>";
+echo "<h3>👥 User Bot:</h3>";
+echo "<pre>" . json_encode($userResponse, JSON_PRETTY_PRINT) . "</pre>";
+echo "<h3>👑 Moderator Bot:</h3>";
+echo "<pre>" . json_encode($moderatorResponse, JSON_PRETTY_PRINT) . "</pre>";
+echo "<p><strong>🔐 Moderator Secret (hari ini):</strong> <code>{$moderatorSecret}</code></p>";
+echo "<p><strong>⚠️ PENTING:</strong> Simpan moderator secret dan hanya berikan ke admin!</p>";
 ```
 
-Akses `https://yourdomain.com/set_webhook.php` via browser untuk set webhook.
+Akses `https://yourdomain.com/set_webhooks.php` via browser untuk setup otomatis kedua bot.
 
 ### Step 8: Testing & Verification
 
