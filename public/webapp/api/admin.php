@@ -107,17 +107,17 @@ try {
             $previousBalance = \BotSawer\Wallet::getBalance($input['targetUserId']);
 
             Database::transaction(function () use ($input, $userId) {
-                if ($input['amount'] > 0) {
-                    Wallet::addBalance($input['targetUserId'], $input['amount'], $input['description'] . ' (Admin adjustment)');
-                } else {
-                    Wallet::deductBalance($input['targetUserId'], abs($input['amount']), $input['description'] . ' (Admin adjustment)');
-                }
+                // Update balance directly
+                $amount = $input['amount'];
+                \Illuminate\Database\Capsule\Manager::table('wallets')
+                    ->where('user_id', $input['targetUserId'])
+                    ->increment('balance', $amount);
 
                 // Record transaction
                 \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
                     'user_id' => $input['targetUserId'],
                     'type' => 'admin_adjustment',
-                    'amount' => abs($input['amount']),
+                    'amount' => abs($amount),
                     'status' => 'success',
                     'description' => $input['description'] . ' (Admin adjustment)',
                     'from_user_id' => $userId

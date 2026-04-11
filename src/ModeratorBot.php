@@ -76,6 +76,13 @@ class ModeratorBot
         }
 
         $admin = AdminManager::getAdmin($userId);
+        if (!$admin) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Admin data tidak ditemukan.'
+            ]);
+            return;
+        }
         AdminManager::updateLastLogin($userId);
 
         // Log admin access to moderator bot
