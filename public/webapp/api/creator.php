@@ -76,8 +76,9 @@ try {
         }
 
         // Validate bank account format if provided
+        $formattedBankAccount = $bankAccount;
         if (!empty($bankAccount)) {
-            $bankAccount = validateAndFormatBankAccount($bankAccount);
+            $formattedBankAccount = validateAndFormatBankAccount($bankAccount);
         }
 
         DB::table('creators')
@@ -85,7 +86,7 @@ try {
             ->update([
                 'display_name' => $displayName,
                 'bio' => $bio,
-                'bank_account' => $bankAccount,
+                'bank_account' => $formattedBankAccount,
                 'updated_at' => \Carbon\Carbon::now()
             ]);
 

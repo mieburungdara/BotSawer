@@ -197,6 +197,17 @@ class Creator
 
     public static function getStreakData(int $creatorId): array
     {
+        // Check if creator exists
+        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        if (!$creator) {
+            return [
+                'current_streak' => 0,
+                'max_streak' => 0,
+                'last_publish_date' => null,
+                'streak_badge' => 'Belum mulai'
+            ];
+        }
+
         // Get distinct publish dates
         $publishDates = DB::table('media_files')
             ->where('creator_id', $creatorId)
