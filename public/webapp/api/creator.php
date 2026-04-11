@@ -89,12 +89,12 @@ try {
                 'updated_at' => \Carbon\Carbon::now()
             ]);
 
-        // Audit log
-        \BotSawer\AuditLogger::logAdminAction(\BotSawer\AuditLogger::ACTION_UPDATE, 'creator', $creator->id, [], [
+        // Audit log - creator updating own profile
+        \BotSawer\AuditLogger::logCreatorAction('update_profile', $creator->id, [
             'display_name' => $displayName,
             'bio' => $bio,
             'bank_account' => !empty($bankAccount) ? '***UPDATED***' : ''
-        ], $userId);
+        ]);
 
         echo json_encode([
             'success' => true,

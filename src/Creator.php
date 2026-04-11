@@ -48,6 +48,14 @@ class Creator
     public static function updateProfile(int $creatorId, array $data): bool
     {
         try {
+            $creator = DB::table('creators')->where('id', $creatorId)->first();
+            if (!$creator) {
+                Logger::warning('Creator profile update failed: creator not found', [
+                    'creator_id' => $creatorId
+                ]);
+                return false;
+            }
+
             $updateData = [];
             if (isset($data['display_name'])) $updateData['display_name'] = $data['display_name'];
             if (isset($data['bio'])) $updateData['bio'] = $data['bio'];
@@ -88,6 +96,14 @@ class Creator
     public static function verifyCreator(int $creatorId, bool $verified = true): bool
     {
         try {
+            $creator = DB::table('creators')->where('id', $creatorId)->first();
+            if (!$creator) {
+                Logger::warning('Creator verification failed: creator not found', [
+                    'creator_id' => $creatorId
+                ]);
+                return false;
+            }
+
             DB::table('creators')
                 ->where('id', $creatorId)
                 ->update(['is_verified' => $verified ? 1 : 0]);
@@ -165,11 +181,15 @@ class Creator
 
     public static function searchCreators(string $query, int $limit = 20): array
     {
+        $searchTerm = "%{$query}%";
         return DB::table('creators')
             ->join('users', 'creators.user_id', '=', 'users.id')
-            ->where('creators.display_name', 'like', "%{$query}%")
-            ->orWhere('users.username', 'like', "%{$query}%")
+            ->where(function($q) use ($searchTerm) {
+                $q->where('creators.display_name', 'like', $searchTerm)
+                  ->orWhere('users.username', 'like', $searchTerm);
+            })
             ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username')
+            ->orderBy('creators.created_at', 'desc')
             ->limit($limit)
             ->get()
             ->toArray();
