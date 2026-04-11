@@ -891,6 +891,11 @@ class Bot
                 // Send push notifications
                 NotificationManager::notifyDonor($userId, $amount);
                 NotificationManager::notifyCreatorDonation($media->creator_id, $amount, $mediaId);
+            } else {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => '❌ Media tidak ditemukan.'
+                ]);
             }
         } catch (Exception $e) {
             Logger::error('Error processing sawer', [

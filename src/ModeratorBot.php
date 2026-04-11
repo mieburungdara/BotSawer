@@ -178,7 +178,7 @@ class ModeratorBot
                 'scheduled' => \Illuminate\Database\Capsule\Manager::table('media_files')->where('status', 'scheduled')->count(),
                 'posted_today' => \Illuminate\Database\Capsule\Manager::table('media_files')
                     ->where('status', 'posted')
-                    ->whereDate('posted_at', today())
+                    ->whereDate('posted_at', \Carbon\Carbon::today())
                     ->count(),
                 'total_earnings' => \Illuminate\Database\Capsule\Manager::table('transactions')
                     ->where('type', 'donation')

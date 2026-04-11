@@ -60,25 +60,35 @@ try {
     $caption = $mediaToPost->caption ?? 'Konten dari kreator';
     $caption .= "\n\n💸 Sawer → {$deeplink}";
 
-    // Post to public channel (caption only, no media)
-    $bot->getTelegram()->sendMessage([
-        'chat_id' => $publicChannel,
-        'text' => $caption,
-        'parse_mode' => 'HTML'
-    ]);
-
-    // Update media status
-    \Illuminate\Database\Capsule\Manager::table('media_files')
-        ->where('id', $mediaToPost->id)
-        ->update([
-            'status' => 'posted',
-            'posted_at' => $now
+    try {
+        // Post to public channel (caption only, no media)
+        $bot->getTelegram()->sendMessage([
+            'chat_id' => $publicChannel,
+            'text' => $caption,
+            'parse_mode' => 'HTML'
         ]);
 
-    Logger::info('Media posted successfully', [
-        'media_id' => $mediaToPost->id,
-        'channel' => $publicChannel
-    ]);
+        // Update media status to posted
+        \Illuminate\Database\Capsule\Manager::table('media_files')
+            ->where('id', $mediaToPost->id)
+            ->update([
+                'status' => 'posted',
+                'posted_at' => $now
+            ]);
+
+        Logger::info('Media posted successfully', [
+            'media_id' => $mediaToPost->id,
+            'channel' => $publicChannel
+        ]);
+    } catch (Exception $e) {
+        Logger::error('Failed to post media to channel', [
+            'media_id' => $mediaToPost->id,
+            'channel' => $publicChannel,
+            'error' => $e->getMessage()
+        ]);
+        // Leave status as 'scheduled' for retry
+        exit(1);
+    }
 
     // Notify creator
     $creator = \Illuminate\Database\Capsule\Manager::table('users')
