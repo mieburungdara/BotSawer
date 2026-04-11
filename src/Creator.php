@@ -229,11 +229,40 @@ class Creator
         if ($currentStreak >= 14) $streakBadge = 'Master';
         if ($currentStreak >= 30) $streakBadge = 'Legenda';
 
+        // Calculate progress to next milestone (7 days)
+        $nextMilestone = 7;
+        $progress = min(($currentStreak / $nextMilestone) * 100, 100);
+        $progressText = "{$currentStreak}/{$nextMilestone} hari";
+
+        // Generate HTML progress bar
+        $progressBarHtml = '
+        <div class="streak-progress">
+            <div class="streak-label">Progress ke 7 Hari Streak</div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ' . round($progress, 1) . '%"></div>
+            </div>
+            <div class="progress-text">' . $progressText . ' (' . round($progress, 1) . '%)</div>
+        </div>
+        <style>
+        .streak-progress { margin: 15px 0; }
+        .streak-label { font-weight: bold; margin-bottom: 5px; color: #333; }
+        .progress-bar { background: #eee; height: 20px; border-radius: 10px; overflow: hidden; }
+        .progress-fill { background: linear-gradient(90deg, #ff6b6b, #4ecdc4); height: 100%; transition: width 0.3s ease; }
+        .progress-text { margin-top: 5px; font-size: 14px; color: #666; }
+        </style>';
+
         return [
             'current_streak' => $currentStreak,
             'max_streak' => $maxStreak,
             'last_publish_date' => $lastPublishDate,
-            'streak_badge' => $streakBadge
+            'streak_badge' => $streakBadge,
+            'streak_progress' => [
+                'current' => $currentStreak,
+                'target' => $nextMilestone,
+                'percentage' => round($progress, 1),
+                'text' => $progressText,
+                'html' => $progressBarHtml
+            ]
         ];
     }
 
