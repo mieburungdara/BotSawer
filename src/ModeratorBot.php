@@ -102,7 +102,7 @@ class ModeratorBot
 
         $message = "🤖 <b>MODERATOR BOT</b>\n";
         $message .= "Role: <b>{$roleText}</b>\n\n";
-        $message .= "✅ <b>Selamat datang, {$admin->full_name}!</b>\n\n";
+        $message .= "✅ <b>Selamat datang, " . htmlspecialchars($admin->full_name, ENT_QUOTES, 'UTF-8') . "!</b>\n\n";
         $message .= "Bot ini hanya untuk verifikasi admin access.\n";
         $message .= "Semua admin operations dilakukan via <b>Web Panel</b>.\n\n";
         $message .= "🌐 <b>Akses Web Panel:</b>\n";
@@ -355,7 +355,7 @@ class ModeratorBot
                          ($admin->role === AdminManager::ROLE_MODERATOR ? '🔧' :
                          ($admin->role === AdminManager::ROLE_FINANCE ? '💰' : '👤'));
 
-            $message .= "{$status} {$roleEmoji} {$admin->full_name}\n";
+            $message .= "{$status} {$roleEmoji} " . htmlspecialchars($admin->full_name, ENT_QUOTES, 'UTF-8') . "\n";
             $message .= "├ ID: {$admin->telegram_id}\n";
             $message .= "├ Role: {$admin->role}\n";
             $message .= "└ Dibuat: " . date('d/m/Y', strtotime($admin->created_at)) . "\n\n";
