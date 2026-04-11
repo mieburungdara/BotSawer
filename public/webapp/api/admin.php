@@ -895,14 +895,14 @@ try {
 
         case 'get_creator_profile':
             if (!AdminManager::canModerate($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
+                throw new Exception('Access denied: Moderator admin required');
             }
 
             if (!isset($input['creator_id'])) {
                 throw new Exception('Missing creator_id');
             }
 
-            $profile = DB::table('creators as c')
+             $profile = DB::table('creators as c')
                 ->join('users as u', 'c.user_id', '=', 'u.id')
                 ->leftJoin('media as m', 'm.user_id', '=', 'u.id')
                 ->where('c.id', $input['creator_id'])
@@ -911,8 +911,8 @@ try {
                     'u.first_name',
                     'u.last_name',
                     'u.username',
-                    \Illuminate\Database\Capsule\Manager::raw('COUNT(m.id) as total_content'),
-                    \Illuminate\Database\Capsule\Manager::raw('COALESCE(SUM(m.total_donations), 0) as total_earnings')
+                    DB::raw('COUNT(m.id) as total_content'),
+                    DB::raw('COALESCE(SUM(m.total_donations), 0) as total_earnings')
                 )
                 ->first();
 
