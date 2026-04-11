@@ -82,7 +82,7 @@ try {
                 ->where('status', 'pending')->count();
             $approvedToday = DB::table('media_files')
                 ->where('status', 'approved')
-                ->whereDate('updated_at', date('Y-m-d'))->count();
+                ->whereDate('updated_at', \Carbon\Carbon::today()->toDateString())->count();
 
             $response = [
                 'total_users' => $totalUsers,

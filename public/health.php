@@ -38,7 +38,7 @@ try {
 
     $response = [
         'status' => 'healthy',
-        'timestamp' => date('c'),
+        'timestamp' => \Carbon\Carbon::now()->toISOString(),
         'version' => '1.0.0',
         'metrics' => [
             'database' => 'connected',
@@ -69,6 +69,6 @@ try {
     echo json_encode([
         'status' => 'unhealthy',
         'error' => 'Health check failed',
-        'timestamp' => date('c')
+        'timestamp' => \Carbon\Carbon::now()->toISOString()
     ]);
 }
