@@ -675,6 +675,11 @@ class Bot
             // Save to database
             $mediaId = $this->saveMediaToDatabase($creator->id, $mediaInfo);
 
+            // Check and notify streak milestones
+            $streakData = Creator::getStreakData($creator->id);
+            $currentStreak = $streakData['current_streak'];
+            Creator::notifyStreakMilestone($creator->id, $currentStreak);
+
             // Forward to backup channel
             $this->forwardToBackupChannel($mediaInfo['file_id'], $mediaInfo['type'], $mediaInfo['caption']);
 

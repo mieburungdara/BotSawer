@@ -133,10 +133,16 @@ class Creator
             ->where('status', 'success')
             ->count();
 
+        $streakData = self::getStreakData($creatorId);
+
         return [
             'total_media' => $totalMedia,
             'total_earnings' => $totalEarnings,
-            'total_donations' => $totalDonations
+            'total_donations' => $totalDonations,
+            'current_streak' => $streakData['current_streak'],
+            'max_streak' => $streakData['max_streak'],
+            'last_publish_date' => $streakData['last_publish_date'],
+            'streak_badge' => $streakData['streak_badge']
         ];
     }
 
@@ -161,5 +167,95 @@ class Creator
             ->limit($limit)
             ->get()
             ->toArray();
+    }
+
+    public static function getStreakData(int $creatorId): array
+    {
+        // Get distinct publish dates
+        $publishDates = DB::table('media_files')
+            ->where('creator_id', $creatorId)
+            ->selectRaw('DISTINCT DATE(created_at) as publish_date')
+            ->orderBy('publish_date', 'desc')
+            ->pluck('publish_date')
+            ->toArray();
+
+        if (empty($publishDates)) {
+            return [
+                'current_streak' => 0,
+                'max_streak' => 0,
+                'last_publish_date' => null,
+                'streak_badge' => 'Belum mulai'
+            ];
+        }
+
+        $lastPublishDate = $publishDates[0];
+        $today = date('Y-m-d');
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+
+        // Calculate current streak
+        $currentStreak = 0;
+        $checkDate = $today;
+
+        // If last publish is today or yesterday, start counting
+        if ($lastPublishDate === $today || $lastPublishDate === $yesterday) {
+            $currentStreak = 1;
+            $checkDate = date('Y-m-d', strtotime($lastPublishDate . ' -1 day'));
+
+            while (in_array($checkDate, $publishDates)) {
+                $currentStreak++;
+                $checkDate = date('Y-m-d', strtotime($checkDate . ' -1 day'));
+            }
+        }
+
+        // Calculate max streak
+        $maxStreak = 1;
+        $tempStreak = 1;
+
+        for ($i = 1; $i < count($publishDates); $i++) {
+            $prevDate = date('Y-m-d', strtotime($publishDates[$i-1] . ' -1 day'));
+            if ($publishDates[$i] === $prevDate) {
+                $tempStreak++;
+                $maxStreak = max($maxStreak, $tempStreak);
+            } else {
+                $tempStreak = 1;
+            }
+        }
+
+        // Determine streak badge
+        $streakBadge = 'Belum mulai';
+        if ($currentStreak >= 1) $streakBadge = 'Pemula';
+        if ($currentStreak >= 3) $streakBadge = 'Rutin';
+        if ($currentStreak >= 7) $streakBadge = 'Ahli';
+        if ($currentStreak >= 14) $streakBadge = 'Master';
+        if ($currentStreak >= 30) $streakBadge = 'Legenda';
+
+        return [
+            'current_streak' => $currentStreak,
+            'max_streak' => $maxStreak,
+            'last_publish_date' => $lastPublishDate,
+            'streak_badge' => $streakBadge
+        ];
+    }
+
+    public static function notifyStreakMilestone(int $creatorId, int $newStreak): void
+    {
+        $user = DB::table('users')->where('id', $creatorId)->first();
+        if (!$user || !$user->telegram_id) return;
+
+        $messages = [
+            3 => "🎉 Selamat! Kamu telah mencapai streak 3 hari! Terus jaga semangatmu! 🔥",
+            7 => "🏆 Wow! 7 hari streak! Kamu luar biasa! Teruskan! ⭐",
+            14 => "👑 Master streak 14 hari! Kamu adalah inspirasi! 💎",
+            30 => "🌟 LEGENDA! 30 hari streak! Kamu tak terhentikan! 🏅"
+        ];
+
+        if (isset($messages[$newStreak])) {
+            // In real implementation, send via bot
+            Logger::info('Streak milestone reached', [
+                'creator_id' => $creatorId,
+                'streak' => $newStreak,
+                'message' => $messages[$newStreak]
+            ]);
+        }
     }
 }
