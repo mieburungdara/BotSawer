@@ -543,16 +543,7 @@ try {
                         ->update(['status' => 'success']);
 
                     // Note: Balance already deducted when withdrawal requested
-
-                    // Record transaction
-                    DB::table('transactions')->insert([
-                        'user_id' => $withdrawal->user_id,
-                        'type' => 'withdraw',
-                        'amount' => $withdrawal->amount,
-                        'status' => 'success',
-                        'description' => 'Withdrawal (Admin approved)',
-                        'from_user_id' => $userId
-                    ]);
+                    // No need for duplicate transaction
 
                     // Audit log
                     \BotSawer\AuditLogger::logAdminAction('approve_withdrawal', [
@@ -790,7 +781,7 @@ try {
 
         case 'post_content_to_channel':
             if (!AdminManager::canModerate($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
+                throw new Exception('Access denied: Moderator admin required');
             }
 
             if (!isset($input['content_id'])) {
