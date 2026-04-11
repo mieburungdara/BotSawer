@@ -94,14 +94,19 @@ try {
                 throw new Exception('Missing parameters');
             }
 
+            $previousBalance = \BotSawer\Wallet::getBalance($input['targetUserId']);
+
             Database::transaction(function () use ($input, $userId) {
-                // Adjust balance
-                Wallet::updateBalance($input['targetUserId'], $input['amount']);
+                if ($input['amount'] > 0) {
+                    Wallet::addBalance($input['targetUserId'], $input['amount'], $input['description'] . ' (Admin adjustment)');
+                } else {
+                    Wallet::deductBalance($input['targetUserId'], abs($input['amount']), $input['description'] . ' (Admin adjustment)');
+                }
 
                 // Record transaction
                 \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
                     'user_id' => $input['targetUserId'],
-                    'type' => $input['amount'] > 0 ? 'deposit' : 'withdraw',
+                    'type' => 'admin_adjustment',
                     'amount' => abs($input['amount']),
                     'status' => 'success',
                     'description' => $input['description'] . ' (Admin adjustment)',
@@ -109,22 +114,14 @@ try {
                 ]);
             });
 
-                // Get user info for detailed logging
-                $targetUser = \Illuminate\Database\Capsule\Manager::table('users')
-                    ->where('id', $input['targetUserId'])
-                    ->first();
-
-                // Audit log with full context
-                \BotSawer\AuditLogger::logAdminAction('adjust_balance', [
-                    'target_user_id' => $input['targetUserId'],
-                    'target_user_telegram_id' => $targetUser ? $targetUser->telegram_id : 'unknown',
-                    'target_user_username' => $targetUser ? $targetUser->username : 'unknown',
-                    'adjustment_amount' => $input['amount'],
-                    'previous_balance' => \BotSawer\Wallet::getBalance($input['targetUserId']) - $input['amount'],
-                    'new_balance' => \BotSawer\Wallet::getBalance($input['targetUserId']),
-                    'description' => $input['description'],
-                    'admin_role' => $admin->role
-                ], $userId);
+            // Log audit
+            \BotSawer\AuditLogger::logAdminAction('balance_adjustment', [
+                'target_user_id' => $input['targetUserId'],
+                'adjustment_amount' => $input['amount'],
+                'previous_balance' => $previousBalance,
+                'new_balance' => \BotSawer\Wallet::getBalance($input['targetUserId']),
+                'description' => $input['description']
+            ], $userId);
 
             $response = ['message' => 'Saldo berhasil disesuaikan'];
             break;
@@ -452,17 +449,7 @@ try {
                         ]);
 
                     // Add balance to user
-                    Wallet::updateBalance($payment->user_id, $payment->amount);
-
-                    // Record transaction
-                    \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
-                        'user_id' => $payment->user_id,
-                        'type' => 'deposit',
-                        'amount' => $payment->amount,
-                        'status' => 'success',
-                        'description' => 'Topup via payment proof (Admin approved)',
-                        'from_user_id' => $userId
-                    ]);
+                    Wallet::addBalance($payment->user_id, $payment->amount, 'Topup approved by admin');
 
                     // Audit log
                     \BotSawer\AuditLogger::logAdminAction('approve_topup', [
@@ -497,8 +484,8 @@ try {
                             'approved_at' => \Carbon\Carbon::now()
                         ]);
 
-                    // Deduct balance from user
-                    Wallet::updateBalance($withdrawal->user_id, -$withdrawal->amount);
+                    // Refund balance to user
+                    Wallet::addBalance($withdrawal->user_id, $withdrawal->amount, 'Refund withdrawal rejected');
 
                     // Record transaction
                     \Illuminate\Database\Capsule\Manager::table('transactions')->insert([

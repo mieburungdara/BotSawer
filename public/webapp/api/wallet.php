@@ -81,7 +81,7 @@ try {
 
         Database::transaction(function () use ($userId, $amount, $bankName, $bankAccount, $accountName) {
             // Deduct balance
-            Wallet::updateBalance($userId, -$amount);
+            \Illuminate\Database\Capsule\Manager::table('wallets')->where('user_id', $userId)->decrement('balance', $amount);
 
             // Create transaction record
             $transactionId = \Illuminate\Database\Capsule\Manager::table('transactions')->insertGetId([
