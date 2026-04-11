@@ -455,7 +455,7 @@ try {
                         ->update([
                             'status' => 'approved',
                             'approved_by' => $userId,
-                            'approved_at' => \Carbon\Carbon::now()
+                            
                         ]);
 
                     // Add balance to user
@@ -491,7 +491,7 @@ try {
                         ->update([
                             'status' => 'approved',
                             'approved_by' => $userId,
-                            'approved_at' => \Carbon\Carbon::now()
+                            
                         ]);
 
                     // Refund balance to user
@@ -547,7 +547,7 @@ try {
                             'status' => 'rejected',
                             'notes' => $reason,
                             'approved_by' => $userId,
-                            'approved_at' => \Carbon\Carbon::now()
+                            
                         ]);
 
                     \BotSawer\AuditLogger::logAdminAction('reject_topup', [
@@ -572,7 +572,7 @@ try {
                             'status' => 'rejected',
                             'notes' => $reason,
                             'approved_by' => $userId,
-                            'approved_at' => \Carbon\Carbon::now()
+                            
                         ]);
 
                     \BotSawer\AuditLogger::logAdminAction('reject_withdrawal', [
@@ -625,7 +625,7 @@ try {
                 ->where('m.status', 'approved')
                 ->whereNull('m.posted_at') // Not yet posted
                 ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
-                ->orderBy('m.approved_at', 'asc')
+                ->orderBy('m.created_at', 'asc')
                 ->get()
                 ->map(function ($item) {
                     return [
@@ -636,7 +636,6 @@ try {
                         'creator_name' => $item->display_name ?: trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
                         'creator_username' => $item->username,
                         'created_at' => $item->created_at,
-                        'approved_at' => $item->approved_at,
                         'status' => 'approved'
                     ];
                 });
@@ -667,7 +666,7 @@ try {
                 ->update([
                     'status' => 'approved',
                     'approved_by' => $userId,
-                    'approved_at' => \Carbon\Carbon::now()
+                    
                 ]);
 
             \BotSawer\AuditLogger::logAdminAction('approve_content', [
@@ -704,7 +703,7 @@ try {
                     'status' => 'rejected',
                     'notes' => $reason,
                     'approved_by' => $userId,
-                    'approved_at' => \Carbon\Carbon::now()
+                    
                 ]);
 
             \BotSawer\AuditLogger::logAdminAction('reject_content', [

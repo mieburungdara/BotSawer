@@ -133,7 +133,6 @@ class Bot
         try {
             $media = \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $mediaId)
-                ->where('is_active', 1)
                 ->first();
 
             if (!$media) {
