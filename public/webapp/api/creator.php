@@ -210,8 +210,9 @@ function validateAndFormatBankAccount(string $bankAccount): string
 function getDonationsLast7Days(int $creatorId): array
 {
     $data = [];
+    $now = \Carbon\Carbon::now();
     for ($i = 6; $i >= 0; $i--) {
-        $date = date('Y-m-d', strtotime("-{$i} days"));
+        $date = $now->copy()->subDays($i)->toDateString();
         $amount = \Illuminate\Database\Capsule\Manager::table('transactions')
             ->where('user_id', $creatorId)
             ->where('type', 'donation')

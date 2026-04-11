@@ -70,12 +70,22 @@ try {
         ]);
 
         // Update media status to posted
-        \Illuminate\Database\Capsule\Manager::table('media_files')
-            ->where('id', $mediaToPost->id)
-            ->update([
-                'status' => 'posted',
-                'posted_at' => $now
+        try {
+            \Illuminate\Database\Capsule\Manager::table('media_files')
+                ->where('id', $mediaToPost->id)
+                ->update([
+                    'status' => 'posted',
+                    'posted_at' => $now
+                ]);
+        } catch (Exception $updateException) {
+            Logger::critical('Media posted but status update failed - potential duplicate on retry', [
+                'media_id' => $mediaToPost->id,
+                'channel' => $publicChannel,
+                'update_error' => $updateException->getMessage()
             ]);
+            // Post succeeded, but update failed - exit with error to avoid retry
+            exit(1);
+        }
 
         Logger::info('Media posted successfully', [
             'media_id' => $mediaToPost->id,

@@ -57,7 +57,7 @@ class NotificationManager
     {
         $message = "✅ <b>Topup Berhasil!</b>\n\n";
         $message .= "💰 Jumlah: Rp " . number_format($amount, 0, ',', '.') . "\n";
-        $message .= "📅 Waktu: " . date('d/m/Y H:i') . "\n\n";
+        $message .= "📅 Waktu: " . \Carbon\Carbon::now()->format('d/m/Y H:i') . "\n\n";
         $message .= "Saldo Anda telah bertambah. Terima kasih!";
 
         self::sendToUser($userId, $message);
@@ -70,7 +70,7 @@ class NotificationManager
 
         $message = "{$statusEmoji} <b>Penarikan {$statusText}</b>\n\n";
         $message .= "💰 Jumlah: Rp " . number_format($amount, 0, ',', '.') . "\n";
-        $message .= "📅 Waktu: " . date('d/m/Y H:i') . "\n";
+        $message .= "📅 Waktu: " . \Carbon\Carbon::now()->format('d/m/Y H:i') . "\n";
 
         if ($status === 'completed') {
             $message .= "✅ Dana telah ditransfer ke rekening Anda\n";
@@ -86,7 +86,7 @@ class NotificationManager
         $message = "🎉 <b>Anda Menerima Donasi!</b>\n\n";
         $message .= "💰 Jumlah: Rp " . number_format($amount, 0, ',', '.') . "\n";
         $message .= "📱 Media: #" . $mediaId . "\n";
-        $message .= "📅 Waktu: " . date('d/m/Y H:i') . "\n\n";
+        $message .= "📅 Waktu: " . \Carbon\Carbon::now()->format('d/m/Y H:i') . "\n\n";
         $message .= "Terima kasih atas konten Anda! 🎨";
 
         self::sendToUser($creatorId, $message);
@@ -96,7 +96,7 @@ class NotificationManager
     {
         $message = "💝 <b>Donasi Berhasil!</b>\n\n";
         $message .= "🙏 Terima kasih atas donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\n";
-        $message .= "📅 Waktu: " . date('d/m/Y H:i') . "\n\n";
+        $message .= "📅 Waktu: " . \Carbon\Carbon::now()->format('d/m/Y H:i') . "\n\n";
         $message .= "Donasi Anda telah diteruskan ke kreator.";
 
         self::sendToUser($userId, $message);
