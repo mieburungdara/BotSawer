@@ -37,6 +37,11 @@ try {
         throw new Exception('Invalid request');
     }
 
+    // Check session authentication
+    if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != $input['userId']) {
+        throw new Exception('Authentication required');
+    }
+
     $userId = $input['userId'];
 
     // Get recent transactions

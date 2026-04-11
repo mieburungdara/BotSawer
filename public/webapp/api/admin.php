@@ -40,6 +40,11 @@ try {
     $userId = $input['userId'];
     $action = $input['action'];
 
+    // Check session authentication
+    if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != $userId) {
+        throw new Exception('Authentication required');
+    }
+
 // Check if user is admin using AdminManager
     $user = \Illuminate\Database\Capsule\Manager::table('users')
         ->where('id', $input['userId'])
