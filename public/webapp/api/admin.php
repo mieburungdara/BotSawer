@@ -137,6 +137,10 @@ try {
             break;
 
         case 'search_users':
+            if (!AdminManager::canModerate($userId)) {
+                throw new Exception('Access denied: Moderator admin required');
+            }
+
             $query = trim($input['query'] ?? '');
             $limit = min((int)($input['limit'] ?? 20), 50);
 
@@ -195,6 +199,10 @@ try {
             break;
 
         case 'get_settings':
+            if (!AdminManager::isSuperAdmin($userId)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
             $settings = DB::table('settings')
                 ->get()
                 ->keyBy('key')
@@ -210,11 +218,15 @@ try {
             break;
 
         case 'get_audit_logs':
+            if (!AdminManager::isSuperAdmin($userId)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
             $limit = min((int)($input['limit'] ?? 50), 200);
             $entityType = $input['entity_type'] ?? null;
-            $userId = isset($input['user_id']) ? (int)$input['user_id'] : null;
+            $targetUserId = isset($input['user_id']) ? (int)$input['user_id'] : null;
 
-            $logs = \BotSawer\AuditLogger::getLogs($entityType, null, $userId, $limit);
+            $logs = \BotSawer\AuditLogger::getLogs($entityType, null, $targetUserId, $limit);
 
             $response = array_map(function($log) {
                 return [
