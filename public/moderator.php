@@ -16,6 +16,9 @@ try {
     require_once __DIR__ . '/../vendor/autoload.php';
     Database::init();
 
+    // Start session for rate limiting
+    session_start();
+
     // Get the raw POST data
     $input = file_get_contents('php://input');
     $update = json_decode($input, true);

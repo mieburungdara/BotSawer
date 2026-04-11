@@ -16,6 +16,9 @@ try {
     require_once __DIR__ . '/../vendor/autoload.php';
     Database::init();
 
+    // Start session for rate limiting
+    session_start();
+
     // Rate limiting for webhook
     $endpoint = 'webhook';
     $userId = $_SERVER['REMOTE_ADDR']; // Use IP for rate limiting
