@@ -186,8 +186,8 @@ class Creator
         }
 
         $lastPublishDate = $publishDates[0];
-        $today = date('Y-m-d');
-        $yesterday = date('Y-m-d', strtotime('-1 day'));
+        $today = \Carbon\Carbon::today()->toDateString();
+        $yesterday = \Carbon\Carbon::yesterday()->toDateString();
 
         // Calculate current streak
         $currentStreak = 0;
@@ -196,11 +196,11 @@ class Creator
         // If last publish is today or yesterday, start counting
         if ($lastPublishDate === $today || $lastPublishDate === $yesterday) {
             $currentStreak = 1;
-            $checkDate = date('Y-m-d', strtotime($lastPublishDate . ' -1 day'));
+            $checkDate = \Carbon\Carbon::parse($lastPublishDate)->subDay()->toDateString();
 
             while (in_array($checkDate, $publishDates)) {
                 $currentStreak++;
-                $checkDate = date('Y-m-d', strtotime($checkDate . ' -1 day'));
+                $checkDate = \Carbon\Carbon::parse($checkDate)->subDay()->toDateString();
             }
         }
 
@@ -209,7 +209,7 @@ class Creator
         $tempStreak = 1;
 
         for ($i = 1; $i < count($publishDates); $i++) {
-            $prevDate = date('Y-m-d', strtotime($publishDates[$i-1] . ' -1 day'));
+            $prevDate = \Carbon\Carbon::parse($publishDates[$i-1])->subDay()->toDateString();
             if ($publishDates[$i] === $prevDate) {
                 $tempStreak++;
                 $maxStreak = max($maxStreak, $tempStreak);

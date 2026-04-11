@@ -213,7 +213,7 @@ function getDonationsLast7Days(int $creatorId): array
     $now = \Carbon\Carbon::now();
     for ($i = 6; $i >= 0; $i--) {
         $date = $now->copy()->subDays($i)->toDateString();
-        $amount = \Illuminate\Database\Capsule\Manager::table('transactions')
+        $amount = DB::table('transactions')
             ->where('user_id', $creatorId)
             ->where('type', 'donation')
             ->where('status', 'success')
@@ -240,7 +240,7 @@ function getDonationsByAmount(int $creatorId): array
 
     $data = [];
     foreach ($amountRanges as $label => $range) {
-        $count = \Illuminate\Database\Capsule\Manager::table('transactions')
+        $count = DB::table('transactions')
             ->where('user_id', $creatorId)
             ->where('type', 'donation')
             ->where('status', 'success')
