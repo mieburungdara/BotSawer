@@ -229,15 +229,26 @@ class Creator
         if ($currentStreak >= 14) $streakBadge = 'Master';
         if ($currentStreak >= 30) $streakBadge = 'Legenda';
 
-        // Calculate progress to next milestone (7 days)
-        $nextMilestone = 7;
+        // Calculate progress to next milestone
+        $milestones = [7, 14, 30];
+        $nextMilestone = null;
+        foreach ($milestones as $ms) {
+            if ($currentStreak < $ms) {
+                $nextMilestone = $ms;
+                break;
+            }
+        }
+        if ($nextMilestone === null) {
+            $nextMilestone = 30; // Max milestone
+        }
         $progress = min(($currentStreak / $nextMilestone) * 100, 100);
         $progressText = "{$currentStreak}/{$nextMilestone} hari";
 
         // Generate HTML progress bar
+        $milestoneText = $nextMilestone === 7 ? '7 Hari' : ($nextMilestone === 14 ? '14 Hari' : '30 Hari');
         $progressBarHtml = '
         <div class="streak-progress">
-            <div class="streak-label">Progress ke 7 Hari Streak</div>
+            <div class="streak-label">Progress ke ' . $milestoneText . ' Streak</div>
             <div class="progress-bar">
                 <div class="progress-fill" style="width: ' . round($progress, 1) . '%"></div>
             </div>
