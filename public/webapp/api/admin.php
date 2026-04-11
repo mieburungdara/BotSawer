@@ -47,7 +47,7 @@ try {
     }
 
 // Check if user is admin using AdminManager
-    $user = \Illuminate\Database\Capsule\Manager::table('users')
+    $user = DB::table('users')
         ->where('id', $input['userId'])
         ->first();
 
@@ -69,18 +69,18 @@ try {
 
     switch ($action) {
         case 'stats':
-            $totalUsers = \Illuminate\Database\Capsule\Manager::table('users')->count();
-            $totalTransactions = \Illuminate\Database\Capsule\Manager::table('transactions')->count();
-            $totalBalance = \Illuminate\Database\Capsule\Manager::table('wallets')->sum('balance');
-            $pendingTopups = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+            $totalUsers = DB::table('users')->count();
+            $totalTransactions = DB::table('transactions')->count();
+            $totalBalance = DB::table('wallets')->sum('balance');
+            $pendingTopups = DB::table('payment_proofs')
                 ->where('status', 'pending')->count();
-            $pendingWithdrawals = \Illuminate\Database\Capsule\Manager::table('withdrawals')
+            $pendingWithdrawals = DB::table('withdrawals')
                 ->where('status', 'pending')->count();
 
             // Additional stats for moderators
-            $pendingContent = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $pendingContent = DB::table('media_files')
                 ->where('status', 'pending')->count();
-            $approvedToday = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $approvedToday = DB::table('media_files')
                 ->where('status', 'approved')
                 ->whereDate('updated_at', date('Y-m-d'))->count();
 
@@ -109,7 +109,7 @@ try {
             Database::transaction(function () use ($input, $userId) {
                 // Update balance directly
                 $amount = $input['amount'];
-                \Illuminate\Database\Capsule\Manager::table('wallets')
+                DB::table('wallets')
                     ->where('user_id', $input['targetUserId'])
                     ->increment('balance', $amount);
 
@@ -144,7 +144,7 @@ try {
                 throw new Exception('Query minimal 2 karakter');
             }
 
-            $users = \Illuminate\Database\Capsule\Manager::table('users')
+            $users = DB::table('users')
                 ->select('users.*', 'creators.display_name', 'creators.is_verified', 'wallets.balance')
                 ->leftJoin('creators', 'users.id', '=', 'creators.user_id')
                 ->leftJoin('wallets', 'users.id', '=', 'wallets.user_id')
@@ -164,7 +164,7 @@ try {
                     'telegram_id' => $user->telegram_id,
                     'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
                     'username' => $user->username,
-                    'is_creator' => \Illuminate\Database\Capsule\Manager::table('creators')->where('user_id', $user->id)->exists(),
+                    'is_creator' => DB::table('creators')->where('user_id', $user->id)->exists(),
                     'creator_name' => $user->display_name,
                     'is_verified' => (bool)$user->is_verified,
                     'balance' => (int)($user->balance ?? 0),
@@ -181,7 +181,7 @@ try {
                 throw new Exception('User ID required');
             }
 
-            \Illuminate\Database\Capsule\Manager::table('users')
+            DB::table('users')
                 ->where('id', $targetUserId)
                 ->update(['is_banned' => $ban ? 1 : 0]);
 
@@ -195,7 +195,7 @@ try {
             break;
 
         case 'get_settings':
-            $settings = \Illuminate\Database\Capsule\Manager::table('settings')
+            $settings = DB::table('settings')
                 ->get()
                 ->keyBy('key')
                 ->toArray();
@@ -238,11 +238,11 @@ try {
                 throw new Exception('Setting key required');
             }
 
-            $oldSetting = \Illuminate\Database\Capsule\Manager::table('settings')
+            $oldSetting = DB::table('settings')
                 ->where('key', $key)
                 ->first();
 
-            \Illuminate\Database\Capsule\Manager::table('settings')
+            DB::table('settings')
                 ->where('key', $key)
                 ->update([
                     'value' => $value,
@@ -263,7 +263,7 @@ try {
             break;
 
         case 'get_bots':
-            $bots = \Illuminate\Database\Capsule\Manager::table('bots')
+            $bots = DB::table('bots')
                 ->select('id', 'name', 'username', 'is_active', 'created_at')
                 ->get()
                 ->toArray();
@@ -281,7 +281,7 @@ try {
                 throw new Exception('Name, username, and token are required');
             }
 
-            $botId = \Illuminate\Database\Capsule\Manager::table('bots')->insertGetId([
+            $botId = DB::table('bots')->insertGetId([
                 'name' => $name,
                 'username' => $username,
                 'token' => $token,
@@ -307,7 +307,7 @@ try {
                 throw new Exception('Bot ID required');
             }
 
-            \Illuminate\Database\Capsule\Manager::table('bots')
+            DB::table('bots')
                 ->where('id', $botId)
                 ->update(['is_active' => $active ? 1 : 0]);
 
@@ -346,7 +346,7 @@ try {
                 throw new Exception('Access denied: Finance admin required');
             }
 
-            $payments = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+            $payments = DB::table('payment_proofs')
                 ->join('users', 'payment_proofs.user_id', '=', 'users.id')
                 ->where('payment_proofs.status', 'pending')
                 ->select('payment_proofs.*', 'users.first_name', 'users.last_name', 'users.username')
@@ -373,7 +373,7 @@ try {
                 throw new Exception('Insufficient permissions');
             }
 
-            $topups = \Illuminate\Database\Capsule\Manager::table('payment_proofs as pp')
+            $topups = DB::table('payment_proofs as pp')
                 ->join('users as u', 'pp.user_id', '=', 'u.id')
                 ->where('pp.status', 'pending')
                 ->select('pp.*', 'u.first_name', 'u.last_name', 'u.username')
@@ -381,7 +381,7 @@ try {
                 ->get()
                 ->map(function ($item) {
                     // Get bot token for file URL (assuming first active bot)
-                    $bot = \Illuminate\Database\Capsule\Manager::table('bots')->where('is_active', 1)->first();
+                    $bot = DB::table('bots')->where('is_active', 1)->first();
                     $fileUrl = null;
                     if ($bot) {
                         // For now, we'll use a placeholder. In production, you'd need to get file path from Telegram API
@@ -401,7 +401,7 @@ try {
                     ];
                 });
 
-            $withdrawals = \Illuminate\Database\Capsule\Manager::table('withdrawals as w')
+            $withdrawals = DB::table('withdrawals as w')
                 ->join('users as u', 'w.creator_id', '=', 'u.id')
                 ->where('w.status', 'pending')
                 ->select('w.*', 'u.first_name', 'u.last_name', 'u.username')
@@ -440,7 +440,7 @@ try {
             Database::transaction(function () use ($input, $userId) {
                 if ($input['payment_type'] === 'topup') {
                     // Approve topup
-                    $payment = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                    $payment = DB::table('payment_proofs')
                         ->where('id', $input['payment_id'])
                         ->where('status', 'pending')
                         ->first();
@@ -450,7 +450,7 @@ try {
                     }
 
                     // Update payment status
-                    \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                    DB::table('payment_proofs')
                         ->where('id', $input['payment_id'])
                         ->update([
                             'status' => 'approved',
@@ -470,7 +470,7 @@ try {
 
                 } elseif ($input['payment_type'] === 'withdraw') {
                     // Approve withdrawal
-                    $withdrawal = \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                    $withdrawal = DB::table('withdrawals')
                         ->where('id', $input['payment_id'])
                         ->where('status', 'pending')
                         ->first();
@@ -486,7 +486,7 @@ try {
                     }
 
                     // Update withdrawal status
-                    \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                    DB::table('withdrawals')
                         ->where('id', $input['payment_id'])
                         ->update([
                             'status' => 'approved',
@@ -495,7 +495,7 @@ try {
                         ]);
 
                     // Update transaction status
-                    \Illuminate\Database\Capsule\Manager::table('transactions')
+                    DB::table('transactions')
                         ->where('id', $withdrawal->transaction_id)
                         ->update(['status' => 'success']);
 
@@ -536,7 +536,7 @@ try {
                 $reason = $input['reason'] ?? 'Rejected by admin';
 
                 if ($input['payment_type'] === 'topup') {
-                    $payment = \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                    $payment = DB::table('payment_proofs')
                         ->where('id', $input['payment_id'])
                         ->where('status', 'pending')
                         ->first();
@@ -545,13 +545,13 @@ try {
                         throw new Exception('Payment not found');
                     }
 
-                    \Illuminate\Database\Capsule\Manager::table('payment_proofs')
+                    DB::table('payment_proofs')
                         ->where('id', $input['payment_id'])
                         ->update([
                             'status' => 'rejected',
                             'notes' => $reason,
                             'approved_by' => $userId,
-                            
+
                         ]);
 
                     \BotSawer\AuditLogger::logAdminAction('reject_topup', [
@@ -561,7 +561,7 @@ try {
                     ], $userId);
 
                 } elseif ($input['payment_type'] === 'withdraw') {
-                    $withdrawal = \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                    $withdrawal = DB::table('withdrawals')
                         ->where('id', $input['payment_id'])
                         ->where('status', 'pending')
                         ->first();
@@ -570,7 +570,7 @@ try {
                         throw new Exception('Withdrawal not found');
                     }
 
-                    \Illuminate\Database\Capsule\Manager::table('withdrawals')
+                    DB::table('withdrawals')
                         ->where('id', $input['payment_id'])
                         ->update([
                             'status' => 'rejected',
@@ -595,7 +595,7 @@ try {
                 throw new Exception('Insufficient permissions');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media as m')
+            $content = DB::table('media as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
                 ->join('creators as c', 'c.user_id', '=', 'u.id')
                 ->where('m.status', 'pending')
@@ -623,7 +623,7 @@ try {
                 throw new Exception('Insufficient permissions');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media as m')
+            $content = DB::table('media as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
                 ->join('creators as c', 'c.user_id', '=', 'u.id')
                 ->where('m.status', 'approved')
@@ -656,7 +656,7 @@ try {
                 throw new Exception('Missing content_id');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('status', 'pending')
                 ->first();
@@ -665,7 +665,7 @@ try {
                 throw new Exception('Content not found or already processed');
             }
 
-            \Illuminate\Database\Capsule\Manager::table('media_files')
+            DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'approved',
@@ -692,7 +692,7 @@ try {
 
             $reason = $input['reason'] ?? 'Rejected by moderator';
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('status', 'pending')
                 ->first();
@@ -701,7 +701,7 @@ try {
                 throw new Exception('Content not found');
             }
 
-            \Illuminate\Database\Capsule\Manager::table('media_files')
+            DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'rejected',
@@ -728,7 +728,7 @@ try {
                 throw new Exception('Missing content_id');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->first();
 
@@ -754,7 +754,7 @@ try {
                 throw new Exception('Missing content_id');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('status', 'approved')
                 ->first();
@@ -764,7 +764,7 @@ try {
             }
 
             // Get bot configuration for posting
-            $botConfig = \Illuminate\Database\Capsule\Manager::table('bot_configs')
+            $botConfig = DB::table('bot_configs')
                 ->where('is_active', 1)
                 ->first();
 
@@ -777,7 +777,7 @@ try {
             $bot->postApprovedContentToChannel($content->id, $botConfig->channel_id);
 
             // Update content status to posted
-            \Illuminate\Database\Capsule\Manager::table('media_files')
+            DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'posted',
@@ -799,7 +799,7 @@ try {
                 throw new Exception('Insufficient permissions');
             }
 
-            $creators = \Illuminate\Database\Capsule\Manager::table('creators as c')
+            $creators = DB::table('creators as c')
                 ->join('users as u', 'c.user_id', '=', 'u.id')
                 ->leftJoin('media as m', 'm.user_id', '=', 'u.id')
                 ->select(
@@ -839,7 +839,7 @@ try {
                 throw new Exception('Missing creator_id');
             }
 
-            \Illuminate\Database\Capsule\Manager::table('creators')
+            DB::table('creators')
                 ->where('id', $input['creator_id'])
                 ->update([
                     'is_verified' => 1,
@@ -847,7 +847,7 @@ try {
                     'verified_at' => \Carbon\Carbon::now()
                 ]);
 
-            $creator = \Illuminate\Database\Capsule\Manager::table('creators')
+            $creator = DB::table('creators')
                 ->where('id', $input['creator_id'])
                 ->first();
 
@@ -868,7 +868,7 @@ try {
                 throw new Exception('Missing creator_id');
             }
 
-            $profile = \Illuminate\Database\Capsule\Manager::table('creators as c')
+            $profile = DB::table('creators as c')
                 ->join('users as u', 'c.user_id', '=', 'u.id')
                 ->leftJoin('media as m', 'm.user_id', '=', 'u.id')
                 ->where('c.id', $input['creator_id'])
