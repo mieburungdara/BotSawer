@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BotSawer;
 
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -67,7 +68,7 @@ try {
         }
 
         // Get platform commission rate (default 10%)
-        $commissionRate = (float) \Illuminate\Database\Capsule\Manager::table('settings')
+        $commissionRate = (float) DB::table('settings')
             ->where('key', 'platform_commission')
             ->value('value') ?: 10.00;
 
@@ -82,7 +83,7 @@ try {
         }
 
         // Check if user is creator
-        $creator = \Illuminate\Database\Capsule\Manager::table('creators')
+        $creator = DB::table('creators')
             ->where('user_id', $userId)
             ->first();
 
@@ -92,10 +93,10 @@ try {
 
         Database::transaction(function () use ($userId, $amount, $bankName, $bankAccount, $accountName) {
             // Deduct balance
-            \Illuminate\Database\Capsule\Manager::table('wallets')->where('user_id', $userId)->decrement('balance', $amount);
+            DB::table('wallets')->where('user_id', $userId)->decrement('balance', $amount);
 
             // Create transaction record
-            $transactionId = \Illuminate\Database\Capsule\Manager::table('transactions')->insertGetId([
+            $transactionId = DB::table('transactions')->insertGetId([
                 'user_id' => $userId,
                 'type' => 'withdraw',
                 'amount' => $amount,
@@ -107,7 +108,7 @@ try {
                 $formattedBankAccount = validateAndFormatBankAccountForWithdrawal($bankName, $bankAccount, $accountName);
 
                 // Create withdrawal record
-                \Illuminate\Database\Capsule\Manager::table('withdrawals')->insert([
+                DB::table('withdrawals')->insert([
                     'creator_id' => $userId,
                     'amount' => $finalAmount,
                     'original_amount' => $amount,
@@ -144,18 +145,18 @@ try {
     }
 
     // Default: Get wallet data
-    $wallet = \Illuminate\Database\Capsule\Manager::table('wallets')
+    $wallet = DB::table('wallets')
         ->where('user_id', $userId)
         ->first();
 
     // Get additional stats
-    $totalDonations = \Illuminate\Database\Capsule\Manager::table('transactions')
+    $totalDonations = DB::table('transactions')
         ->where('user_id', $userId)
         ->where('type', 'donation')
         ->where('status', 'success')
         ->count();
 
-    $totalMedia = \Illuminate\Database\Capsule\Manager::table('media_files')
+    $totalMedia = DB::table('media_files')
         ->where('creator_id', $userId)
         ->count();
 

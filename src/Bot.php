@@ -7,6 +7,7 @@ namespace BotSawer;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Update;
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 class Bot
 {
@@ -23,7 +24,7 @@ class Bot
     {
         try {
             // Get bot token from database
-            $bot = \Illuminate\Database\Capsule\Manager::table('bots')
+            $bot = DB::table('bots')
                 ->where('id', $this->botId)
                 ->where('is_active', 1)
                 ->first();
@@ -57,7 +58,7 @@ class Bot
             }
 
             // Update last request timestamp
-            \Illuminate\Database\Capsule\Manager::table('bots')
+            DB::table('bots')
                 ->where('id', $this->botId)
                 ->update(['last_request_at' => \Carbon\Carbon::now()]);
         } catch (Exception $e) {
@@ -131,7 +132,7 @@ class Bot
     private function handleMediaAccess(int $chatId, int $userId, int $mediaId): void
     {
         try {
-            $media = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $media = DB::table('media_files')
                 ->where('id', $mediaId)
                 ->first();
 
@@ -235,11 +236,11 @@ class Bot
     {
         try {
             // Get payment info message ID from backup channel
-            $paymentMessageId = \Illuminate\Database\Capsule\Manager::table('settings')
+            $paymentMessageId = DB::table('settings')
                 ->where('key', 'payment_info_message_id')
                 ->value('value');
 
-            $backupChannel = \Illuminate\Database\Capsule\Manager::table('settings')
+            $backupChannel = DB::table('settings')
                 ->where('key', 'backup_channel')
                 ->value('value');
 
@@ -493,7 +494,7 @@ class Bot
 
     private function saveMediaToDatabase(int $creatorId, array $mediaInfo): int
     {
-        return \Illuminate\Database\Capsule\Manager::table('media_files')->insertGetId([
+        return DB::table('media_files')->insertGetId([
             'creator_id' => $creatorId,
             'telegram_file_id' => $mediaInfo['file_id'],
             'file_unique_id' => $mediaInfo['file_unique_id'],
@@ -510,7 +511,7 @@ class Bot
     {
         try {
             // Get backup channel from settings
-            $backupChannel = \Illuminate\Database\Capsule\Manager::table('settings')
+            $backupChannel = DB::table('settings')
                 ->where('key', 'backup_channel')
                 ->value('value');
 
@@ -540,7 +541,7 @@ class Bot
     private function addToPostingQueue(int $mediaId): void
     {
         // Get last posted time to calculate next schedule
-        $lastPosted = \Illuminate\Database\Capsule\Manager::table('media_files')
+        $lastPosted = DB::table('media_files')
             ->where('status', 'posted')
             ->orderBy('posted_at', 'desc')
             ->value('posted_at');
@@ -549,7 +550,7 @@ class Bot
             ? \Carbon\Carbon::parse($lastPosted)->addMinute()
             : \Carbon\Carbon::now();
 
-        \Illuminate\Database\Capsule\Manager::table('media_files')
+        DB::table('media_files')
             ->where('id', $mediaId)
             ->update([
                 'status' => 'scheduled',
@@ -586,7 +587,7 @@ class Bot
             $fileId = end($photo)->getFileId();
 
             // Save payment proof to database
-            $proofId = \Illuminate\Database\Capsule\Manager::table('payment_proofs')->insertGetId([
+            $proofId = DB::table('payment_proofs')->insertGetId([
                 'user_id' => $userId,
                 'telegram_file_id' => $fileId,
                 'amount' => $amount,
@@ -677,7 +678,7 @@ class Bot
             }
 
             // Process donation transaction
-            $media = \Illuminate\Database\Capsule\Manager::table('media_files')
+            $media = DB::table('media_files')
                 ->where('id', $mediaId)
                 ->first();
 
@@ -730,7 +731,7 @@ class Bot
     private function notifyCreator(int $creatorId, int $amount, int $mediaId): void
     {
         try {
-            $creatorChat = \Illuminate\Database\Capsule\Manager::table('users')
+            $creatorChat = DB::table('users')
                 ->where('id', $creatorId)
                 ->value('telegram_id');
 
@@ -756,7 +757,7 @@ class Bot
     private function ensureUserExists($user): void
     {
         $telegramId = $user->getId();
-        $existing = \Illuminate\Database\Capsule\Manager::table('users')
+        $existing = DB::table('users')
             ->where('telegram_id', $telegramId)
             ->first();
 
@@ -820,7 +821,7 @@ class Bot
 
     private function notifyStreakMilestone(int $creatorId, int $newStreak): void
     {
-        $user = \Illuminate\Database\Capsule\Manager::table('users')->where('id', $creatorId)->first();
+        $user = DB::table('users')->where('id', $creatorId)->first();
         if (!$user || !$user->telegram_id) return;
 
         $messages = [

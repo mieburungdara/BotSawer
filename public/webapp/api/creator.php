@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BotSawer;
 
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -47,7 +48,7 @@ try {
     $action = $input['action'] ?? 'get';
 
     // Verify user is a verified creator
-    $creator = \Illuminate\Database\Capsule\Manager::table('creators')
+    $creator = DB::table('creators')
         ->where('user_id', $userId)
         ->where('is_verified', 1)
         ->first();
@@ -79,7 +80,7 @@ try {
             $bankAccount = validateAndFormatBankAccount($bankAccount);
         }
 
-        \Illuminate\Database\Capsule\Manager::table('creators')
+        DB::table('creators')
             ->where('id', $creator->id)
             ->update([
                 'display_name' => $displayName,
@@ -106,7 +107,7 @@ try {
     $stats = Creator::getStats($userId);
 
     // Get recent content
-    $recentContent = \Illuminate\Database\Capsule\Manager::table('media_files')
+    $recentContent = DB::table('media_files')
         ->select('media_files.*')
         ->selectRaw('COALESCE(SUM(transactions.amount), 0) as total_donations')
         ->selectRaw('COUNT(transactions.id) as donation_count')
@@ -123,7 +124,7 @@ try {
         ->toArray();
 
     // Get top content by donations
-    $topContent = \Illuminate\Database\Capsule\Manager::table('media_files')
+    $topContent = DB::table('media_files')
         ->select('media_files.*')
         ->selectRaw('COALESCE(SUM(transactions.amount), 0) as total_donations')
         ->selectRaw('COUNT(transactions.id) as donation_count')
