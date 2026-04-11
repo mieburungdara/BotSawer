@@ -100,6 +100,10 @@ try {
                 throw new Exception('Missing parameters');
             }
 
+            if ($input['amount'] == 0) {
+                throw new Exception('Adjustment amount cannot be zero');
+            }
+
             $previousBalance = \BotSawer\Wallet::getBalance($input['targetUserId']);
 
             Database::transaction(function () use ($input, $userId) {

@@ -18,6 +18,17 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 try {
     Database::init();
 
+    // Simple auth check for health endpoint
+    $authKey = $_GET['key'] ?? '';
+    if ($authKey !== 'health_check_2026') {
+        http_response_code(401);
+        echo json_encode([
+            'status' => 'unauthorized',
+            'message' => 'Invalid access key'
+        ]);
+        exit;
+    }
+
     $response = [
         'status' => 'healthy',
         'timestamp' => date('c'),

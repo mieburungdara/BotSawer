@@ -16,6 +16,16 @@ try {
     require_once __DIR__ . '/../vendor/autoload.php';
     Database::init();
 
+    // Rate limiting for webhook
+    $endpoint = 'webhook';
+    $userId = $_SERVER['REMOTE_ADDR']; // Use IP for rate limiting
+
+    if (!RateLimiter::check($endpoint, $userId)) {
+        http_response_code(429);
+        Logger::warning('Webhook rate limit exceeded', ['ip' => $userId]);
+        exit('Rate limit exceeded');
+    }
+
     // Get the raw POST data
     $input = file_get_contents('php://input');
     $update = json_decode($input, true);
