@@ -104,6 +104,12 @@ try {
                 throw new Exception('Adjustment amount cannot be zero');
             }
 
+            // Validate target user exists
+            $targetUser = DB::table('users')->where('id', $input['targetUserId'])->first();
+            if (!$targetUser) {
+                throw new Exception('Target user not found');
+            }
+
             $previousBalance = \BotSawer\Wallet::getBalance($input['targetUserId']);
 
             Database::transaction(function () use ($input, $userId) {
@@ -183,6 +189,12 @@ try {
 
             if (!$targetUserId) {
                 throw new Exception('User ID required');
+            }
+
+            // Validate target user exists
+            $targetUser = DB::table('users')->where('id', $targetUserId)->first();
+            if (!$targetUser) {
+                throw new Exception('Target user not found');
             }
 
             DB::table('users')
@@ -298,14 +310,15 @@ try {
                 'username' => $username,
                 'token' => $token,
                 'webhook_secret' => $webhookSecret,
-                'is_active' => 1
+                'is_active' => 1,
+                'created_at' => \Carbon\Carbon::now()
             ]);
 
             // Audit log
             \BotSawer\AuditLogger::logAdminAction('add_bot', [
                 'bot_id' => $botId,
-                'name' => $name,
-                'username' => $username
+                'bot_name' => $name,
+                'bot_username' => $username
             ], $userId);
 
             $response = ['message' => 'Bot added successfully', 'bot_id' => $botId];
@@ -603,8 +616,8 @@ try {
             break;
 
         case 'get_pending_content':
-            if (!AdminManager::canModerate($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
+            if (!AdminManager::canModerate($userId)) {
+                throw new Exception('Access denied: Moderator admin required');
             }
 
             $content = DB::table('media as m')
