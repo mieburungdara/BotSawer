@@ -164,6 +164,7 @@ try {
                       ->orWhere('users.username', 'like', "%{$query}%")
                       ->orWhere('creators.display_name', 'like', "%{$query}%");
                 })
+                ->orderBy('users.created_at', 'desc')
                 ->limit($limit)
                 ->get()
                 ->toArray();
@@ -262,6 +263,11 @@ try {
                 throw new Exception('Setting key required');
             }
 
+            $admin = AdminManager::getAdmin($user->telegram_id);
+            if (!$admin) {
+                throw new Exception('Admin data not found');
+            }
+
             $oldSetting = DB::table('settings')
                 ->where('key', $key)
                 ->first();
@@ -281,7 +287,7 @@ try {
                     'setting_description' => $oldSetting ? $oldSetting->description : 'Unknown',
                     'admin_role' => $admin->role,
                     'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
-                ], $userId);
+                ], $user->telegram_id);
 
             $response = ['message' => 'Setting updated successfully'];
             break;
