@@ -7,6 +7,7 @@ namespace BotSawer;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Update;
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 // Moderator Bot Webhook - Hanya untuk admin
 // Endpoint: https://yourdomain.com/public/moderator.php?secret=moderator_secret

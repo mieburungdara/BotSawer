@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BotSawer;
 
+use Illuminate\Database\Capsule\Manager as DB;
+
 // Scheduler script for posting media to public channel
 // Run with cron: * * * * * cd /path/to/project && php schedule.php
 

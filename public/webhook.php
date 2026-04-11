@@ -7,6 +7,7 @@ namespace BotSawer;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Update;
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 // Webhook handler for Telegram Bot
 // Endpoint: https://boxanon.my.id/saweria/public/webhook.php
@@ -55,7 +56,7 @@ try {
     // Regular user bot
     $botId = 1; // Default bot
     if ($webhookSecret) {
-        $botData = \Illuminate\Database\Capsule\Manager::table('bots')
+        $botData = DB::table('bots')
             ->where('webhook_secret', $webhookSecret)
             ->where('is_active', 1)
             ->first();
