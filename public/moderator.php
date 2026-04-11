@@ -31,7 +31,7 @@ try {
 
     // Verify this is moderator bot (special secret)
     $webhookSecret = $_GET['secret'] ?? '';
-    $expectedSecret = 'moderator_' . date('Y-m-d'); // Daily rotating secret
+    $expectedSecret = 'moderator_' . gmdate('Y-m-d'); // Daily rotating secret (UTC to avoid timezone issues)
 
     if ($webhookSecret !== $expectedSecret) {
         Logger::warning('Invalid moderator webhook secret', [
