@@ -110,7 +110,7 @@ try {
     }
 
     // Default: Get creator dashboard data
-    $stats = Creator::getStats($userId);
+    $stats = Creator::getStats($creator->id);
 
     // Get recent content
     $recentContent = DB::table('media_files')
@@ -122,7 +122,7 @@ try {
                  ->where('transactions.type', '=', 'donation')
                  ->where('transactions.status', '=', 'success');
         })
-        ->where('media_files.creator_id', $userId)
+        ->where('media_files.creator_id', $creator->id)
         ->groupBy('media_files.id')
         ->orderBy('media_files.created_at', 'desc')
         ->limit(10)

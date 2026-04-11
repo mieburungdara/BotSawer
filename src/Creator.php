@@ -125,11 +125,19 @@ class Creator
 
     public static function getMediaCount(int $creatorId): int
     {
-        return DB::table('media_files')->where('creator_id', $creatorId)->count();
+        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        if (!$creator) {
+            return 0;
+        }
+        return (int) DB::table('media_files')->where('creator_id', $creatorId)->count();
     }
 
     public static function getTotalEarnings(int $creatorId): int
     {
+        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        if (!$creator) {
+            return 0;
+        }
         return (int) DB::table('transactions')
             ->where('user_id', $creatorId)
             ->where('type', 'donation')
