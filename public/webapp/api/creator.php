@@ -57,6 +57,11 @@ try {
         throw new Exception('Unauthorized: Not a verified creator');
     }
 
+    // Ensure proper data types
+    $creator->id = (int)$creator->id;
+    $creator->user_id = (int)$creator->user_id;
+    $creator->is_verified = (bool)$creator->is_verified;
+
     if ($action === 'update_profile') {
         // Update creator profile
         $displayName = trim($input['displayName'] ?? '');

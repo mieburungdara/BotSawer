@@ -139,6 +139,20 @@ class Creator
 
     public static function getStats(int $creatorId): array
     {
+        // Check if creator exists first
+        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        if (!$creator) {
+            return [
+                'total_media' => 0,
+                'total_earnings' => 0,
+                'total_donations' => 0,
+                'current_streak' => 0,
+                'max_streak' => 0,
+                'last_publish_date' => null,
+                'streak_badge' => 'Belum mulai'
+            ];
+        }
+
         // Combined query to avoid N+1 problem
         $stats = DB::table('media_files')
             ->leftJoin('transactions', function ($join) use ($creatorId) {
