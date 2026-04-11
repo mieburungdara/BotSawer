@@ -75,10 +75,12 @@ function customExceptionHandler($exception) {
         echo '<div style="background: #f8d7da; color: #721c24; padding: 20px; margin: 20px; border: 1px solid #f5c6cb; border-radius: 5px; font-family: monospace;">';
         echo '<h2 style="margin-top: 0;">🚫 Uncaught Exception</h2>';
         echo '<strong>Message:</strong> ' . htmlspecialchars($exception->getMessage()) . '<br>';
-        echo '<strong>File:</strong> ' . htmlspecialchars($exception->getFile()) . ':' . $exception->getLine() . '<br>';
         echo '<strong>Code:</strong> ' . $exception->getCode() . '<br><br>';
-        echo '<strong>Stack Trace:</strong><br>';
-        echo '<pre style="background: #f1f1f1; padding: 10px; border-radius: 3px; overflow-x: auto;">' . htmlspecialchars($exception->getTraceAsString()) . '</pre>';
+        // Hide file path and stack trace in production for security
+        if (defined('DEBUG_MODE') && DEBUG_MODE) {
+            echo '<strong>File:</strong> ' . htmlspecialchars($exception->getFile()) . ':' . $exception->getLine() . '<br>';
+            echo '<pre style="background: #f1f1f1; padding: 10px; border-radius: 3px; overflow-x: auto;">' . htmlspecialchars($exception->getTraceAsString()) . '</pre>';
+        }
         echo '</div>';
     }
 }

@@ -816,11 +816,75 @@ class Bot
 
     private function handlePaymentProof($message): void
     {
-        // Implementation for payment proof will be added later
-        $this->telegram->sendMessage([
-            'chat_id' => $message->getChat()->getId(),
-            'text' => '✅ Bukti pembayaran diterima, menunggu konfirmasi admin.'
-        ]);
+        try {
+            $chatId = $message->getChat()->getId();
+            $userId = $message->getFrom()->getId();
+            $caption = $message->getCaption() ?? '';
+            $photo = $message->getPhoto();
+
+            if (!$photo) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => '❌ Bukti pembayaran harus berupa gambar.'
+                ]);
+                return;
+            }
+
+            // Parse amount from caption (expected format: "topup 50000" or just "50000")
+            $amount = $this->parseAmountFromCaption($caption);
+            if (!$amount || $amount < 10000) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => '❌ Format caption salah. Gunakan: "topup [nominal]" (minimal Rp 10.000)'
+                ]);
+                return;
+            }
+
+            $fileId = end($photo)->getFileId();
+
+            // Save payment proof to database
+            $proofId = \Illuminate\Database\Capsule\Manager::table('payment_proofs')->insertGetId([
+                'user_id' => $userId,
+                'telegram_file_id' => $fileId,
+                'amount' => $amount,
+                'caption' => $caption,
+                'status' => 'pending',
+                'submitted_at' => \Carbon\Carbon::now()
+            ]);
+
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => "✅ Bukti pembayaran diterima!\n\n📋 ID Bukti: #{$proofId}\n💰 Nominal: Rp " . number_format($amount, 0, ',', '.') . "\n⏳ Status: Menunggu konfirmasi admin\n\nAdmin akan memverifikasi dan menambah saldo Anda."
+            ]);
+
+            Logger::info('Payment proof submitted', [
+                'user_id' => $userId,
+                'proof_id' => $proofId,
+                'amount' => $amount
+            ]);
+
+        } catch (Exception $e) {
+            Logger::error('Payment proof processing failed', [
+                'user_id' => $userId ?? null,
+                'error' => $e->getMessage()
+            ]);
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId ?? null,
+                'text' => '❌ Gagal memproses bukti pembayaran.'
+            ]);
+        }
+    }
+
+    private function parseAmountFromCaption(string $caption): ?int
+    {
+        // Try formats: "topup 50000", "50000", "Rp 50.000"
+        if (preg_match('/(?:topup|rp)\s*([\d,]+)/i', $caption, $matches)) {
+            return (int)str_replace([',', '.'], '', $matches[1]);
+        }
+        if (preg_match('/(\d+)/', $caption, $matches)) {
+            return (int)$matches[1];
+        }
+        return null;
     }
 
     private function handleCallbackQuery($callbackQuery): void
