@@ -104,10 +104,17 @@ class NotificationManager
 
     public static function notifyAdminPendingAction(string $type, int $count): void
     {
-        // Get all admin users
-        $admins = \Illuminate\Database\Capsule\Manager::table('users')
-            ->whereIn('telegram_id', [123456789]) // Admin IDs
+        // Get all active admin users
+        $admins = \Illuminate\Database\Capsule\Manager::table('admins')
+            ->join('users', 'admins.telegram_id', '=', 'users.telegram_id')
+            ->where('admins.is_active', 1)
+            ->select('users.id', 'admins.telegram_id')
             ->get();
+
+        if ($admins->isEmpty()) {
+            Logger::warning('No active admins to notify for pending actions');
+            return;
+        }
 
         $typeText = $type === 'topup' ? 'Topup' : 'Penarikan';
         $message = "⚠️ <b>Admin Alert</b>\n\n";
