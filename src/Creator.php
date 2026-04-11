@@ -32,9 +32,6 @@ class Creator
                 'is_verified' => 0
             ]);
 
-            // Update user as creator
-            DB::table('users')->where('id', $userId)->update(['is_creator' => 1]);
-
             Logger::info('Creator registered', ['user_id' => $userId, 'display_name' => $displayName]);
 
             return true;

@@ -120,7 +120,7 @@ class NotificationManager
         $message = "⚠️ <b>Admin Alert</b>\n\n";
         $message .= "Ada {$count} {$typeText} pending yang perlu diperiksa\n";
         $message .= "📱 Buka panel admin untuk memproses\n\n";
-        $message .= "/admin pending";
+        $message .= date('d/m/Y H:i') . " - {$count} pending";
 
         foreach ($admins as $admin) {
             self::sendToUser($admin->id, $message);

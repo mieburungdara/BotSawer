@@ -164,7 +164,7 @@ try {
                     'telegram_id' => $user->telegram_id,
                     'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
                     'username' => $user->username,
-                    'is_creator' => !is_null($user->display_name),
+                    'is_creator' => \Illuminate\Database\Capsule\Manager::table('creators')->where('user_id', $user->id)->exists(),
                     'creator_name' => $user->display_name,
                     'is_verified' => (bool)$user->is_verified,
                     'balance' => (int)($user->balance ?? 0),
