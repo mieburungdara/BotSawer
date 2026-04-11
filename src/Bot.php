@@ -116,7 +116,7 @@ class Bot
             $mediaId = str_replace('media_', '', $startParam);
             $this->handleMediaAccess($chatId, $userId, (int)$mediaId);
         } else {
-            $this->sendWelcomeMessage($chatId);
+            $this->sendWelcomeMessage($chatId, $userId);
         }
     }
 
@@ -953,13 +953,24 @@ class Bot
         return $message->has('photo') && strpos(strtolower($message->getCaption() ?? ''), 'topup') !== false;
     }
 
-    private function sendWelcomeMessage(int $chatId): void
+    private function sendWelcomeMessage(int $chatId, int $userId): void
     {
         $message = "👋 Selamat datang di Bot Sawer!\n\n";
         $message .= "💡 Bot untuk donasi sukarela ke kreator konten\n";
         $message .= "💰 Lihat saldo Anda dengan /saldo\n";
         $message .= "📤 Upload media dengan mengirim foto/video\n";
         $message .= "💸 Lakukan sawer melalui link di channel publik\n\n";
+
+        // Check if user is a verified creator and has streak >= 1
+        $creator = Creator::getProfile($userId);
+        if ($creator && $creator->is_verified == 1) {
+            $streakData = Creator::getStreakData($userId);
+            if ($streakData['current_streak'] >= 1) {
+                $message .= "🔥 Streak Anda: {$streakData['current_streak']} hari ({$streakData['streak_badge']})\n";
+                $message .= "Terus jaga semangat publishing konten!\n\n";
+            }
+        }
+
         $message .= "Ketik /help untuk bantuan lebih lanjut";
 
         $this->telegram->sendMessage([
