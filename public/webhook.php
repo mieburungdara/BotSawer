@@ -32,7 +32,7 @@ try {
     // Route based on webhook type
     $webhookSecret = $_GET['secret'] ?? '';
 
-    if (str_starts_with($webhookSecret, 'moderator_')) {
+    if (strpos($webhookSecret, 'moderator_') === 0) {
         // This is moderator bot - redirect to moderator handler
         Logger::info('Redirecting to moderator bot handler');
         require_once __DIR__ . '/moderator.php';

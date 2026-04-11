@@ -92,9 +92,9 @@ class Bot
             $this->handleTopupCommand($chatId);
         } elseif ($text === '/help') {
             $this->handleHelpCommand($chatId);
-        } elseif (str_starts_with($text, '/register')) {
+        } elseif (strpos($text, '/register') === 0) {
             $this->handleRegisterCommand($chatId, $userId, $text);
-        } elseif (str_starts_with($text, '/admin')) {
+        } elseif (strpos($text, '/admin') === 0) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => '❌ Admin commands tidak tersedia di bot ini. Gunakan bot moderator.'
@@ -112,7 +112,7 @@ class Bot
     {
         $startParam = $this->extractStartParameter($text);
 
-        if ($startParam && str_starts_with($startParam, 'media_')) {
+        if ($startParam && strpos($startParam, 'media_') === 0) {
             $mediaId = str_replace('media_', '', $startParam);
             $this->handleMediaAccess($chatId, $userId, (int)$mediaId);
         } else {
@@ -729,11 +729,11 @@ class Bot
         } elseif ($message->has('document')) {
             $document = $message->getDocument();
             $mimeType = $document->getMimeType();
-            if (str_starts_with($mimeType, 'image/') || str_starts_with($mimeType, 'video/')) {
+            if (strpos($mimeType, 'image/') === 0 || strpos($mimeType, 'video/') === 0) {
                 return [
                     'file_id' => $document->getFileId(),
                     'file_unique_id' => $document->getFileUniqueId(),
-                    'type' => str_starts_with($mimeType, 'image/') ? 'photo' : 'video',
+                    'type' => strpos($mimeType, 'image/') === 0 ? 'photo' : 'video',
                     'file_size' => $document->getFileSize(),
                     'mime_type' => $mimeType,
                     'caption' => $message->getCaption()
@@ -825,7 +825,7 @@ class Bot
         $chatId = $callbackQuery->getMessage()->getChat()->getId();
         $userId = $callbackQuery->getFrom()->getId();
 
-        if (str_starts_with($data, 'sawer_')) {
+        if (strpos($data, 'sawer_') === 0) {
             $this->handleSawerCallback($data, $chatId, $userId);
         }
 
