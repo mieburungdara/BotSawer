@@ -123,20 +123,27 @@ class Creator
 
     public static function getStats(int $creatorId): array
     {
-        $totalMedia = self::getMediaCount($creatorId);
-        $totalEarnings = self::getTotalEarnings($creatorId);
-        $totalDonations = DB::table('transactions')
-            ->where('user_id', $creatorId)
-            ->where('type', 'donation')
-            ->where('status', 'success')
-            ->count();
+        // Combined query to avoid N+1 problem
+        $stats = DB::table('media_files')
+            ->leftJoin('transactions', function ($join) use ($creatorId) {
+                $join->on('media_files.creator_id', '=', DB::raw($creatorId))
+                     ->where('transactions.type', '=', 'donation')
+                     ->where('transactions.status', '=', 'success');
+            })
+            ->where('media_files.creator_id', $creatorId)
+            ->selectRaw('
+                COUNT(DISTINCT media_files.id) as total_media,
+                COALESCE(SUM(transactions.amount), 0) as total_earnings,
+                COUNT(transactions.id) as total_donations
+            ')
+            ->first();
 
         $streakData = self::getStreakData($creatorId);
 
         return [
-            'total_media' => $totalMedia,
-            'total_earnings' => $totalEarnings,
-            'total_donations' => $totalDonations,
+            'total_media' => (int)$stats->total_media,
+            'total_earnings' => (int)$stats->total_earnings,
+            'total_donations' => (int)$stats->total_donations,
             'current_streak' => $streakData['current_streak'],
             'max_streak' => $streakData['max_streak'],
             'last_publish_date' => $streakData['last_publish_date'],

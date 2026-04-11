@@ -210,20 +210,29 @@ function validateAndFormatBankAccount(string $bankAccount): string
 
 function getDonationsLast7Days(int $creatorId): array
 {
-    $data = [];
     $now = \Carbon\Carbon::now();
+    $startDate = $now->copy()->subDays(6)->toDateString();
+    $endDate = $now->toDateString();
+
+    // Single query with group by date
+    $results = DB::table('transactions')
+        ->where('user_id', $creatorId)
+        ->where('type', 'donation')
+        ->where('status', 'success')
+        ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+        ->selectRaw('DATE(created_at) as date, SUM(amount) as amount')
+        ->groupByRaw('DATE(created_at)')
+        ->orderByRaw('DATE(created_at)')
+        ->pluck('amount', 'date')
+        ->toArray();
+
+    $data = [];
     for ($i = 6; $i >= 0; $i--) {
         $date = $now->copy()->subDays($i)->toDateString();
-        $amount = DB::table('transactions')
-            ->where('user_id', $creatorId)
-            ->where('type', 'donation')
-            ->where('status', 'success')
-            ->whereDate('created_at', $date)
-            ->sum('amount');
-
+        $amount = isset($results[$date]) ? (int)$results[$date] : 0;
         $data[] = [
             'date' => $date,
-            'amount' => (int)$amount
+            'amount' => $amount
         ];
     }
     return $data;
@@ -231,27 +240,25 @@ function getDonationsLast7Days(int $creatorId): array
 
 function getDonationsByAmount(int $creatorId): array
 {
-    $amountRanges = [
-        '100' => [100, 499],
-        '500' => [500, 999],
-        '1000' => [1000, 1999],
-        '2000' => [2000, 4999],
-        '5000+' => [5000, PHP_INT_MAX]
+    // Single query with conditional aggregation
+    $result = DB::table('transactions')
+        ->where('user_id', $creatorId)
+        ->where('type', 'donation')
+        ->where('status', 'success')
+        ->selectRaw("
+            SUM(CASE WHEN amount BETWEEN 100 AND 499 THEN 1 ELSE 0 END) as range_100,
+            SUM(CASE WHEN amount BETWEEN 500 AND 999 THEN 1 ELSE 0 END) as range_500,
+            SUM(CASE WHEN amount BETWEEN 1000 AND 1999 THEN 1 ELSE 0 END) as range_1000,
+            SUM(CASE WHEN amount BETWEEN 2000 AND 4999 THEN 1 ELSE 0 END) as range_2000,
+            SUM(CASE WHEN amount >= 5000 THEN 1 ELSE 0 END) as range_5000_plus
+        ")
+        ->first();
+
+    return [
+        ['range' => '100', 'count' => (int)$result->range_100],
+        ['range' => '500', 'count' => (int)$result->range_500],
+        ['range' => '1000', 'count' => (int)$result->range_1000],
+        ['range' => '2000', 'count' => (int)$result->range_2000],
+        ['range' => '5000+', 'count' => (int)$result->range_5000_plus]
     ];
-
-    $data = [];
-    foreach ($amountRanges as $label => $range) {
-        $count = DB::table('transactions')
-            ->where('user_id', $creatorId)
-            ->where('type', 'donation')
-            ->where('status', 'success')
-            ->whereBetween('amount', $range)
-            ->count();
-
-        $data[] = [
-            'range' => $label,
-            'count' => $count
-        ];
-    }
-    return $data;
 }
