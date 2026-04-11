@@ -18,7 +18,8 @@ session_start();
 
 // Rate limiting
 $endpoint = basename(__FILE__);
-$userId = $input['userId'] ?? $_SERVER['REMOTE_ADDR'];
+// Note: $input not defined yet, use REMOTE_ADDR for rate limiting
+$userId = $_SERVER['REMOTE_ADDR'];
 
 if (!RateLimiter::check($endpoint, $userId)) {
     http_response_code(429);
@@ -113,7 +114,7 @@ try {
                 ]);
 
                 // Audit log
-                \BotSawer\AuditLogger::log(\BotSawer\AuditLogger::ACTION_WITHDRAWAL_REQUEST, 'withdrawal', $userId, [], [
+                \BotSawer\AuditLogger::logAdminAction(\BotSawer\AuditLogger::ACTION_WITHDRAWAL_REQUEST, 'withdrawal', null, [], [
                     'original_amount' => $amount,
                     'commission_rate' => $commissionRate,
                     'commission_amount' => $commissionAmount,
@@ -181,7 +182,7 @@ function validateAndFormatBankAccountForWithdrawal(string $bankName, string $acc
     ];
 
     $bankNameUpper = strtoupper($bankName);
-    if (!in_array($bankNameUpper, $supportedBanks) && !str_contains($bankNameUpper, 'LAINNYA')) {
+    if (!in_array($bankNameUpper, $supportedBanks) && strpos($bankNameUpper, 'LAINNYA') === false) {
         throw new Exception('Nama bank tidak didukung. Gunakan salah satu: ' . implode(', ', $supportedBanks));
     }
 
