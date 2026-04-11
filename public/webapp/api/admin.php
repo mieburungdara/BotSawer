@@ -764,7 +764,7 @@ try {
 
         case 'get_content_details':
             if (!AdminManager::canModerate($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
+                throw new Exception('Access denied: Moderator admin required');
             }
 
             if (!isset($input['content_id'])) {
