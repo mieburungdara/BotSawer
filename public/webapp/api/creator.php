@@ -18,7 +18,8 @@ session_start();
 
 // Rate limiting
 $endpoint = basename(__FILE__);
-$userId = $input['userId'] ?? $_SERVER['REMOTE_ADDR'];
+// Note: $input not defined yet, use REMOTE_ADDR for rate limiting
+$userId = $_SERVER['REMOTE_ADDR'];
 
 if (!RateLimiter::check($endpoint, $userId)) {
     http_response_code(429);
@@ -75,7 +76,7 @@ try {
 
         // Validate bank account format if provided
         if (!empty($bankAccount)) {
-            $bankAccount = self::validateAndFormatBankAccount($bankAccount);
+            $bankAccount = validateAndFormatBankAccount($bankAccount);
         }
 
         \Illuminate\Database\Capsule\Manager::table('creators')
@@ -88,7 +89,7 @@ try {
             ]);
 
         // Audit log
-        \BotSawer\AuditLogger::log(\BotSawer\AuditLogger::ACTION_UPDATE, 'creator', $creator->id, [], [
+        \BotSawer\AuditLogger::logAdminAction(\BotSawer\AuditLogger::ACTION_UPDATE, 'creator', $creator->id, [], [
             'display_name' => $displayName,
             'bio' => $bio,
             'bank_account' => !empty($bankAccount) ? '***UPDATED***' : ''
@@ -140,8 +141,8 @@ try {
 
     // Get analytics data for charts
     $analytics = [
-        'donations_last_7_days' => self::getDonationsLast7Days($userId),
-        'donations_by_amount' => self::getDonationsByAmount($userId),
+        'donations_last_7_days' => getDonationsLast7Days($userId),
+        'donations_by_amount' => getDonationsByAmount($userId),
         'top_content_chart' => array_slice($topContent, 0, 5)
     ];
 
@@ -188,7 +189,7 @@ function validateAndFormatBankAccount(string $bankAccount): string
     ];
 
     $bankNameUpper = strtoupper($bankName);
-    if (!in_array($bankNameUpper, $supportedBanks) && !str_contains($bankNameUpper, 'LAINNYA')) {
+    if (!in_array($bankNameUpper, $supportedBanks) && strpos($bankNameUpper, 'LAINNYA') === false) {
         throw new Exception('Nama bank tidak didukung. Gunakan salah satu: ' . implode(', ', $supportedBanks));
     }
 
