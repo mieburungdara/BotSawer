@@ -78,9 +78,9 @@ try {
                 ->where('status', 'pending')->count();
 
             // Additional stats for moderators
-            $pendingContent = \Illuminate\Database\Capsule\Manager::table('media')
+            $pendingContent = \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('status', 'pending')->count();
-            $approvedToday = \Illuminate\Database\Capsule\Manager::table('media')
+            $approvedToday = \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('status', 'approved')
                 ->whereDate('updated_at', date('Y-m-d'))->count();
 
@@ -653,7 +653,7 @@ try {
                 throw new Exception('Missing content_id');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media')
+            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('status', 'pending')
                 ->first();
@@ -662,7 +662,7 @@ try {
                 throw new Exception('Content not found or already processed');
             }
 
-            \Illuminate\Database\Capsule\Manager::table('media')
+            \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'approved',
@@ -689,7 +689,7 @@ try {
 
             $reason = $input['reason'] ?? 'Rejected by moderator';
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media')
+            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('status', 'pending')
                 ->first();
@@ -698,7 +698,7 @@ try {
                 throw new Exception('Content not found');
             }
 
-            \Illuminate\Database\Capsule\Manager::table('media')
+            \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'rejected',
@@ -725,7 +725,7 @@ try {
                 throw new Exception('Missing content_id');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media')
+            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $input['content_id'])
                 ->first();
 
@@ -751,7 +751,7 @@ try {
                 throw new Exception('Missing content_id');
             }
 
-            $content = \Illuminate\Database\Capsule\Manager::table('media')
+            $content = \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('status', 'approved')
                 ->first();
@@ -774,7 +774,7 @@ try {
             $bot->postApprovedContentToChannel($content->id, $botConfig->channel_id);
 
             // Update content status to posted
-            \Illuminate\Database\Capsule\Manager::table('media')
+            \Illuminate\Database\Capsule\Manager::table('media_files')
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'posted',

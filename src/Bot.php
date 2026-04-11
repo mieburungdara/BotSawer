@@ -760,7 +760,7 @@ class Bot
             'mime_type' => $mediaInfo['mime_type'] ?? null,
             'duration' => $mediaInfo['duration'] ?? null,
             'caption' => $mediaInfo['caption'],
-            'status' => 'queued'
+            'status' => 'scheduled'
         ]);
     }
 
