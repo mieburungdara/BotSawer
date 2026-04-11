@@ -53,8 +53,9 @@ try {
     // Initialize bot
     $bot = new Bot($botData->id);
 
-    // Create deeplink
-    $deeplink = "https://t.me/{$botData->username}?start=media_{$mediaToPost->id}";
+    // Create deeplink (use username if available, otherwise use bot ID)
+    $botIdentifier = $botData->username ?: "bot{$botData->id}";
+    $deeplink = "https://t.me/{$botIdentifier}?start=media_{$mediaToPost->id}";
 
     // Create caption with deeplink
     $caption = $mediaToPost->caption ?? 'Konten dari kreator';
