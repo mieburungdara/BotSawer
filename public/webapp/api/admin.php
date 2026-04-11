@@ -287,6 +287,10 @@ try {
             break;
 
         case 'get_bots':
+            if (!AdminManager::isSuperAdmin($userId)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
             $bots = DB::table('bots')
                 ->select('id', 'name', 'username', 'is_active', 'created_at')
                 ->get()
@@ -367,7 +371,7 @@ try {
             break;
 
         case 'get_pending_payments':
-            if (!\BotSawer\AdminManager::canHandleFinance($userId)) {
+            if (!AdminManager::canHandleFinance($userId)) {
                 throw new Exception('Access denied: Finance admin required');
             }
 
@@ -454,8 +458,8 @@ try {
             break;
 
         case 'approve_payment':
-            if (!AdminManager::canHandleFinance($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
+            if (!AdminManager::canHandleFinance($userId)) {
+                throw new Exception('Access denied: Finance admin required');
             }
 
             if (!isset($input['payment_id']) || !isset($input['payment_type'])) {
