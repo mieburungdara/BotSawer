@@ -861,12 +861,15 @@ class Bot
                 ->first();
 
             if ($media) {
-                Database::transaction(function () use ($userId, $media, $amount) {
-                    // Deduct from donor
-                    Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
+                Database::transaction(function () use ($userId, $media, $amount, $mediaId) {
+                    // Update balances directly
+                    \Illuminate\Database\Capsule\Manager::table('wallets')
+                        ->where('user_id', $userId)
+                        ->decrement('balance', $amount);
 
-                    // Add to creator
-                    Wallet::addBalance($media->creator_id, $amount, 'Donasi dari user');
+                    \Illuminate\Database\Capsule\Manager::table('wallets')
+                        ->where('user_id', $media->creator_id)
+                        ->increment('balance', $amount);
 
                     // Record transaction
                     \Illuminate\Database\Capsule\Manager::table('transactions')->insert([

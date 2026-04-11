@@ -245,31 +245,7 @@ class ModeratorBot
         }
     }
 
-    private function handleAdminMediaUpload($message): void
-    {
-        $chatId = $message->getChat()->getId();
 
-        try {
-            // For moderator bot, admin can test posting directly
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '✅ Media diterima untuk test posting. Gunakan /mod_post [id] untuk post manual.'
-            ]);
-
-            // Could save as test media or handle differently
-            Logger::info('Admin media upload to moderator bot', [
-                'admin_id' => $this->adminId,
-                'has_photo' => $message->has('photo'),
-                'has_video' => $message->has('video')
-            ]);
-
-        } catch (Exception $e) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Error processing media'
-            ]);
-        }
-    }
 
     private function handleAdvancedAdminCommands(int $chatId, string $text, int $adminId, object $admin): void
     {
