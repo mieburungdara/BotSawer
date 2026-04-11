@@ -69,6 +69,10 @@ try {
 
     switch ($action) {
         case 'stats':
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Access denied: Moderator admin required');
+            }
+
             $totalUsers = DB::table('users')->count();
             $totalTransactions = DB::table('transactions')->count();
             $totalBalance = DB::table('wallets')->sum('balance');
@@ -688,7 +692,7 @@ try {
 
         case 'approve_content':
             if (!AdminManager::canModerate($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
+                throw new Exception('Access denied: Moderator admin required');
             }
 
             if (!isset($input['content_id'])) {
@@ -722,7 +726,7 @@ try {
 
         case 'reject_content':
             if (!AdminManager::canModerate($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
+                throw new Exception('Access denied: Moderator admin required');
             }
 
             if (!isset($input['content_id'])) {
