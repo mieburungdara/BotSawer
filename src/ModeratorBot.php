@@ -173,7 +173,17 @@ class ModeratorBot
                 'video' => $media->telegram_file_id,
                 'caption' => $caption
             ]);
+        } else {
+            throw new Exception('Unsupported media type for posting');
         }
+
+        // Update media status
+        \Illuminate\Database\Capsule\Manager::table('media_files')
+            ->where('id', $media->id)
+            ->update([
+                'status' => 'posted',
+                'posted_at' => \Carbon\Carbon::now()
+            ]);
     }
 
     private function sendModeratorStats(int $chatId, object $admin): void
