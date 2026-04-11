@@ -17,7 +17,7 @@ try {
     $now = \Carbon\Carbon::now();
 
     // Find media scheduled for posting
-    $mediaToPost = \Illuminate\Database\Capsule\Manager::table('media_files')
+    $mediaToPost = DB::table('media_files')
         ->where('status', 'scheduled')
         ->where('scheduled_at', '<=', $now)
         ->orderBy('scheduled_at', 'asc')
@@ -30,23 +30,36 @@ try {
 
     Logger::info('Found media to post', ['media_id' => $mediaToPost->id]);
 
+    // Update status to 'posting' to prevent duplicate processing
+    DB::table('media_files')
+        ->where('id', $mediaToPost->id)
+        ->update(['status' => 'posting']);
+
     // Get public channel from settings
-    $publicChannel = \Illuminate\Database\Capsule\Manager::table('settings')
+    $publicChannel = DB::table('settings')
         ->where('key', 'public_channel')
         ->value('value');
 
     if (!$publicChannel) {
         Logger::error('Public channel not configured');
+        // Revert status
+        DB::table('media_files')
+            ->where('id', $mediaToPost->id)
+            ->update(['status' => 'scheduled']);
         exit(1);
     }
 
     // Get bot for posting (use first active bot)
-    $botData = \Illuminate\Database\Capsule\Manager::table('bots')
+    $botData = DB::table('bots')
         ->where('is_active', 1)
         ->first();
 
     if (!$botData) {
         Logger::error('No active bot found');
+        // Revert status
+        DB::table('media_files')
+            ->where('id', $mediaToPost->id)
+            ->update(['status' => 'scheduled']);
         exit(1);
     }
 
@@ -70,22 +83,12 @@ try {
         ]);
 
         // Update media status to posted
-        try {
-            \Illuminate\Database\Capsule\Manager::table('media_files')
-                ->where('id', $mediaToPost->id)
-                ->update([
-                    'status' => 'posted',
-                    'posted_at' => $now
-                ]);
-        } catch (Exception $updateException) {
-            Logger::critical('Media posted but status update failed - potential duplicate on retry', [
-                'media_id' => $mediaToPost->id,
-                'channel' => $publicChannel,
-                'update_error' => $updateException->getMessage()
+        DB::table('media_files')
+            ->where('id', $mediaToPost->id)
+            ->update([
+                'status' => 'posted',
+                'posted_at' => $now
             ]);
-            // Post succeeded, but update failed - exit with error to avoid retry
-            exit(1);
-        }
 
         Logger::info('Media posted successfully', [
             'media_id' => $mediaToPost->id,
@@ -97,12 +100,15 @@ try {
             'channel' => $publicChannel,
             'error' => $e->getMessage()
         ]);
-        // Leave status as 'scheduled' for retry
+        // Revert status to 'scheduled' for retry
+        DB::table('media_files')
+            ->where('id', $mediaToPost->id)
+            ->update(['status' => 'scheduled']);
         exit(1);
     }
 
     // Notify creator
-    $creator = \Illuminate\Database\Capsule\Manager::table('users')
+    $creator = DB::table('users')
         ->where('id', $mediaToPost->creator_id)
         ->value('telegram_id');
 
