@@ -47,7 +47,7 @@ try {
     }
 
     // Get moderator bot (first active bot or specific moderator bot)
-    $moderatorBotId = \Illuminate\Database\Capsule\Manager::table('bots')
+    $moderatorBotId = DB::table('bots')
         ->where('is_active', 1)
         ->orderBy('id', 'asc')
         ->value('id') ?: 1;

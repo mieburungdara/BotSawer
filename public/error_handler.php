@@ -94,7 +94,7 @@ try {
     require_once __DIR__ . '/../vendor/autoload.php';
     BotSawer\Database::init();
 
-    $maintenanceMode = \Illuminate\Database\Capsule\Manager::table('settings')
+    $maintenanceMode = DB::table('settings')
         ->where('key', 'maintenance_mode')
         ->value('value');
 

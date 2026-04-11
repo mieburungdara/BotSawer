@@ -7,6 +7,7 @@ namespace BotSawer;
 use Telegram\Bot\Api;
 use Telegram\Bot\Objects\Update;
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 class ModeratorBot
 {
@@ -20,7 +21,7 @@ class ModeratorBot
     private function initializeBot(int $botId): void
     {
         try {
-            $bot = \Illuminate\Database\Capsule\Manager::table('bots')
+            $bot = DB::table('bots')
                 ->where('id', $botId)
                 ->where('is_active', 1)
                 ->first();
@@ -164,7 +165,7 @@ class ModeratorBot
     private function addAdmin(int $chatId, int $telegramId, string $role, int $addedBy): void
     {
         // Check if user exists in database
-        $user = \Illuminate\Database\Capsule\Manager::table('users')
+        $user = DB::table('users')
             ->where('telegram_id', $telegramId)
             ->first();
 

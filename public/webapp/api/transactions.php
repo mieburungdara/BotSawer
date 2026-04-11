@@ -46,7 +46,7 @@ try {
     $userId = $input['userId'];
 
     // Get recent transactions
-    $transactions = \Illuminate\Database\Capsule\Manager::table('transactions')
+    $transactions = DB::table('transactions')
         ->where('user_id', $userId)
         ->orderBy('created_at', 'desc')
         ->limit(20)

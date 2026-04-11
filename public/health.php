@@ -42,17 +42,17 @@ try {
         'version' => '1.0.0',
         'metrics' => [
             'database' => 'connected',
-            'total_users' => \Illuminate\Database\Capsule\Manager::table('users')->count(),
-            'total_creators' => \Illuminate\Database\Capsule\Manager::table('creators')->where('is_verified', 1)->count(),
-            'total_media' => \Illuminate\Database\Capsule\Manager::table('media_files')->count(),
-            'total_transactions' => \Illuminate\Database\Capsule\Manager::table('transactions')->count(),
-            'pending_withdrawals' => \Illuminate\Database\Capsule\Manager::table('withdrawals')->where('status', 'pending')->count(),
-            'pending_topups' => \Illuminate\Database\Capsule\Manager::table('payment_proofs')->where('status', 'pending')->count(),
+            'total_users' => DB::table('users')->count(),
+            'total_creators' => DB::table('creators')->where('is_verified', 1)->count(),
+            'total_media' => DB::table('media_files')->count(),
+            'total_transactions' => DB::table('transactions')->count(),
+            'pending_withdrawals' => DB::table('withdrawals')->where('status', 'pending')->count(),
+            'pending_topups' => DB::table('payment_proofs')->where('status', 'pending')->count(),
         ]
     ];
 
     // Check maintenance mode
-    $maintenanceMode = \Illuminate\Database\Capsule\Manager::table('settings')
+    $maintenanceMode = DB::table('settings')
         ->where('key', 'maintenance_mode')
         ->value('value');
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BotSawer;
 
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -48,13 +49,13 @@ try {
     }
 
     // Check if user exists
-    $user = \Illuminate\Database\Capsule\Manager::table('users')
+    $user = DB::table('users')
         ->where('telegram_id', $userData['id'])
         ->first();
 
     if (!$user) {
         // Create user if doesn't exist
-        $userId = \Illuminate\Database\Capsule\Manager::table('users')->insertGetId([
+        $userId = DB::table('users')->insertGetId([
             'telegram_id' => $userData['id'],
             'first_name' => $userData['first_name'] ?? null,
             'last_name' => $userData['last_name'] ?? null,
@@ -76,7 +77,7 @@ try {
     }
 
     // Check if creator
-    $isCreator = (bool) \Illuminate\Database\Capsule\Manager::table('creators')
+    $isCreator = (bool) DB::table('creators')
         ->where('user_id', $user->id)
         ->where('is_verified', 1)
         ->exists();

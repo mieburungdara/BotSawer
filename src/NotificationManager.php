@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BotSawer;
 
 use Telegram\Bot\Api;
+use Illuminate\Database\Capsule\Manager as DB;
 
 class NotificationManager
 {
@@ -14,7 +15,7 @@ class NotificationManager
     {
         if (self::$telegram === null) {
             // Get first active bot for notifications
-            $bot = \Illuminate\Database\Capsule\Manager::table('bots')
+            $bot = DB::table('bots')
                 ->where('is_active', 1)
                 ->first();
 
@@ -30,7 +31,7 @@ class NotificationManager
             self::init();
             if (!self::$telegram) return false;
 
-            $user = \Illuminate\Database\Capsule\Manager::table('users')
+            $user = DB::table('users')
                 ->where('id', $userId)
                 ->first();
 
@@ -105,7 +106,7 @@ class NotificationManager
     public static function notifyAdminPendingAction(string $type, int $count): void
     {
         // Get all active admin users
-        $admins = \Illuminate\Database\Capsule\Manager::table('admins')
+        $admins = DB::table('admins')
             ->join('users', 'admins.telegram_id', '=', 'users.telegram_id')
             ->where('admins.is_active', 1)
             ->select('users.id', 'admins.telegram_id')
@@ -140,7 +141,7 @@ class NotificationManager
 
     public static function broadcastToAll(string $message, array $excludeUserIds = []): int
     {
-        $users = \Illuminate\Database\Capsule\Manager::table('users')
+        $users = DB::table('users')
             ->whereNotIn('id', $excludeUserIds)
             ->where('is_banned', 0)
             ->get();
