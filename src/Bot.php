@@ -688,7 +688,7 @@ class Bot
                     Wallet::addBalance($media->creator_id, $amount, 'Donasi dari sawer');
 
                     // Additional transaction record for media-specific tracking
-                    \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
+                    DB::table('transactions')->insert([
                         'user_id' => $media->creator_id,
                         'media_id' => $mediaId,
                         'from_user_id' => $userId,
@@ -761,7 +761,7 @@ class Bot
             ->first();
 
         if (!$existing) {
-            \Illuminate\Database\Capsule\Manager::table('users')->insert([
+            DB::table('users')->insert([
                 'telegram_id' => $telegramId,
                 'first_name' => $user->getFirstName(),
                 'last_name' => $user->getLastName(),

@@ -114,7 +114,7 @@ try {
                     ->increment('balance', $amount);
 
                 // Record transaction
-                \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
+                DB::table('transactions')->insert([
                     'user_id' => $input['targetUserId'],
                     'type' => 'admin_adjustment',
                     'amount' => abs($amount),
@@ -502,7 +502,7 @@ try {
                     // Note: Balance already deducted when withdrawal requested
 
                     // Record transaction
-                    \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
+                    DB::table('transactions')->insert([
                         'user_id' => $withdrawal->user_id,
                         'type' => 'withdraw',
                         'amount' => $withdrawal->amount,

@@ -32,10 +32,16 @@ try {
 
     Logger::info('Found media to post', ['media_id' => $mediaToPost->id]);
 
-    // Update status to 'posting' to prevent duplicate processing
-    DB::table('media_files')
+    // Update status to 'posting' atomically to prevent race conditions
+    $updated = DB::table('media_files')
         ->where('id', $mediaToPost->id)
+        ->where('status', 'scheduled')
         ->update(['status' => 'posting']);
+
+    if ($updated === 0) {
+        Logger::info('Media already being processed by another instance', ['media_id' => $mediaToPost->id]);
+        exit(0);
+    }
 
     // Get public channel from settings
     $publicChannel = DB::table('settings')
