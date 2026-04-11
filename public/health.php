@@ -19,7 +19,14 @@ try {
     Database::init();
 
     // Simple auth check for health endpoint
-    $authKey = $_GET['key'] ?? '';
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? '';
+    if (strpos($authHeader, 'Bearer ') === 0) {
+        $authKey = substr($authHeader, 7);
+    } elseif (strpos($authHeader, 'Token ') === 0) {
+        $authKey = substr($authHeader, 6);
+    } else {
+        $authKey = $_GET['key'] ?? ''; // Fallback for backward compatibility
+    }
     if ($authKey !== 'health_check_2026') {
         http_response_code(401);
         echo json_encode([

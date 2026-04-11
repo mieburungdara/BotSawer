@@ -198,9 +198,9 @@ function validateAndFormatBankAccount(string $bankAccount): string
         throw new Exception('Nomor rekening harus berupa angka 10-20 digit');
     }
 
-    // Validate account holder name (must be alphabetic, 3-50 chars)
-    if (!preg_match('/^[a-zA-Z\s]{3,50}$/', $accountHolder)) {
-        throw new Exception('Nama pemilik rekening harus berupa huruf 3-50 karakter');
+    // Validate account holder name (must be alphabetic with common punctuation, 3-50 chars)
+    if (!preg_match('/^[a-zA-Z\s\'\-\.]{3,50}$/', $accountHolder)) {
+        throw new Exception('Nama pemilik rekening harus berupa huruf, spasi, apostrof, strip, atau titik (3-50 karakter)');
     }
 
     // Return formatted bank account

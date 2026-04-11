@@ -940,16 +940,11 @@ class Bot
 
             if ($media) {
                 Database::transaction(function () use ($userId, $media, $amount, $mediaId) {
-                    // Update balances directly
-                    \Illuminate\Database\Capsule\Manager::table('wallets')
-                        ->where('user_id', $userId)
-                        ->decrement('balance', $amount);
+                    // Use Wallet methods for consistent balance management and logging
+                    Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
+                    Wallet::addBalance($media->creator_id, $amount, 'Donasi dari sawer');
 
-                    \Illuminate\Database\Capsule\Manager::table('wallets')
-                        ->where('user_id', $media->creator_id)
-                        ->increment('balance', $amount);
-
-                    // Record transaction
+                    // Additional transaction record for media-specific tracking
                     \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
                         'user_id' => $media->creator_id,
                         'media_id' => $mediaId,
