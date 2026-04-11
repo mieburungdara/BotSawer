@@ -18,7 +18,8 @@ session_start();
 
 // Rate limiting
 $endpoint = basename(__FILE__);
-$userId = $input['userId'] ?? $_SERVER['REMOTE_ADDR'];
+// Note: $input not defined yet, use REMOTE_ADDR for rate limiting
+$userId = $_SERVER['REMOTE_ADDR'];
 
 if (!RateLimiter::check($endpoint, $userId)) {
     http_response_code(429);
