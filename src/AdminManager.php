@@ -100,7 +100,8 @@ class AdminManager
                 'full_name' => $fullName,
                 'role' => $role,
                 'created_by' => $createdBy,
-                'is_active' => 1
+                'is_active' => 1,
+                'created_at' => \Carbon\Carbon::now()
             ]);
 
             AuditLogger::logAdminAction('add_admin', 'admin', $telegramId, [], [

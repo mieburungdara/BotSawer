@@ -29,7 +29,8 @@ class Creator
                 'display_name' => $displayName,
                 'bio' => $bio,
                 'bank_account' => $bankAccount,
-                'is_verified' => 0
+                'is_verified' => 0,
+                'created_at' => \Carbon\Carbon::now()
             ]);
 
             Logger::info('Creator registered', ['user_id' => $userId, 'display_name' => $displayName]);
@@ -148,6 +149,7 @@ class Creator
         return DB::table('creators')
             ->join('users', 'creators.user_id', '=', 'users.id')
             ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username')
+            ->orderBy('creators.created_at', 'desc')
             ->limit($limit)
             ->offset($offset)
             ->get()

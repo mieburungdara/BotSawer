@@ -61,7 +61,8 @@ try {
             'last_name' => $userData['last_name'] ?? null,
             'username' => $userData['username'] ?? null,
             'language_code' => $userData['language_code'] ?? 'id',
-            'is_banned' => 0
+            'is_banned' => 0,
+            'created_at' => \Carbon\Carbon::now()
         ]);
         $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 0];
     }
