@@ -841,6 +841,13 @@ class Bot
     private function handleSawerCallback(string $data, int $chatId, int $userId): void
     {
         $parts = explode('_', $data);
+        if (count($parts) < 3) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Callback data tidak valid.'
+            ]);
+            return;
+        }
         $amount = (int)$parts[1];
         $mediaId = (int)$parts[2];
 

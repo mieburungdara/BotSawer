@@ -491,11 +491,15 @@ try {
                         ->update([
                             'status' => 'approved',
                             'approved_by' => $userId,
-                            
+
                         ]);
 
-                    // Refund balance to user
-                    Wallet::addBalance($withdrawal->user_id, $withdrawal->amount, 'Refund withdrawal rejected');
+                    // Update transaction status
+                    \Illuminate\Database\Capsule\Manager::table('transactions')
+                        ->where('id', $withdrawal->transaction_id)
+                        ->update(['status' => 'success']);
+
+                    // Note: Balance already deducted when withdrawal requested
 
                     // Record transaction
                     \Illuminate\Database\Capsule\Manager::table('transactions')->insert([
