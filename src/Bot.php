@@ -845,6 +845,14 @@ class Bot
         $amount = (int)$parts[1];
         $mediaId = (int)$parts[2];
 
+        if ($amount <= 0) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Jumlah donasi tidak valid.'
+            ]);
+            return;
+        }
+
         try {
             $balance = Wallet::getBalance($userId);
             if ($balance < $amount) {

@@ -49,6 +49,11 @@ try {
     if ($action === 'withdraw') {
         // Handle withdrawal request
         $amount = $input['amount'] ?? 0;
+
+        if ($amount <= 0) {
+            throw new Exception('Jumlah penarikan harus lebih besar dari 0');
+        }
+
         $bankName = trim($input['bankName'] ?? '');
         $bankAccount = trim($input['bankAccount'] ?? '');
         $accountName = trim($input['accountName'] ?? '');
