@@ -79,7 +79,7 @@ class ModeratorBot
         AdminManager::updateLastLogin($userId);
 
         // Log admin access to moderator bot
-        AuditLogger::logAdminAction('access_moderator_bot', [
+        AuditLogger::logAdminAction('access_moderator_bot', 'admin', $userId, [], [
             'message_text' => $text,
             'has_media' => $message->has('photo') || $message->has('video') || $message->has('document')
         ], $userId);

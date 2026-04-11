@@ -277,25 +277,6 @@ class Creator
         ];
     }
 
-    public static function notifyStreakMilestone(int $creatorId, int $newStreak): void
-    {
-        $user = DB::table('users')->where('id', $creatorId)->first();
-        if (!$user || !$user->telegram_id) return;
 
-        $messages = [
-            3 => "🎉 Selamat! Kamu telah mencapai streak 3 hari! Terus jaga semangatmu! 🔥",
-            7 => "🏆 Wow! 7 hari streak! Kamu luar biasa! Teruskan! ⭐",
-            14 => "👑 Master streak 14 hari! Kamu adalah inspirasi! 💎",
-            30 => "🌟 LEGENDA! 30 hari streak! Kamu tak terhentikan! 🏅"
-        ];
-
-        if (isset($messages[$newStreak])) {
-            // In real implementation, send via bot
-            Logger::info('Streak milestone reached', [
-                'creator_id' => $creatorId,
-                'streak' => $newStreak,
-                'message' => $messages[$newStreak]
-            ]);
-        }
     }
 }

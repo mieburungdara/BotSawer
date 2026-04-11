@@ -103,7 +103,7 @@ class AdminManager
                 'is_active' => 1
             ]);
 
-            AuditLogger::logAdminAction('add_admin', [
+            AuditLogger::logAdminAction('add_admin', 'admin', $telegramId, [], [
                 'new_admin_telegram_id' => $telegramId,
                 'new_admin_username' => $username,
                 'new_admin_full_name' => $fullName,
@@ -149,11 +149,11 @@ class AdminManager
             // Get admin info for logging
             $targetAdmin = DB::table('admins')->where('id', $adminId)->first();
             if ($targetAdmin) {
-                AuditLogger::logAdminAction('update_admin_role', [
-                    'target_admin_id' => $adminId,
+                AuditLogger::logAdminAction('update_admin_role', 'admin', $adminId, [
+                    'old_role' => $targetAdmin->role
+                ], [
                     'target_admin_telegram_id' => $targetAdmin->telegram_id,
                     'target_admin_username' => $targetAdmin->telegram_username,
-                    'old_role' => $targetAdmin->role,
                     'new_role' => $newRole,
                     'updated_by_admin_id' => $updatedBy
                 ], $updatedBy);
@@ -186,8 +186,7 @@ class AdminManager
             // Get admin info for logging
             $targetAdmin = DB::table('admins')->where('id', $adminId)->first();
             if ($targetAdmin) {
-                AuditLogger::logAdminAction('deactivate_admin', [
-                    'target_admin_id' => $adminId,
+                AuditLogger::logAdminAction('deactivate_admin', 'admin', $adminId, [], [
                     'target_admin_telegram_id' => $targetAdmin->telegram_id,
                     'target_admin_username' => $targetAdmin->telegram_username,
                     'target_admin_role' => $targetAdmin->role,

@@ -678,7 +678,7 @@ class Bot
             // Check and notify streak milestones
             $streakData = Creator::getStreakData($creator->id);
             $currentStreak = $streakData['current_streak'];
-            Creator::notifyStreakMilestone($creator->id, $currentStreak);
+            $this->notifyStreakMilestone($creator->id, $currentStreak);
 
             // Forward to backup channel
             $this->forwardToBackupChannel($mediaInfo['file_id'], $mediaInfo['type'], $mediaInfo['caption']);
@@ -992,5 +992,36 @@ class Bot
     public function getTelegram(): Api
     {
         return $this->telegram;
+    }
+
+    private function notifyStreakMilestone(int $creatorId, int $newStreak): void
+    {
+        $user = \Illuminate\Database\Capsule\Manager::table('users')->where('id', $creatorId)->first();
+        if (!$user || !$user->telegram_id) return;
+
+        $messages = [
+            3 => "🎉 Selamat! Kamu telah mencapai streak 3 hari! Terus jaga semangatmu! 🔥",
+            7 => "🏆 Wow! 7 hari streak! Kamu luar biasa! Teruskan! ⭐",
+            14 => "👑 Master streak 14 hari! Kamu adalah inspirasi! 💎",
+            30 => "🌟 LEGENDA! 30 hari streak! Kamu tak terhentikan! 🏅"
+        ];
+
+        if (isset($messages[$newStreak])) {
+            try {
+                $this->telegram->sendMessage([
+                    'chat_id' => $user->telegram_id,
+                    'text' => $messages[$newStreak]
+                ]);
+                Logger::info('Streak milestone notification sent', [
+                    'creator_id' => $creatorId,
+                    'streak' => $newStreak
+                ]);
+            } catch (Exception $e) {
+                Logger::error('Failed to send streak notification', [
+                    'creator_id' => $creatorId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
     }
 }
