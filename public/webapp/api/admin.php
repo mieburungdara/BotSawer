@@ -96,8 +96,8 @@ try {
             break;
 
         case 'adjust_balance':
-            if (!isset($input['targetUserId']) || !isset($input['amount']) || !isset($input['description'])) {
-                throw new Exception('Missing parameters');
+            if (!AdminManager::canHandleFinance($user->telegram_id)) {
+                throw new Exception('Access denied: Finance admin required');
             }
 
             if ($input['amount'] == 0) {
@@ -143,7 +143,7 @@ try {
             break;
 
         case 'search_users':
-            if (!AdminManager::canModerate($userId)) {
+            if (!AdminManager::canModerate($user->telegram_id)) {
                 throw new Exception('Access denied: Moderator admin required');
             }
 
@@ -211,7 +211,7 @@ try {
             break;
 
         case 'get_settings':
-            if (!AdminManager::isSuperAdmin($userId)) {
+            if (!AdminManager::isSuperAdmin($user->telegram_id)) {
                 throw new Exception('Access denied: Super admin required');
             }
 
@@ -230,7 +230,7 @@ try {
             break;
 
         case 'get_audit_logs':
-            if (!AdminManager::isSuperAdmin($userId)) {
+            if (!AdminManager::isSuperAdmin($user->telegram_id)) {
                 throw new Exception('Access denied: Super admin required');
             }
 
@@ -287,7 +287,7 @@ try {
             break;
 
         case 'get_bots':
-            if (!AdminManager::isSuperAdmin($userId)) {
+            if (!AdminManager::isSuperAdmin($user->telegram_id)) {
                 throw new Exception('Access denied: Super admin required');
             }
 
@@ -329,6 +329,10 @@ try {
             break;
 
         case 'toggle_bot':
+            if (!AdminManager::isSuperAdmin($user->telegram_id)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
             $botId = (int)($input['bot_id'] ?? 0);
             $active = (bool)($input['active'] ?? false);
 
@@ -371,7 +375,7 @@ try {
             break;
 
         case 'get_pending_payments':
-            if (!AdminManager::canHandleFinance($userId)) {
+            if (!AdminManager::canHandleFinance($user->telegram_id)) {
                 throw new Exception('Access denied: Finance admin required');
             }
 
@@ -458,7 +462,7 @@ try {
             break;
 
         case 'approve_payment':
-            if (!AdminManager::canHandleFinance($userId)) {
+            if (!AdminManager::canHandleFinance($user->telegram_id)) {
                 throw new Exception('Access denied: Finance admin required');
             }
 
@@ -620,7 +624,7 @@ try {
             break;
 
         case 'get_pending_content':
-            if (!AdminManager::canModerate($userId)) {
+            if (!AdminManager::canModerate($user->telegram_id)) {
                 throw new Exception('Access denied: Moderator admin required');
             }
 
