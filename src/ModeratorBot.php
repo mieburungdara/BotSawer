@@ -66,6 +66,10 @@ class ModeratorBot
         $text = $message->getText();
         $userId = $message->getFrom()->getId();
 
+        if (!$text) {
+            return; // Ignore non-text messages
+        }
+
         // Verify admin access
         if (!AdminManager::isAdmin($userId)) {
             $this->telegram->sendMessage([

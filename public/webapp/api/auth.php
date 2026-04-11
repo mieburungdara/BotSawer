@@ -84,7 +84,6 @@ try {
         'success' => true,
         'user' => [
             'id' => $user->id,
-            'telegram_id' => $user->telegram_id,
             'first_name' => $userData['first_name'] ?? '',
             'last_name' => $userData['last_name'] ?? '',
             'username' => $userData['username'] ?? '',
