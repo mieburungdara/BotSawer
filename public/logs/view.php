@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Simple log viewer for AI inspection
 // Access: /logs/view.php
 
-$logFile = __DIR__ . '/errors.log';
+$logFile = __DIR__ . '/../../logs/errors.log';
 
 if (!file_exists($logFile)) {
     http_response_code(404);

@@ -5,13 +5,29 @@ declare(strict_types=1);
 // Error handler for webapp
 function customErrorHandler($errno, $errstr, $errfile, $errline) {
     // Determine error level
-    $errorLevel = match($errno) {
-        E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE => 'critical',
-        E_WARNING, E_CORE_WARNING, E_COMPILE_WARNING => 'warning',
-        E_NOTICE, E_USER_NOTICE => 'notice',
-        E_USER_ERROR, E_RECOVERABLE_ERROR => 'error',
-        default => 'error'
-    };
+    switch ($errno) {
+        case E_ERROR:
+        case E_CORE_ERROR:
+        case E_COMPILE_ERROR:
+        case E_PARSE:
+            $errorLevel = 'critical';
+            break;
+        case E_WARNING:
+        case E_CORE_WARNING:
+        case E_COMPILE_WARNING:
+            $errorLevel = 'warning';
+            break;
+        case E_NOTICE:
+        case E_USER_NOTICE:
+            $errorLevel = 'notice';
+            break;
+        case E_USER_ERROR:
+        case E_RECOVERABLE_ERROR:
+            $errorLevel = 'error';
+            break;
+        default:
+            $errorLevel = 'error';
+    }
 
     // Log the error with context
     \BotSawer\Logger::logError("PHP $errorLevel: $errstr", [
