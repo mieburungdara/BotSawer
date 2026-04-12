@@ -359,12 +359,13 @@ class Bot
 
         // Build inline keyboard
         $keyboard = ['inline_keyboard' => []];
+        $adminCount = 1;
         foreach ($admins as $admin) {
             if ($admin->telegram_username) {
-                $roleText = $admin->role === 'super_admin' ? 'Admin' : 'Finance';
                 $keyboard['inline_keyboard'][] = [
-                    ['text' => "👨‍💼 Contact {$roleText}", 'url' => "https://t.me/{$admin->telegram_username}"]
+                    ['text' => "👨‍💼 Contact Admin {$adminCount}", 'url' => "https://t.me/{$admin->telegram_username}"]
                 ];
+                $adminCount++;
             }
         }
 
