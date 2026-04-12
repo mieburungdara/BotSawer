@@ -71,8 +71,12 @@ try {
             ->where('is_active', 1)
             ->first();
         if ($botData) {
-            $botId = $botData->id;
+            $botId = (int)$botData->id;
         }
+    }
+
+    // Ensure botId is integer
+    $botId = (int)$botId;
     }
 
     // Initialize regular bot
