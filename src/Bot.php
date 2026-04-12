@@ -1232,7 +1232,7 @@ class Bot
         // Implementation for inline queries if needed
     }
 
-    private function ensureUserExists($user): ?int
+    private function ensureUserExists($user): int
     {
         $telegramId = $user->getId();
         $existing = DB::table('users')
@@ -1240,25 +1240,26 @@ class Bot
             ->first();
 
         if (!$existing) {
-            try {
-                $uuid = $this->generateUniqueId();
-                $userId = DB::table('users')->insertGetId([
-                    'uuid' => $uuid,
+            $uuid = $this->generateUniqueId();
+            $userId = DB::table('users')->insertGetId([
+                'uuid' => $uuid,
+                'telegram_id' => $telegramId,
+                'first_name' => $user->getFirstName(),
+                'last_name' => $user->getLastName(),
+                'username' => $user->getUsername(),
+                'language_code' => $user->getLanguageCode() ?? 'id'
+            ]);
+
+            if (!$userId) {
+                Logger::error('Failed to create new user - insertGetId returned null', [
                     'telegram_id' => $telegramId,
-                    'first_name' => $user->getFirstName(),
-                    'last_name' => $user->getLastName(),
-                    'username' => $user->getUsername(),
-                    'language_code' => $user->getLanguageCode() ?? 'id'
+                    'uuid' => $uuid
                 ]);
-                Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
-                return $userId;
-            } catch (Exception $e) {
-                Logger::error('Failed to create new user', [
-                    'telegram_id' => $telegramId,
-                    'error' => $e->getMessage()
-                ]);
-                return null;
+                throw new Exception('Failed to create user account');
             }
+
+            Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
+            return $userId;
         } elseif (!$existing->uuid) {
             // Generate UUID for existing user without UUID
             try {
