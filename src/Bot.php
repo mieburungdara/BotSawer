@@ -75,7 +75,7 @@ class Bot
     {
         $chatId = $message->getChat()->getId();
         $text = $message->getText();
-        $telegramId = $message->getFrom()->getId();
+        $telegramId = (int)$message->getFrom()->getId();
 
         // Ensure user exists and get internal user ID
         $userId = $this->ensureUserExists($message->getFrom());
@@ -499,7 +499,7 @@ class Bot
     {
         try {
             $chatId = $message->getChat()->getId();
-            $telegramId = $message->getFrom()->getId();
+            $telegramId = (int)$message->getFrom()->getId();
 
             // Ensure user exists and get internal ID
             $userId = $this->ensureUserExists($message->getFrom());

@@ -50,7 +50,7 @@ class ModeratorBot
             // Only accept messages from admin
             if ($update->has('message')) {
                 $message = $update->getMessage();
-                $userId = $message->getFrom()->getId();
+                $userId = (int)$message->getFrom()->getId();
 
                 $this->handleAdminMessage($message);
             }
