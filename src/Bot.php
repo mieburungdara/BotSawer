@@ -58,10 +58,10 @@ class Bot
                 $this->handleInlineQuery($update->getInlineQuery());
             }
 
-            // Update last request timestamp
-            DB::table('bots')
-                ->where('id', $this->botId)
-                ->update(['last_request_at' => \Carbon\Carbon::now()]);
+            // Update last request timestamp (optional - comment out if column not exists)
+            // DB::table('bots')
+            //     ->where('id', $this->botId)
+            //     ->update(['last_request_at' => \Carbon\Carbon::now()]);
         } catch (Exception $e) {
             Logger::error('Error handling update', [
                 'update_id' => $update->getUpdateId(),
