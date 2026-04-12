@@ -351,53 +351,38 @@ class Bot
 
     private function handleTopupCommand(int $chatId): void
     {
+        // Send topup instructions
+        $instructions = "💳 TOPUP SALDO\n\n";
+        $instructions .= "Kirim bukti screenshot transfer beserta nominal ke bot ini.\n";
+        $instructions .= "Admin akan memverifikasi dan menambah saldo Anda.\n\n";
+        $instructions .= "💰 Minimal topup: Rp 10.000\n";
+        $instructions .= "🏦 Transfer ke rekening admin";
+
+        $this->telegram->sendMessage([
+            'chat_id' => $chatId,
+            'text' => $instructions
+        ]);
+
+        // Copy QR code message from backup channel
         try {
-            // Get payment info message ID from backup channel
-            $paymentMessageId = DB::table('settings')
-                ->where('key', 'payment_info_message_id')
-                ->value('value');
-
-            $backupChannel = DB::table('settings')
-                ->where('key', 'backup_channel')
-                ->value('value');
-
-            if (!$paymentMessageId || !$backupChannel) {
-                throw new Exception('Payment info message ID or backup channel not configured');
-            }
-
-            // Forward the payment info message from backup channel to user
-            $this->telegram->forwardMessage([
+            $this->telegram->copyMessage([
                 'chat_id' => $chatId,
-                'from_chat_id' => $backupChannel,
-                'message_id' => (int)$paymentMessageId
+                'from_chat_id' => -1003919557471, // Backup channel ID
+                'message_id' => 3, // QR code message ID
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '👨‍💼 Contact Admin', 'url' => 'https://t.me/your_admin_username'] // Replace with actual admin username
+                        ]
+                    ]
+                ])
             ]);
-
-            // Send additional instructions
-            $instructions = "💳 CARA TOPUP SALDO\n\n";
-            $instructions .= "1. Transfer sesuai nominal yang diinginkan\n";
-            $instructions .= "2. Screenshot bukti transfer\n";
-            $instructions .= "3. Kirim screenshot ke bot ini dengan caption berisi nominal\n";
-            $instructions .= "4. Admin akan memverifikasi dan menambah saldo Anda\n\n";
-            $instructions .= "💰 Minimal topup: Rp 10.000";
-
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => $instructions
-            ]);
-
         } catch (Exception $e) {
-            Logger::error('Topup command error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-
-            // Fallback to text-only message
-            $message = "💳 TOPUP SALDO\n\n";
-            $message .= "Kirim bukti screenshot transfer beserta nominal ke bot ini.\n";
-            $message .= "Admin akan memverifikasi dan menambah saldo Anda.\n\n";
-            $message .= "💰 Minimal topup: Rp 10.000\n";
-            $message .= "🏦 Transfer ke rekening admin";
-
+            Logger::error('Failed to copy QR message', ['error' => $e->getMessage()]);
+            // Fallback message
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => $message
+                'text' => 'QR code pembayaran sedang tidak tersedia. Silakan contact admin untuk detail pembayaran.'
             ]);
         }
     }
