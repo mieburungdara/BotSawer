@@ -382,7 +382,7 @@ class Bot
                 'chat_id' => $chatId,
                 'from_chat_id' => -1003919557471, // Backup channel ID
                 'message_id' => 3, // QR code message ID
-                'caption' => "💳 TOPUP SALDO\n\nKirim bukti screenshot transfer beserta nominal ke bot ini.\nAdmin akan memverifikasi dan menambah saldo Anda.\n\n💰 Minimal topup: Rp 10.000\n🏦 Scan QR code untuk detail rekening",
+                'caption' => "💳 TOPUP SALDO\n\nKirim bukti screenshot transfer beserta nominal ke admin.\nAdmin akan memverifikasi dan menambah saldo Anda.\n\n💰 Minimal topup: Rp 10.000",
                 'reply_markup' => json_encode($keyboard)
             ]);
         } catch (Exception $e) {
