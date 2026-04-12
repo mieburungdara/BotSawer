@@ -79,6 +79,14 @@ class Bot
 
         // Ensure user exists and get internal user ID
         $userId = $this->ensureUserExists($message->getFrom());
+        if (!$userId) {
+            Logger::error('Failed to ensure user exists', ['telegram_id' => $telegramId]);
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => 'Terjadi kesalahan saat memproses user. Silakan coba lagi.'
+            ]);
+            return;
+        }
 
         Logger::info('Received message', [
             'chat_id' => $chatId,
