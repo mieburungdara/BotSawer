@@ -75,16 +75,17 @@ class Bot
     {
         $chatId = $message->getChat()->getId();
         $text = $message->getText();
-        $userId = $message->getFrom()->getId();
+        $telegramId = $message->getFrom()->getId();
+
+        // Ensure user exists and get internal user ID
+        $userId = $this->ensureUserExists($message->getFrom());
 
         Logger::info('Received message', [
             'chat_id' => $chatId,
             'user_id' => $userId,
+            'telegram_id' => $telegramId,
             'text' => $text
         ]);
-
-        // Ensure user exists in database
-        $this->ensureUserExists($message->getFrom());
 
         if ($text === '/start') {
             $this->handleStartCommand($chatId, $userId, $text);
@@ -96,6 +97,8 @@ class Bot
             $this->handleHelpCommand($chatId);
         } elseif (strpos($text, '/register') === 0) {
             $this->handleRegisterCommand($chatId, $userId, $text);
+        } elseif ($text === '/privacy' || $text === '/privasi') {
+            $this->handlePrivacyCommand($chatId, $userId);
         } elseif (strpos($text, '/admin') === 0) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
@@ -480,9 +483,11 @@ class Bot
         $message .= "/register [nama] - Daftar sebagai kreator\n";
         $message .= "/saldo - Lihat saldo Anda\n";
         $message .= "/topup - Isi saldo\n";
+        $message .= "/privacy - Ubah pengaturan privasi\n";
         $message .= "/help - Bantuan ini\n\n";
         $message .= "💡 Kirim foto/video untuk upload sebagai kreator\n";
-        $message .= "💸 Klik link di channel untuk melakukan sawer";
+        $message .= "💸 Klik link di channel untuk melakukan sawer\n";
+        $message .= "🔒 /privacy - Kontrol privasi ID Anda (default: private/anonim)";
 
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
@@ -494,7 +499,10 @@ class Bot
     {
         try {
             $chatId = $message->getChat()->getId();
-            $userId = $message->getFrom()->getId();
+            $telegramId = $message->getFrom()->getId();
+
+            // Ensure user exists and get internal ID
+            $userId = $this->ensureUserExists($message->getFrom());
 
             // Check if user is a creator
             $creator = Creator::getProfile($userId);
@@ -1044,9 +1052,11 @@ class Bot
     public function postApprovedContentToChannel(int $mediaId, string $channelId): void
     {
         try {
-            // Get media details
+            // Get media details with creator info including privacy setting
             $media = DB::table('media_files')
-                ->where('id', $mediaId)
+                ->join('users', 'media_files.creator_id', '=', 'users.id')
+                ->where('media_files.id', $mediaId)
+                ->select('media_files.*', 'users.uuid', 'users.is_private')
                 ->first();
 
             if (!$media) {
@@ -1061,9 +1071,23 @@ class Bot
             $botIdentifier = $botData->username ?: "bot{$botData->id}";
             $deeplink = "https://t.me/{$botIdentifier}?start=media_{$mediaId}";
 
-            // Create caption with deeplink
+            // Create caption with deeplink and creator ID based on privacy setting
             $caption = $media->caption ?? 'Konten dari kreator';
-            $caption .= "\n\n💸 Sawer → {$deeplink}";
+
+            if ($media->is_private) {
+                $caption .= "\n\n👤 Creator ID: Anonymous";
+            } elseif ($media->uuid) {
+                $caption .= "\n\n👤 Creator ID: {$media->uuid}";
+            } else {
+                // This should not happen as UUID is generated on user login
+                Logger::warning('Creator without UUID found during posting', [
+                    'creator_id' => $media->creator_id,
+                    'media_id' => $mediaId
+                ]);
+                $caption .= "\n\n👤 Creator ID: Anonymous"; // Default to anonymous
+            }
+
+            $caption .= "\n💸 Sawer → {$deeplink}";
 
             // Post to channel (caption only, no media)
             $this->telegram->sendMessage([
@@ -1082,7 +1106,9 @@ class Bot
 
             Logger::info('Content manually posted to channel', [
                 'media_id' => $mediaId,
-                'channel' => $channelId
+                'channel' => $channelId,
+                'creator_uuid' => $media->uuid,
+                'is_private' => $media->is_private
             ]);
 
         } catch (Exception $e) {
@@ -1198,15 +1224,104 @@ class Bot
             ->first();
 
         if (!$existing) {
-            DB::table('users')->insert([
-                'telegram_id' => $telegramId,
-                'first_name' => $user->getFirstName(),
-                'last_name' => $user->getLastName(),
-                'username' => $user->getUsername(),
-                'language_code' => $user->getLanguageCode() ?? 'id'
-            ]);
-            Logger::info('New user registered', ['telegram_id' => $telegramId]);
+            try {
+                $uuid = $this->generateUniqueId();
+                DB::table('users')->insert([
+                    'uuid' => $uuid,
+                    'telegram_id' => $telegramId,
+                    'first_name' => $user->getFirstName(),
+                    'last_name' => $user->getLastName(),
+                    'username' => $user->getUsername(),
+                    'language_code' => $user->getLanguageCode() ?? 'id'
+                ]);
+                Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid]);
+            } catch (Exception $e) {
+                Logger::error('Failed to create new user', [
+                    'telegram_id' => $telegramId,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e; // Re-throw to prevent further processing
+            }
+        } elseif (!$existing->uuid) {
+            // Generate UUID for existing user without UUID
+            try {
+                $newUuid = $this->generateUniqueId();
+                $updated = DB::table('users')
+                    ->where('telegram_id', $telegramId)
+                    ->whereNull('uuid')
+                    ->update(['uuid' => $newUuid]);
+
+                if ($updated > 0) {
+                    Logger::info('Generated UUID for existing user', [
+                        'user_id' => $existing->id,
+                        'telegram_id' => $telegramId,
+                        'uuid' => $newUuid
+                    ]);
+                } else {
+                    Logger::warning('Failed to update UUID for existing user (possibly already updated)', [
+                        'user_id' => $existing->id,
+                        'telegram_id' => $telegramId
+                    ]);
+                }
+            } catch (Exception $e) {
+                Logger::error('Failed to generate UUID for existing user', [
+                    'telegram_id' => $telegramId,
+                    'error' => $e->getMessage()
+                ]);
+                // Don't throw here - user can still function without UUID for now
+            }
         }
+    }
+
+    private function generateUniqueId(): string
+    {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        $length = mt_rand(6, 8); // Start with random length between 6-8 for better distribution
+        $maxLength = 20; // Safety limit
+        $attempts = 0;
+        $maxAttempts = 1000; // Prevent infinite loop
+
+        do {
+            $id = '';
+            for ($i = 0; $i < $length; $i++) {
+                $id .= $chars[mt_rand(0, strlen($chars) - 1)];
+            }
+
+            // Check if this ID is already used
+            try {
+                $exists = DB::table('users')->where('uuid', $id)->exists();
+            } catch (Exception $e) {
+                Logger::error('Database error during UUID uniqueness check', [
+                    'error' => $e->getMessage(),
+                    'uuid_candidate' => $id
+                ]);
+                throw new Exception('Database error during UUID generation');
+            }
+
+            if ($exists) {
+                $length = min($length + 1, $maxLength); // Increase length if not unique
+            }
+
+            $attempts++;
+            if ($attempts >= $maxAttempts) {
+                Logger::error('Failed to generate unique ID after maximum attempts', [
+                    'max_attempts' => $maxAttempts,
+                    'final_length' => $length
+                ]);
+                throw new Exception('Unable to generate unique ID after maximum attempts');
+            }
+        } while ($exists);
+
+        // Final validation
+        if (empty($id) || strlen($id) < 6 || strlen($id) > 20) {
+            Logger::error('Generated invalid UUID', [
+                'uuid' => $id,
+                'length' => strlen($id)
+            ]);
+            throw new Exception('Generated UUID is invalid');
+        }
+
+        return $id;
     }
 
     private function isPaymentProof($message): bool
@@ -1225,7 +1340,7 @@ class Bot
         // Check if user is a verified creator and has streak >= 1
         $creator = Creator::getProfile($userId);
         if ($creator && $creator->is_verified == 1) {
-            $streakData = Creator::getStreakData($userId);
+            $streakData = Creator::getStreakData($creator->id);
             if ($streakData['current_streak'] >= 1) {
                 $message .= "🔥 Streak Anda: {$streakData['current_streak']} hari ({$streakData['streak_badge']})\n";
                 $message .= "Terus jaga semangat publishing konten!\n\n";
@@ -1238,6 +1353,91 @@ class Bot
             'chat_id' => $chatId,
             'text' => $message
         ]);
+    }
+
+    private function handlePrivacyCommand(int $chatId, int $userId): void
+    {
+        try {
+            $user = DB::table('users')->where('id', $userId)->first();
+            if (!$user) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => '❌ User tidak ditemukan.'
+                ]);
+                return;
+            }
+
+            $newPrivacy = $user->is_private ? 0 : 1;
+
+            $generatedUuid = null;
+
+            // If switching to public mode and user doesn't have UUID, generate one
+            if (!$newPrivacy && !$user->uuid) {
+                try {
+                    $generatedUuid = $this->generateUniqueId();
+                    DB::table('users')
+                        ->where('id', $userId)
+                        ->update([
+                            'uuid' => $generatedUuid,
+                            'is_private' => $newPrivacy
+                        ]);
+                    Logger::info('Generated UUID when switching to public mode', [
+                        'user_id' => $userId,
+                        'uuid' => $generatedUuid
+                    ]);
+                } catch (Exception $e) {
+                    Logger::error('Failed to generate UUID when switching to public mode', [
+                        'user_id' => $userId,
+                        'error' => $e->getMessage()
+                    ]);
+                    $this->telegram->sendMessage([
+                        'chat_id' => $chatId,
+                        'text' => '❌ Gagal mengubah pengaturan privasi. Silakan coba lagi.'
+                    ]);
+                    return;
+                }
+            } else {
+                DB::table('users')
+                    ->where('id', $userId)
+                    ->update(['is_private' => $newPrivacy]);
+            }
+
+            $statusText = $newPrivacy ? '🔒 Privat' : '🌐 Publik';
+            $message = "✅ Pengaturan privasi berhasil diubah!\n\n";
+            $message .= "Status: {$statusText}\n\n";
+
+            if ($newPrivacy) {
+                $message .= "📝 Sekarang ID Anda akan tampil sebagai 'Anonymous' di postingan publik.\n";
+                $message .= "🔒 Mode privasi aktif - ID Anda tersembunyi dari publik.\n";
+            } else {
+                $userUuid = $user->uuid ?? $generatedUuid ?? 'Unknown';
+                $message .= "📝 Sekarang ID unik Anda ({$userUuid}) akan tampil di postingan publik.\n";
+                $message .= "🌐 Mode publik aktif - ID unik Anda terlihat oleh semua orang.\n";
+            }
+
+            $message .= "💡 Gunakan /privacy lagi untuk mengubah pengaturan.";
+
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => $message
+            ]);
+
+            Logger::info('User privacy setting changed', [
+                'user_id' => $userId,
+                'is_private' => $newPrivacy
+            ]);
+
+        } catch (Exception $e) {
+            Logger::error('Privacy command failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Terjadi kesalahan saat mengubah pengaturan privasi.'
+            ]);
+        }
     }
 
     private function handleUnknownCommand(int $chatId): void

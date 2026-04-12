@@ -12,6 +12,7 @@ SET time_zone = "+07:00";
 -- -----------------------------------------------------
 CREATE TABLE `users` (
   `id` BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+  `uuid` VARCHAR(20) UNIQUE,
   `telegram_id` BIGINT UNSIGNED NOT NULL UNIQUE KEY,
   `first_name` VARCHAR(255) NULL,
   `last_name` VARCHAR(255) NULL,
@@ -19,8 +20,10 @@ CREATE TABLE `users` (
   `language_code` VARCHAR(10) DEFAULT 'id',
   `is_creator` TINYINT(1) DEFAULT 0,
   `is_banned` TINYINT(1) DEFAULT 0,
+  `is_private` TINYINT(1) DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_uuid` (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------

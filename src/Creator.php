@@ -87,7 +87,11 @@ class Creator
 
     public static function getProfile(int $userId): ?object
     {
-        return DB::table('creators')->where('user_id', $userId)->first();
+        return DB::table('creators')
+            ->join('users', 'creators.user_id', '=', 'users.id')
+            ->where('creators.user_id', $userId)
+            ->select('creators.*', 'users.uuid', 'users.is_private')
+            ->first();
     }
 
     public static function getById(int $creatorId): ?object
