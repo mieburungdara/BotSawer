@@ -1219,6 +1219,13 @@ class Bot
     private function ensureUserExists($user): int
     {
         $telegramId = $user->getId();
+
+        // Skip invalid negative telegram_id (for channels/groups)
+        if ($telegramId < 0) {
+            Logger::warning('Skipping user creation for negative telegram_id', ['telegram_id' => $telegramId]);
+            throw new Exception('Invalid user ID');
+        }
+
         $existing = DB::table('users')
             ->where('telegram_id', $telegramId)
             ->first();
