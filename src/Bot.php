@@ -351,28 +351,25 @@ class Bot
 
     private function handleTopupCommand(int $chatId): void
     {
-        // Send topup instructions
-        $instructions = "💳 TOPUP SALDO\n\n";
-        $instructions .= "Kirim bukti screenshot transfer beserta nominal ke bot ini.\n";
-        $instructions .= "Admin akan memverifikasi dan menambah saldo Anda.\n\n";
-        $instructions .= "💰 Minimal topup: Rp 10.000\n";
-        $instructions .= "🏦 Transfer ke rekening admin";
+        // Get admin username from database
+        $adminUsername = DB::table('admins')
+            ->where('is_active', 1)
+            ->where('role', 'super_admin')
+            ->value('telegram_username');
 
-        $this->telegram->sendMessage([
-            'chat_id' => $chatId,
-            'text' => $instructions
-        ]);
+        $adminUrl = $adminUsername ? "https://t.me/{$adminUsername}" : "https://t.me/your_admin_username"; // Fallback
 
-        // Copy QR code message from backup channel
+        // Copy QR code message from backup channel with updated caption
         try {
             $this->telegram->copyMessage([
                 'chat_id' => $chatId,
                 'from_chat_id' => -1003919557471, // Backup channel ID
                 'message_id' => 3, // QR code message ID
+                'caption' => "💳 TOPUP SALDO\n\nKirim bukti screenshot transfer beserta nominal ke bot ini.\nAdmin akan memverifikasi dan menambah saldo Anda.\n\n💰 Minimal topup: Rp 10.000\n🏦 Scan QR code untuk detail rekening",
                 'reply_markup' => json_encode([
                     'inline_keyboard' => [
                         [
-                            ['text' => '👨‍💼 Contact Admin', 'url' => 'https://t.me/your_admin_username'] // Replace with actual admin username
+                            ['text' => '👨‍💼 Contact Admin', 'url' => $adminUrl]
                         ]
                     ]
                 ])
@@ -382,7 +379,14 @@ class Bot
             // Fallback message
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => 'QR code pembayaran sedang tidak tersedia. Silakan contact admin untuk detail pembayaran.'
+                'text' => 'QR code pembayaran sedang tidak tersedia. Silakan contact admin untuk detail pembayaran.',
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '👨‍💼 Contact Admin', 'url' => $adminUrl]
+                        ]
+                    ]
+                ])
             ]);
         }
     }
