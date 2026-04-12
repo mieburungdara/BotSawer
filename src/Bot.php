@@ -362,8 +362,9 @@ class Bot
         $adminCount = 1;
         foreach ($admins as $admin) {
             if ($admin->telegram_username) {
+                $username = ltrim($admin->telegram_username, '@'); // Remove @ prefix if exists
                 $keyboard['inline_keyboard'][] = [
-                    ['text' => "👨‍💼 Contact Admin {$adminCount}", 'url' => "https://t.me/{$admin->telegram_username}"]
+                    ['text' => "👨‍💼 Contact Admin {$adminCount}", 'url' => "https://t.me/{$username}"]
                 ];
                 $adminCount++;
             }
