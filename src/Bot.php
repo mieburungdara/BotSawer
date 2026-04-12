@@ -351,13 +351,29 @@ class Bot
 
     private function handleTopupCommand(int $chatId): void
     {
-        // Get admin username from database
-        $adminUsername = DB::table('admins')
+        // Get admin and finance usernames from database
+        $admins = DB::table('admins')
             ->where('is_active', 1)
-            ->where('role', 'super_admin')
-            ->value('telegram_username');
+            ->whereIn('role', ['super_admin', 'finance'])
+            ->get(['telegram_username', 'role']);
 
-        $adminUrl = $adminUsername ? "https://t.me/{$adminUsername}" : "https://t.me/your_admin_username"; // Fallback
+        // Build inline keyboard
+        $keyboard = ['inline_keyboard' => []];
+        foreach ($admins as $admin) {
+            if ($admin->telegram_username) {
+                $roleText = $admin->role === 'super_admin' ? 'Admin' : 'Finance';
+                $keyboard['inline_keyboard'][] = [
+                    ['text' => "👨‍💼 Contact {$roleText}", 'url' => "https://t.me/{$admin->telegram_username}"]
+                ];
+            }
+        }
+
+        // If no admins found, add fallback
+        if (empty($keyboard['inline_keyboard'])) {
+            $keyboard['inline_keyboard'][] = [
+                ['text' => '👨‍💼 Contact Admin', 'url' => 'https://t.me/fernathan']
+            ];
+        }
 
         // Copy QR code message from backup channel with updated caption
         try {
@@ -366,13 +382,7 @@ class Bot
                 'from_chat_id' => -1003919557471, // Backup channel ID
                 'message_id' => 3, // QR code message ID
                 'caption' => "💳 TOPUP SALDO\n\nKirim bukti screenshot transfer beserta nominal ke bot ini.\nAdmin akan memverifikasi dan menambah saldo Anda.\n\n💰 Minimal topup: Rp 10.000\n🏦 Scan QR code untuk detail rekening",
-                'reply_markup' => json_encode([
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '👨‍💼 Contact Admin', 'url' => $adminUrl]
-                        ]
-                    ]
-                ])
+                'reply_markup' => json_encode($keyboard)
             ]);
         } catch (Exception $e) {
             Logger::error('Failed to copy QR message', ['error' => $e->getMessage()]);
@@ -380,13 +390,7 @@ class Bot
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'QR code pembayaran sedang tidak tersedia. Silakan contact admin untuk detail pembayaran.',
-                'reply_markup' => json_encode([
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '👨‍💼 Contact Admin', 'url' => $adminUrl]
-                        ]
-                    ]
-                ])
+                'reply_markup' => json_encode($keyboard)
             ]);
         }
     }
