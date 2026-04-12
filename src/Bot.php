@@ -541,7 +541,7 @@ class Bot
             $mediaId = $this->saveMediaToDatabase($this->botId, $creator->id, $userId, $mediaInfo);
 
             // Check and notify streak milestones
-            $streakData = Creator::getStreakData($creator->id);
+            $streakData = Creator::getStreakData((int)$creator->id);
             $currentStreak = $streakData['current_streak'];
             $this->notifyStreakMilestone($creator->id, $currentStreak);
 
@@ -1407,7 +1407,7 @@ class Bot
         // Show streak for all users (auto-creators)
         $creator = Creator::getProfile($userId);
         if ($creator) {
-            $streakData = Creator::getStreakData($creator->id);
+            $streakData = Creator::getStreakData((int)$creator->id);
             if ($streakData['current_streak'] >= 1) {
                 $message .= "🔥 Streak Anda: {$streakData['current_streak']} hari ({$streakData['streak_badge']})\n";
                 $message .= "Terus jaga semangat publishing konten!\n\n";
