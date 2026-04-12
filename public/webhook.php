@@ -77,7 +77,6 @@ try {
 
     // Ensure botId is integer
     $botId = (int)$botId;
-    }
 
     // Initialize regular bot
     $bot = new Bot($botId);
