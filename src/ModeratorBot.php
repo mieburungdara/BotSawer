@@ -35,7 +35,8 @@ class ModeratorBot
         } catch (Exception $e) {
             Logger::error('Failed to initialize moderator bot', [
                 'bot_id' => $botId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             throw $e;
         }

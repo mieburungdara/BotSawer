@@ -38,7 +38,8 @@ class Bot
         } catch (Exception $e) {
             Logger::error('Failed to initialize bot', [
                 'bot_id' => $this->botId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             throw $e;
         }
@@ -161,7 +162,8 @@ class Bot
                 'chat_id' => $chatId,
                 'user_id' => $userId,
                 'media_id' => $mediaId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
@@ -224,7 +226,7 @@ class Bot
                 'text' => $message
             ]);
         } catch (Exception $e) {
-            Logger::error('Error getting balance', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            Logger::error('Error getting balance', ['user_id' => $userId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'Terjadi kesalahan saat mengambil data saldo.'
@@ -269,7 +271,7 @@ class Bot
             ]);
 
         } catch (Exception $e) {
-            Logger::error('Topup command error', ['error' => $e->getMessage()]);
+            Logger::error('Topup command error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
             // Fallback to text-only message
             $message = "💳 TOPUP SALDO\n\n";
@@ -335,7 +337,8 @@ class Bot
         } catch (Exception $e) {
             Logger::error('Creator registration command failed', [
                 'user_id' => $userId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
@@ -444,7 +447,8 @@ class Bot
         } catch (Exception $e) {
             Logger::error('Media upload failed', [
                 'user_id' => $userId ?? null,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             $this->telegram->sendMessage([
                 'chat_id' => $chatId ?? null,
@@ -534,7 +538,7 @@ class Bot
                 ]);
             }
         } catch (Exception $e) {
-            Logger::error('Failed to forward to backup channel', ['error' => $e->getMessage()]);
+            Logger::error('Failed to forward to backup channel', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
         }
     }
 
@@ -610,7 +614,8 @@ class Bot
         } catch (Exception $e) {
             Logger::error('Payment proof processing failed', [
                 'user_id' => $userId ?? null,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             $this->telegram->sendMessage([
                 'chat_id' => $chatId ?? null,
@@ -744,7 +749,8 @@ class Bot
         } catch (Exception $e) {
             Logger::error('Error notifying creator', [
                 'creator_id' => $creatorId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
         }
     }
@@ -844,7 +850,8 @@ class Bot
             } catch (Exception $e) {
                 Logger::error('Failed to send streak notification', [
                     'creator_id' => $creatorId,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
             }
         }

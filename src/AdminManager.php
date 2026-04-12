@@ -122,7 +122,8 @@ class AdminManager
         } catch (Exception $e) {
             Logger::error('Failed to add admin', [
                 'telegram_id' => $telegramId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }
@@ -164,7 +165,8 @@ class AdminManager
         } catch (Exception $e) {
             Logger::error('Failed to update admin role', [
                 'admin_id' => $adminId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }
@@ -199,7 +201,8 @@ class AdminManager
         } catch (Exception $e) {
             Logger::error('Failed to deactivate admin', [
                 'admin_id' => $adminId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }

@@ -48,7 +48,8 @@ class NotificationManager
         } catch (\Exception $e) {
             Logger::error('Failed to send notification to user', [
                 'user_id' => $userId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }

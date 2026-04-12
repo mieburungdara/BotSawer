@@ -39,7 +39,8 @@ class Creator
         } catch (Exception $e) {
             Logger::error('Creator registration failed', [
                 'user_id' => $userId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }
@@ -77,7 +78,8 @@ class Creator
         } catch (Exception $e) {
             Logger::error('Creator profile update failed', [
                 'creator_id' => $creatorId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }
@@ -117,7 +119,8 @@ class Creator
         } catch (Exception $e) {
             Logger::error('Creator verification failed', [
                 'creator_id' => $creatorId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }

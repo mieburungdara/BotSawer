@@ -61,7 +61,8 @@ class AuditLogger
             Logger::error('Failed to create audit log', [
                 'error' => $e->getMessage(),
                 'action' => $action,
-                'entity_type' => $entityType
+                'entity_type' => $entityType,
+                'trace' => $e->getTraceAsString()
             ]);
         }
     }
