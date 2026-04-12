@@ -1218,32 +1218,42 @@ class Bot
 
     private function ensureUserExists($user): int
     {
-        $rawTelegramId = $user->getId();
-        $telegramId = (int)$rawTelegramId;
+        $rawId = $user->getId();
+        $telegramId = (int)$rawId;
 
-        Logger::debug('ensureUserExists called', [
-            'raw_telegram_id' => $rawTelegramId,
+        Logger::debug('ensureUserExists ENTRY', [
+            'user_object' => json_encode($user),
+            'raw_telegram_id' => $rawId,
             'cast_telegram_id' => $telegramId,
-            'type_raw' => gettype($rawTelegramId),
-            'type_cast' => gettype($telegramId)
+            'type_raw' => gettype($rawId),
+            'type_cast' => gettype($telegramId),
+            'is_numeric' => is_numeric($rawId),
+            'is_int' => is_int($rawId),
+            'is_string' => is_string($rawId)
         ]);
 
         // Skip invalid negative telegram_id (for channels/groups)
         if ($telegramId <= 0) {
-            Logger::warning('Skipping user creation for invalid telegram_id', [
-                'raw_telegram_id' => $rawTelegramId,
-                'cast_telegram_id' => $telegramId
+            Logger::error('INVALID TELEGRAM_ID DETECTED - SKIPPING', [
+                'raw_telegram_id' => $rawId,
+                'cast_telegram_id' => $telegramId,
+                'user_data' => json_encode($user),
+                'stack_trace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)
             ]);
             throw new Exception('Invalid user ID');
         }
+
+        Logger::debug('Telegram ID validation passed', ['telegram_id' => $telegramId]);
 
         $existing = DB::table('users')
             ->where('telegram_id', $telegramId)
             ->first();
 
         if (!$existing) {
+            Logger::debug('Creating new user', ['telegram_id' => $telegramId]);
+
             $uuid = $this->generateUniqueId();
-            $userId = DB::table('users')->insertGetId([
+            $userData = [
                 'uuid' => $uuid,
                 'telegram_id' => $telegramId,
                 'first_name' => $user->getFirstName(),
@@ -1251,12 +1261,24 @@ class Bot
                 'username' => $user->getUsername(),
                 'language_code' => $user->getLanguageCode() ?? 'id',
                 'is_creator' => 1  // Auto-register as creator
+            ];
+
+            Logger::debug('User data to insert', ['data' => $userData]);
+
+            $userId = DB::table('users')->insertGetId($userData);
+
+            Logger::debug('User insert result', [
+                'telegram_id' => $telegramId,
+                'userId_returned' => $userId,
+                'userId_type' => gettype($userId)
             ]);
 
             if (!$userId) {
-                Logger::error('Failed to create new user - insertGetId returned null', [
+                Logger::error('CRITICAL: insertGetId returned falsy value', [
                     'telegram_id' => $telegramId,
-                    'uuid' => $uuid
+                    'uuid' => $uuid,
+                    'userData' => $userData,
+                    'returned_value' => $userId
                 ]);
                 throw new Exception('Failed to create user account');
             }
@@ -1267,16 +1289,23 @@ class Bot
                 $displayName = 'Creator ' . $userId; // Fallback if no name
             }
 
+            Logger::debug('Creating creator profile', [
+                'user_id' => $userId,
+                'display_name' => $displayName
+            ]);
+
             try {
-                DB::table('creators')->insert([
+                $creatorData = [
                     'user_id' => $userId,
                     'display_name' => $displayName,
                     'is_verified' => 1  // Auto-verified
-                ]);
+                ];
+                DB::table('creators')->insert($creatorData);
                 Logger::info('Auto-registered as creator', ['user_id' => $userId, 'display_name' => $displayName]);
             } catch (Exception $e) {
                 Logger::error('Failed to auto-create creator profile', [
                     'user_id' => $userId,
+                    'creator_data' => $creatorData,
                     'error' => $e->getMessage()
                 ]);
                 // Rollback: set user as not creator
@@ -1284,7 +1313,7 @@ class Bot
                 Logger::warning('Rolled back user to non-creator due to creator profile creation failure', ['user_id' => $userId]);
             }
 
-            Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
+            Logger::info('New user registered successfully', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
             return (int)$userId;
         } elseif (!$existing->uuid) {
             // Generate UUID for existing user without UUID
@@ -1317,38 +1346,74 @@ class Bot
         }
 
         // Auto-upgrade existing users to creators if not already
-        if ($existing && $existing->is_creator != 1) {
-            $creatorExists = DB::table('creators')->where('user_id', $existing->id)->exists();
-            if (!$creatorExists) {
-                $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
-                if (empty($displayName)) {
-                    $displayName = 'Creator ' . $existing->id;
-                }
+        if ($existing) {
+            Logger::debug('Processing existing user', [
+                'existing_user' => json_encode($existing),
+                'is_creator' => $existing->is_creator,
+                'telegram_id' => $existing->telegram_id
+            ]);
 
-                try {
-                    DB::table('creators')->insert([
-                        'user_id' => $existing->id,
-                        'display_name' => $displayName,
-                        'is_verified' => 1
-                    ]);
+            if ($existing->is_creator != 1) {
+                Logger::debug('User needs creator upgrade', ['user_id' => $existing->id]);
 
-                    // Update user as creator
-                    DB::table('users')
-                        ->where('id', $existing->id)
-                        ->update(['is_creator' => 1]);
+                $creatorExists = DB::table('creators')->where('user_id', $existing->id)->exists();
+                Logger::debug('Creator exists check', [
+                    'user_id' => $existing->id,
+                    'creator_exists' => $creatorExists
+                ]);
 
-                    Logger::info('Auto-upgraded existing user to creator', [
+                if (!$creatorExists) {
+                    $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
+                    if (empty($displayName)) {
+                        $displayName = 'Creator ' . $existing->id;
+                    }
+
+                    Logger::debug('Upgrading user to creator', [
                         'user_id' => $existing->id,
                         'display_name' => $displayName
                     ]);
-                } catch (Exception $e) {
-                    Logger::error('Failed to auto-upgrade user to creator', [
-                        'user_id' => $existing->id,
-                        'error' => $e->getMessage()
-                    ]);
+
+                    try {
+                        $upgradeData = [
+                            'user_id' => $existing->id,
+                            'display_name' => $displayName,
+                            'is_verified' => 1
+                        ];
+                        DB::table('creators')->insert($upgradeData);
+
+                        // Update user as creator
+                        $updateResult = DB::table('users')
+                            ->where('id', $existing->id)
+                            ->update(['is_creator' => 1]);
+
+                        Logger::debug('Creator upgrade result', [
+                            'user_id' => $existing->id,
+                            'update_result' => $updateResult
+                        ]);
+
+                        Logger::info('Auto-upgraded existing user to creator', [
+                            'user_id' => $existing->id,
+                            'display_name' => $displayName
+                        ]);
+                    } catch (Exception $e) {
+                        Logger::error('Failed to auto-upgrade user to creator', [
+                            'user_id' => $existing->id,
+                            'upgrade_data' => $upgradeData,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                } else {
+                    Logger::debug('Creator already exists for user', ['user_id' => $existing->id]);
                 }
+            } else {
+                Logger::debug('User already creator', ['user_id' => $existing->id]);
             }
         }
+
+        Logger::debug('ensureUserExists EXIT', [
+            'final_user_id' => $existing->id,
+            'telegram_id' => $existing->telegram_id
+        ]);
 
         return (int)$existing->id;
     }
