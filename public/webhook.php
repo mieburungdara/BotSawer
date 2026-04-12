@@ -43,6 +43,16 @@ try {
     // Convert to Update object
     $updateObject = new Update($update);
 
+    // Debug: log telegram_id if present
+    if (isset($update['message']['from']['id'])) {
+        $telegramId = $update['message']['from']['id'];
+        Logger::debug('Webhook received message from telegram_id', ['telegram_id' => $telegramId]);
+    }
+    if (isset($update['callback_query']['from']['id'])) {
+        $telegramId = $update['callback_query']['from']['id'];
+        Logger::debug('Webhook received callback from telegram_id', ['telegram_id' => $telegramId]);
+    }
+
     // Route based on webhook type
     $webhookSecret = $_GET['secret'] ?? '';
 
