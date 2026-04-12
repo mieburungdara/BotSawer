@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace BotSawer;
+
 // Simple test script for basic functionality
 // Run: php test.php
 

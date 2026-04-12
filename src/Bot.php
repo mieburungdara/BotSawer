@@ -503,6 +503,14 @@ class Bot
 
             // Ensure user exists and get internal ID
             $userId = $this->ensureUserExists($message->getFrom());
+            if (!$userId) {
+                Logger::error('Failed to ensure user exists in media upload', ['telegram_id' => $telegramId]);
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => 'Terjadi kesalahan saat memproses user. Silakan coba lagi.'
+                ]);
+                return;
+            }
 
             // Check if user is a creator
             $creator = Creator::getProfile($userId);
@@ -1216,7 +1224,7 @@ class Bot
         // Implementation for inline queries if needed
     }
 
-    private function ensureUserExists($user): void
+    private function ensureUserExists($user): ?int
     {
         $telegramId = $user->getId();
         $existing = DB::table('users')
@@ -1226,7 +1234,7 @@ class Bot
         if (!$existing) {
             try {
                 $uuid = $this->generateUniqueId();
-                DB::table('users')->insert([
+                $userId = DB::table('users')->insertGetId([
                     'uuid' => $uuid,
                     'telegram_id' => $telegramId,
                     'first_name' => $user->getFirstName(),
@@ -1234,13 +1242,14 @@ class Bot
                     'username' => $user->getUsername(),
                     'language_code' => $user->getLanguageCode() ?? 'id'
                 ]);
-                Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid]);
+                Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
+                return $userId;
             } catch (Exception $e) {
                 Logger::error('Failed to create new user', [
                     'telegram_id' => $telegramId,
                     'error' => $e->getMessage()
                 ]);
-                throw $e; // Re-throw to prevent further processing
+                return null;
             }
         } elseif (!$existing->uuid) {
             // Generate UUID for existing user without UUID
@@ -1271,6 +1280,8 @@ class Bot
                 // Don't throw here - user can still function without UUID for now
             }
         }
+
+        return $existing->id;
     }
 
     private function generateUniqueId(): string
