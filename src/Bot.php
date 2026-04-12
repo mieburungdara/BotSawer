@@ -1259,7 +1259,7 @@ class Bot
             }
 
             Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
-            return $userId;
+            return (int)$userId;
         } elseif (!$existing->uuid) {
             // Generate UUID for existing user without UUID
             try {
@@ -1290,7 +1290,7 @@ class Bot
             }
         }
 
-        return $existing->id;
+        return (int)$existing->id;
     }
 
     private function generateUniqueId(): string
