@@ -1218,11 +1218,22 @@ class Bot
 
     private function ensureUserExists($user): int
     {
-        $telegramId = (int)$user->getId();
+        $rawTelegramId = $user->getId();
+        $telegramId = (int)$rawTelegramId;
+
+        Logger::debug('ensureUserExists called', [
+            'raw_telegram_id' => $rawTelegramId,
+            'cast_telegram_id' => $telegramId,
+            'type_raw' => gettype($rawTelegramId),
+            'type_cast' => gettype($telegramId)
+        ]);
 
         // Skip invalid negative telegram_id (for channels/groups)
         if ($telegramId <= 0) {
-            Logger::warning('Skipping user creation for invalid telegram_id', ['telegram_id' => $telegramId]);
+            Logger::warning('Skipping user creation for invalid telegram_id', [
+                'raw_telegram_id' => $rawTelegramId,
+                'cast_telegram_id' => $telegramId
+            ]);
             throw new Exception('Invalid user ID');
         }
 
