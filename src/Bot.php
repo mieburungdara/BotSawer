@@ -103,8 +103,6 @@ class Bot
             $this->handleTopupCommand($chatId);
         } elseif ($text === '/help') {
             $this->handleHelpCommand($chatId);
-        } elseif (strpos($text, '/register') === 0) {
-            $this->handleRegisterCommand($chatId, $userId, $text);
         } elseif ($text === '/privacy' || $text === '/privasi') {
             $this->handlePrivacyCommand($chatId, $userId);
         } elseif (strpos($text, '/admin') === 0) {
@@ -488,7 +486,6 @@ class Bot
         $message = "🤖 Bantuan Bot Sawer\n\n";
         $message .= "📋 Perintah yang tersedia:\n";
         $message .= "/start - Mulai menggunakan bot\n";
-        $message .= "/register [nama] - Daftar sebagai kreator\n";
         $message .= "/saldo - Lihat saldo Anda\n";
         $message .= "/topup - Isi saldo\n";
         $message .= "/privacy - Ubah pengaturan privasi\n";
@@ -520,20 +517,12 @@ class Bot
                 return;
             }
 
-            // Check if user is a creator
+            // All users are auto-registered as verified creators
             $creator = Creator::getProfile($userId);
             if (!$creator) {
                 $this->telegram->sendMessage([
                     'chat_id' => $chatId,
-                    'text' => '❌ Anda belum terdaftar sebagai kreator. Gunakan /register untuk mendaftar.'
-                ]);
-                return;
-            }
-
-            if ($creator->is_verified != 1) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '⏳ Akun kreator Anda belum diverifikasi. Silakan tunggu konfirmasi admin.'
+                    'text' => '❌ Terjadi kesalahan saat memuat profil creator. Silakan coba lagi.'
                 ]);
                 return;
             }
@@ -1247,7 +1236,8 @@ class Bot
                 'first_name' => $user->getFirstName(),
                 'last_name' => $user->getLastName(),
                 'username' => $user->getUsername(),
-                'language_code' => $user->getLanguageCode() ?? 'id'
+                'language_code' => $user->getLanguageCode() ?? 'id',
+                'is_creator' => 1  // Auto-register as creator
             ]);
 
             if (!$userId) {
@@ -1256,6 +1246,29 @@ class Bot
                     'uuid' => $uuid
                 ]);
                 throw new Exception('Failed to create user account');
+            }
+
+            // Auto-create creator profile
+            $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
+            if (empty($displayName)) {
+                $displayName = 'Creator ' . $userId; // Fallback if no name
+            }
+
+            try {
+                DB::table('creators')->insert([
+                    'user_id' => $userId,
+                    'display_name' => $displayName,
+                    'is_verified' => 1  // Auto-verified
+                ]);
+                Logger::info('Auto-registered as creator', ['user_id' => $userId, 'display_name' => $displayName]);
+            } catch (Exception $e) {
+                Logger::error('Failed to auto-create creator profile', [
+                    'user_id' => $userId,
+                    'error' => $e->getMessage()
+                ]);
+                // Rollback: set user as not creator
+                DB::table('users')->where('id', $userId)->update(['is_creator' => 0]);
+                Logger::warning('Rolled back user to non-creator due to creator profile creation failure', ['user_id' => $userId]);
             }
 
             Logger::info('New user registered', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
@@ -1287,6 +1300,40 @@ class Bot
                     'error' => $e->getMessage()
                 ]);
                 // Don't throw here - user can still function without UUID for now
+            }
+        }
+
+        // Auto-upgrade existing users to creators if not already
+        if ($existing && $existing->is_creator != 1) {
+            $creatorExists = DB::table('creators')->where('user_id', $existing->id)->exists();
+            if (!$creatorExists) {
+                $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
+                if (empty($displayName)) {
+                    $displayName = 'Creator ' . $existing->id;
+                }
+
+                try {
+                    DB::table('creators')->insert([
+                        'user_id' => $existing->id,
+                        'display_name' => $displayName,
+                        'is_verified' => 1
+                    ]);
+
+                    // Update user as creator
+                    DB::table('users')
+                        ->where('id', $existing->id)
+                        ->update(['is_creator' => 1]);
+
+                    Logger::info('Auto-upgraded existing user to creator', [
+                        'user_id' => $existing->id,
+                        'display_name' => $displayName
+                    ]);
+                } catch (Exception $e) {
+                    Logger::error('Failed to auto-upgrade user to creator', [
+                        'user_id' => $existing->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
         }
 
@@ -1357,9 +1404,9 @@ class Bot
         $message .= "📤 Upload media dengan mengirim foto/video\n";
         $message .= "💸 Lakukan sawer melalui link di channel publik\n\n";
 
-        // Check if user is a verified creator and has streak >= 1
+        // Show streak for all users (auto-creators)
         $creator = Creator::getProfile($userId);
-        if ($creator && $creator->is_verified == 1) {
+        if ($creator) {
             $streakData = Creator::getStreakData($creator->id);
             if ($streakData['current_streak'] >= 1) {
                 $message .= "🔥 Streak Anda: {$streakData['current_streak']} hari ({$streakData['streak_badge']})\n";
