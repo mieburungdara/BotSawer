@@ -83,10 +83,10 @@ try {
 
             // Additional stats for moderators
             $pendingContent = DB::table('media_files')
-                ->where('status', 'pending')->count();
+                ->where('status', 'queued')->count();
             $approvedToday = DB::table('media_files')
-                ->where('status', 'approved')
-                ->whereDate('updated_at', \Carbon\Carbon::today()->toDateString())->count();
+                ->where('status', 'scheduled')
+                ->whereDate('created_at', \Carbon\Carbon::today()->toDateString())->count();
 
             $response = [
                 'total_users' => $totalUsers,
@@ -363,26 +363,7 @@ try {
             $response = ['message' => 'Bot status updated'];
             break;
 
-        case 'approve_payment':
-            if (!\BotSawer\AdminManager::canHandleFinance($userId)) {
-                throw new Exception('Access denied: Finance admin required');
-            }
 
-            $proofId = (int)($input['proof_id'] ?? 0);
-            $this->approvePayment($proofId, $userId, $admin);
-            $response = ['message' => 'Payment approved successfully'];
-            break;
-
-        case 'reject_payment':
-            if (!\BotSawer\AdminManager::canHandleFinance($userId)) {
-                throw new Exception('Access denied: Finance admin required');
-            }
-
-            $proofId = (int)($input['proof_id'] ?? 0);
-            $reason = $input['reason'] ?? 'Rejected by admin';
-            $this->rejectPayment($proofId, $reason, $userId, $admin);
-            $response = ['message' => 'Payment rejected successfully'];
-            break;
 
         case 'get_pending_payments':
             if (!AdminManager::canHandleFinance($user->telegram_id)) {
@@ -410,66 +391,7 @@ try {
             }, $payments);
             break;
 
-        case 'get_pending_payments':
-            // Check finance permission
-            if (!AdminManager::canHandleFinance($user->telegram_id)) {
-                throw new Exception('Insufficient permissions');
-            }
 
-            $topups = DB::table('payment_proofs as pp')
-                ->join('users as u', 'pp.user_id', '=', 'u.id')
-                ->where('pp.status', 'pending')
-                ->select('pp.*', 'u.first_name', 'u.last_name', 'u.username')
-                ->orderBy('pp.created_at', 'asc')
-                ->get()
-                ->map(function ($item) {
-                    // Get bot token for file URL (assuming first active bot)
-                    $bot = DB::table('bots')->where('is_active', 1)->first();
-                    $fileUrl = null;
-                    if ($bot) {
-                        // For now, we'll use a placeholder. In production, you'd need to get file path from Telegram API
-                        $fileUrl = "https://api.telegram.org/file/bot{$bot->token}/{$item->telegram_file_id}";
-                    }
-
-                    return [
-                        'id' => $item->id,
-                        'type' => 'topup',
-                        'amount' => (int)$item->amount,
-                        'user_name' => trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
-                        'username' => $item->username,
-                        'notes' => $item->note,
-                        'proof_file_id' => $item->telegram_file_id,
-                        'proof_url' => $fileUrl,
-                        'created_at' => $item->created_at
-                    ];
-                });
-
-            $withdrawals = DB::table('withdrawals as w')
-                ->join('users as u', 'w.creator_id', '=', 'u.id')
-                ->where('w.status', 'pending')
-                ->select('w.*', 'u.first_name', 'u.last_name', 'u.username')
-                ->orderBy('w.created_at', 'asc')
-                ->get()
-                ->map(function ($item) {
-                    $bankDetails = json_decode($item->bank_details, true);
-                    return [
-                        'id' => $item->id,
-                        'type' => 'withdraw',
-                        'amount' => (int)$item->amount,
-                        'original_amount' => (int)$item->original_amount,
-                        'commission_rate' => (float)$item->commission_rate,
-                        'commission_amount' => (int)$item->commission_amount,
-                        'user_name' => trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
-                        'username' => $item->username,
-                        'bank_name' => $bankDetails['bank_name'] ?? '',
-                        'bank_account' => $bankDetails['account_number'] ?? '',
-                        'account_name' => $bankDetails['account_name'] ?? '',
-                        'created_at' => $item->created_at
-                    ];
-                });
-
-            $response = array_merge($topups->toArray(), $withdrawals->toArray());
-            break;
 
         case 'approve_payment':
             if (!AdminManager::canHandleFinance($user->telegram_id)) {
@@ -629,10 +551,10 @@ try {
                 throw new Exception('Access denied: Moderator admin required');
             }
 
-            $content = DB::table('media as m')
+            $content = DB::table('media_files as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
-                ->join('creators as c', 'c.user_id', '=', 'u.id')
-                ->where('m.status', 'pending')
+                ->join('creators as c', 'm.creator_id', '=', 'c.id')
+                ->where('m.status', 'queued')
                 ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
                 ->orderBy('m.created_at', 'asc')
                 ->get()
@@ -657,10 +579,10 @@ try {
                 throw new Exception('Insufficient permissions');
             }
 
-            $content = DB::table('media as m')
+            $content = DB::table('media_files as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
-                ->join('creators as c', 'c.user_id', '=', 'u.id')
-                ->where('m.status', 'approved')
+                ->join('creators as c', 'm.creator_id', '=', 'c.id')
+                ->where('m.status', 'scheduled')
                 ->whereNull('m.posted_at') // Not yet posted
                 ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
                 ->orderBy('m.created_at', 'asc')
@@ -702,9 +624,8 @@ try {
             DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->update([
-                    'status' => 'approved',
-                    'approved_by' => $userId,
-                    
+                    'status' => 'scheduled',
+                    'approved_by' => $userId
                 ]);
 
             \BotSawer\AuditLogger::logAdminAction('approve_content', [
@@ -764,6 +685,7 @@ try {
 
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
+                ->where('status', 'scheduled')
                 ->first();
 
             if (!$content) {
@@ -790,25 +712,34 @@ try {
 
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
-                ->where('status', 'approved')
+                ->where('status', 'queued')
                 ->first();
 
             if (!$content) {
                 throw new Exception('Content not found or not approved');
             }
 
-            // Get bot configuration for posting
-            $botConfig = DB::table('bot_configs')
+            // Get public channel from settings
+            $publicChannel = DB::table('settings')
+                ->where('key', 'public_channel')
+                ->value('value');
+
+            if (!$publicChannel) {
+                throw new Exception('Public channel not configured');
+            }
+
+            // Get bot for posting (use first active bot)
+            $botData = DB::table('bots')
                 ->where('is_active', 1)
                 ->first();
 
-            if (!$botConfig || !$botConfig->channel_id) {
-                throw new Exception('Bot configuration not found or channel not set');
+            if (!$botData) {
+                throw new Exception('No active bot found');
             }
 
             // Use Bot class to post content
-            $bot = new Bot($botConfig->id);
-            $bot->postApprovedContentToChannel($content->id, $botConfig->channel_id);
+            $bot = new Bot($botData->id);
+            $bot->postApprovedContentToChannel($content->id, $publicChannel);
 
             // Update content status to posted
             DB::table('media_files')
@@ -835,16 +766,21 @@ try {
 
             $creators = DB::table('creators as c')
                 ->join('users as u', 'c.user_id', '=', 'u.id')
-                ->leftJoin('media as m', 'm.user_id', '=', 'u.id')
+                ->leftJoin('media_files as m', 'm.user_id', '=', 'u.id')
+                ->leftJoin('transactions as t', function($join) {
+                    $join->on('t.media_id', '=', 'm.id')
+                         ->where('t.type', '=', 'donation')
+                         ->where('t.status', '=', 'success');
+                })
                 ->select(
                     'c.*',
                     'u.first_name',
                     'u.last_name',
                     'u.username',
-                    \Illuminate\Database\Capsule\Manager::raw('COUNT(m.id) as total_content'),
-                    \Illuminate\Database\Capsule\Manager::raw('COALESCE(SUM(m.total_donations), 0) as total_earnings')
+                    DB::raw('COUNT(DISTINCT m.id) as total_content'),
+                    DB::raw('COALESCE(SUM(t.amount), 0) as total_earnings')
                 )
-                ->groupBy('c.id', 'u.id', 'u.first_name', 'u.last_name', 'u.username')
+                ->groupBy('c.id', 'c.user_id', 'u.id', 'u.first_name', 'u.last_name', 'u.username')
                 ->orderBy('c.created_at', 'desc')
                 ->get()
                 ->map(function ($item) {
@@ -904,7 +840,12 @@ try {
 
              $profile = DB::table('creators as c')
                 ->join('users as u', 'c.user_id', '=', 'u.id')
-                ->leftJoin('media as m', 'm.user_id', '=', 'u.id')
+                ->leftJoin('media_files as m', 'm.user_id', '=', 'u.id')
+                ->leftJoin('transactions as t', function($join) {
+                    $join->on('t.media_id', '=', 'm.id')
+                         ->where('t.type', '=', 'donation')
+                         ->where('t.status', '=', 'success');
+                })
                 ->where('c.id', $input['creator_id'])
                 ->select(
                     'c.*',
@@ -912,7 +853,155 @@ try {
                     'u.last_name',
                     'u.username',
                     DB::raw('COUNT(m.id) as total_content'),
-                    DB::raw('COALESCE(SUM(m.total_donations), 0) as total_earnings')
+                    DB::raw('COALESCE(SUM(t.amount), 0) as total_earnings')
+                )
+                ->first();
+
+            if (!$profile) {
+                throw new Exception('Creator not found');
+            }
+
+            $response = [
+                'id' => $profile->id,
+                'display_name' => $profile->display_name ?: trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? '')),
+                'bio' => $profile->bio,
+                'bank_account' => $profile->bank_account,
+                'total_content' => (int)$profile->total_content,
+                'total_earnings' => (int)$profile->total_earnings,
+                'is_verified' => (bool)$profile->is_verified
+            ];
+            break;
+
+        case 'get_admins':
+            if (!AdminManager::isSuperAdmin($user->telegram_id)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
+            $admins = DB::table('admins as a')
+                ->join('users as u', 'a.telegram_id', '=', 'u.telegram_id')
+                ->select(
+                    'a.id',
+                    'a.telegram_id',
+                    'a.telegram_username',
+                    'a.full_name',
+                    'a.role',
+                    'a.is_active',
+                    'a.last_login',
+                    'a.created_at',
+                    'u.first_name',
+                    'u.last_name'
+                )
+                ->orderBy('a.created_at', 'desc')
+                ->get()
+                ->toArray();
+
+            $response = array_map(function($admin) {
+                return [
+                    'id' => $admin->id,
+                    'telegram_id' => $admin->telegram_id,
+                    'telegram_username' => $admin->telegram_username,
+                    'full_name' => $admin->full_name ?: trim(($admin->first_name ?? '') . ' ' . ($admin->last_name ?? '')),
+                    'role' => $admin->role,
+                    'is_active' => (bool)$admin->is_active,
+                    'last_login' => $admin->last_login,
+                    'created_at' => $admin->created_at
+                ];
+            }, $admins);
+            break;
+
+        case 'add_admin':
+            if (!AdminManager::isSuperAdmin($user->telegram_id)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
+            $telegramId = (int)($input['telegram_id'] ?? 0);
+            $username = trim($input['username'] ?? '');
+            $fullName = trim($input['full_name'] ?? '');
+            $role = $input['role'] ?? '';
+
+            if (!$telegramId || !$username || !$fullName || !$role) {
+                throw new Exception('All fields are required');
+            }
+
+            // Check if user exists
+            $userExists = DB::table('users')->where('telegram_id', $telegramId)->exists();
+            if (!$userExists) {
+                throw new Exception('User not found in users table');
+            }
+
+            // Check if already an admin
+            $existingAdmin = DB::table('admins')->where('telegram_id', $telegramId)->first();
+            if ($existingAdmin) {
+                throw new Exception('User is already an admin');
+            }
+
+            DB::table('admins')->insert([
+                'telegram_id' => $telegramId,
+                'telegram_username' => $username,
+                'full_name' => $fullName,
+                'role' => $role,
+                'is_active' => 1,
+                'created_by' => $userId,
+                'created_at' => \Carbon\Carbon::now()
+            ]);
+
+            // Audit log
+            \BotSawer\AuditLogger::logAdminAction('add_admin', [
+                'new_admin_telegram_id' => $telegramId,
+                'new_admin_username' => $username,
+                'new_admin_role' => $role
+            ], $userId);
+
+            $response = ['message' => 'Admin added successfully'];
+            break;
+
+        case 'deactivate_admin':
+            if (!AdminManager::isSuperAdmin($user->telegram_id)) {
+                throw new Exception('Access denied: Super admin required');
+            }
+
+            $adminId = (int)($input['admin_id'] ?? 0);
+
+            if (!$adminId) {
+                throw new Exception('Admin ID required');
+            }
+
+            // Cannot deactivate yourself
+            $currentAdmin = DB::table('admins')->where('telegram_id', $user->telegram_id)->first();
+            if ($currentAdmin && $currentAdmin->id == $adminId) {
+                throw new Exception('Cannot deactivate yourself');
+            }
+
+            DB::table('admins')
+                ->where('id', $adminId)
+                ->update(['is_active' => 0]);
+
+            // Audit log
+            \BotSawer\AuditLogger::logAdminAction('deactivate_admin', [
+                'deactivated_admin_id' => $adminId
+            ], $userId);
+
+            $response = ['message' => 'Admin deactivated successfully'];
+            break;
+            if (!AdminManager::canModerate($user->telegram_id)) {
+                throw new Exception('Access denied: Moderator admin required');
+            }
+
+            if (!isset($input['creator_id'])) {
+                throw new Exception('Missing creator_id');
+            }
+
+             $profile = DB::table('creators as c')
+                ->join('users as u', 'c.user_id', '=', 'u.id')
+                ->leftJoin('media_files as m', 'm.user_id', '=', 'u.id')
+                ->where('c.id', $input['creator_id'])
+                ->select(
+                    'c.*',
+                    'u.first_name',
+                    'u.last_name',
+                    'u.username',
+                    DB::raw('COUNT(m.id) as total_content'),
+                    DB::raw('COALESCE(SUM(t.amount), 0) as total_earnings')
                 )
                 ->first();
 

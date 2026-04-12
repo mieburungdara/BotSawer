@@ -117,6 +117,9 @@ class Bot
         if ($startParam && strpos($startParam, 'media_') === 0) {
             $mediaId = str_replace('media_', '', $startParam);
             $this->handleMediaAccess($chatId, $userId, (int)$mediaId);
+        } elseif ($startParam && strpos($startParam, 'album_') === 0) {
+            $groupId = str_replace('album_', '', $startParam);
+            $this->handleAlbumAccess($chatId, $userId, $groupId);
         } else {
             $this->sendWelcomeMessage($chatId, $userId);
         }
@@ -172,6 +175,49 @@ class Bot
         }
     }
 
+    private function handleAlbumAccess(int $chatId, int $userId, string $groupId): void
+    {
+        try {
+            $medias = DB::table('media_files')
+                ->where('media_group_id', $groupId)
+                ->where('status', 'posted')
+                ->get();
+
+            if ($medias->isEmpty()) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => 'Album tidak ditemukan atau tidak aktif.'
+                ]);
+                return;
+            }
+
+            // Check if user has balance for donation
+            $balance = Wallet::getBalance($userId);
+            if ($balance <= 0) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => "⚠️ Saldo anda saat ini adalah Rp 0\n💡 Untuk melakukan sawer silahkan lakukan topup terlebih dahulu\n👉 Kirim perintah /topup untuk mengisi saldo"
+                ]);
+                return;
+            }
+
+            // Send album with sawer button
+            $this->sendAlbumWithSawerButton($chatId, $medias, $groupId);
+        } catch (Exception $e) {
+            Logger::error('Error handling album access', [
+                'chat_id' => $chatId,
+                'user_id' => $userId,
+                'group_id' => $groupId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => 'Terjadi kesalahan saat memproses album.'
+            ]);
+        }
+    }
+
     private function sendMediaWithSawerButton(int $chatId, $media): void
     {
         $caption = $media->caption ?? 'Media dari kreator';
@@ -206,6 +252,66 @@ class Bot
                 'chat_id' => $chatId,
                 'video' => $media->telegram_file_id,
                 'caption' => $caption,
+                'reply_markup' => json_encode($keyboard)
+            ]);
+        }
+    }
+
+    private function sendAlbumWithSawerButton(int $chatId, $medias, string $groupId): void
+    {
+        $mediaArray = [];
+        $captions = [];
+
+        foreach ($medias as $media) {
+            $mediaItem = [
+                'type' => $media->file_type,
+                'media' => $media->telegram_file_id
+            ];
+
+            if ($media->file_type === 'video') {
+                // Videos might need additional params, but for now basic
+            }
+
+            $mediaArray[] = $mediaItem;
+
+            // Collect all captions that exist
+            if ($media->caption) {
+                $captions[] = $media->caption;
+            }
+        }
+
+        // Combine all captions with line breaks
+        $caption = implode("\n\n", array_unique($captions));
+
+        if (!empty($mediaArray)) {
+            // Send media group
+            $this->telegram->sendMediaGroup([
+                'chat_id' => $chatId,
+                'media' => json_encode($mediaArray)
+            ]);
+
+            // Send separate message with combined captions and sawer keyboard
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '💸 100', 'callback_data' => 'sawer_album_100_' . $groupId],
+                        ['text' => '💸 500', 'callback_data' => 'sawer_album_500_' . $groupId],
+                        ['text' => '💸 1K', 'callback_data' => 'sawer_album_1000_' . $groupId],
+                        ['text' => '💸 2K', 'callback_data' => 'sawer_album_2000_' . $groupId],
+                        ['text' => '💸 5K', 'callback_data' => 'sawer_album_5000_' . $groupId],
+                    ],
+                    [
+                        ['text' => '💸 10K', 'callback_data' => 'sawer_album_10000_' . $groupId],
+                        ['text' => '💸 25K', 'callback_data' => 'sawer_album_25000_' . $groupId],
+                        ['text' => '💸 50K', 'callback_data' => 'sawer_album_50000_' . $groupId],
+                        ['text' => '💸 100K', 'callback_data' => 'sawer_album_100000_' . $groupId],
+                    ]
+                ]
+            ];
+
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => $caption ?: 'Album dari kreator',
                 'reply_markup' => json_encode($keyboard)
             ]);
         }
@@ -419,22 +525,45 @@ class Bot
             }
 
             // Save to database
-            $mediaId = $this->saveMediaToDatabase($creator->id, $mediaInfo);
+            $mediaId = $this->saveMediaToDatabase($this->botId, $creator->id, $userId, $mediaInfo);
 
             // Check and notify streak milestones
             $streakData = Creator::getStreakData($creator->id);
             $currentStreak = $streakData['current_streak'];
             $this->notifyStreakMilestone($creator->id, $currentStreak);
 
-            // Forward to backup channel
-            $this->forwardToBackupChannel($mediaInfo['file_id'], $mediaInfo['type'], $mediaInfo['caption']);
+            // Forward to backup channel with metadata
+            $this->forwardToBackupChannel($mediaId, $creator->id, $userId, $mediaInfo);
 
             // Add to posting queue
             $this->addToPostingQueue($mediaId);
 
+            // Get queue information
+            $queueInfo = $this->getQueueInfo($mediaId);
+
+            // Create cancel button
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '❌ Batal Upload', 'callback_data' => 'cancel_media_' . $mediaId]
+                    ]
+                ]
+            ];
+
+            $message = "✅ Media diterima dan masuk antrian posting!\n\n";
+            $message .= "🆔 ID Media: #{$mediaId}\n";
+            $message .= "📎 Jenis: {$mediaInfo['type']}\n";
+            if ($mediaInfo['media_group_id']) {
+                $message .= "📚 Album: Ya\n";
+            }
+            $message .= "📊 Antrian: #{$queueInfo['position']}\n";
+            $message .= "⏰ Estimasi Post: {$queueInfo['estimated_time']}\n\n";
+            $message .= "💡 Gunakan tombol di bawah untuk membatalkan jika berubah pikiran.";
+
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => "✅ Media diterima dan masuk antrian posting!\n\nID Media: #{$mediaId}\nJenis: {$mediaInfo['type']}\nStatus: Dalam antrian"
+                'text' => $message,
+                'reply_markup' => json_encode($keyboard)
             ]);
 
             Logger::info('Media uploaded successfully', [
@@ -459,59 +588,63 @@ class Bot
 
     private function extractMediaInfo($message): ?array
     {
+        $baseInfo = [
+            'media_group_id' => $message->getMediaGroupId()
+        ];
+
         if ($message->has('photo')) {
             $photo = end($message->getPhoto()); // Get highest resolution
-            return [
+            return array_merge($baseInfo, [
                 'file_id' => $photo->getFileId(),
                 'file_unique_id' => $photo->getFileUniqueId(),
                 'type' => 'photo',
                 'file_size' => $photo->getFileSize(),
                 'caption' => $message->getCaption()
-            ];
+            ]);
         } elseif ($message->has('video')) {
             $video = $message->getVideo();
-            return [
+            return array_merge($baseInfo, [
                 'file_id' => $video->getFileId(),
                 'file_unique_id' => $video->getFileUniqueId(),
                 'type' => 'video',
                 'file_size' => $video->getFileSize(),
                 'duration' => $video->getDuration(),
                 'caption' => $message->getCaption()
-            ];
+            ]);
         } elseif ($message->has('document')) {
             $document = $message->getDocument();
             $mimeType = $document->getMimeType();
             if (strpos($mimeType, 'image/') === 0 || strpos($mimeType, 'video/') === 0) {
-                return [
+                return array_merge($baseInfo, [
                     'file_id' => $document->getFileId(),
                     'file_unique_id' => $document->getFileUniqueId(),
                     'type' => strpos($mimeType, 'image/') === 0 ? 'photo' : 'video',
                     'file_size' => $document->getFileSize(),
                     'mime_type' => $mimeType,
                     'caption' => $message->getCaption()
-                ];
+                ]);
             }
         }
 
         return null;
     }
 
-    private function saveMediaToDatabase(int $creatorId, array $mediaInfo): int
+    private function saveMediaToDatabase(int $botId, int $creatorId, int $userId, array $mediaInfo): int
     {
         return DB::table('media_files')->insertGetId([
+            'bot_id' => $botId,
             'creator_id' => $creatorId,
+            'user_id' => $userId,
             'telegram_file_id' => $mediaInfo['file_id'],
             'file_unique_id' => $mediaInfo['file_unique_id'],
             'file_type' => $mediaInfo['type'],
-            'file_size' => $mediaInfo['file_size'] ?? 0,
-            'mime_type' => $mediaInfo['mime_type'] ?? null,
-            'duration' => $mediaInfo['duration'] ?? null,
             'caption' => $mediaInfo['caption'],
-            'status' => 'scheduled'
+            'media_group_id' => $mediaInfo['media_group_id'],
+            'status' => 'queued'
         ]);
     }
 
-    private function forwardToBackupChannel(string $fileId, string $type, ?string $caption): void
+    private function forwardToBackupChannel(int $mediaId, int $creatorId, int $userId, array $mediaInfo): void
     {
         try {
             // Get backup channel from settings
@@ -524,17 +657,47 @@ class Bot
                 return;
             }
 
-            if ($type === 'photo') {
+            // Get user and creator info
+            $user = DB::table('users')->where('id', $userId)->first();
+            $creator = DB::table('creators')->where('id', $creatorId)->first();
+
+            // Create detailed caption for admin
+            $adminCaption = "📁 **MEDIA BACKUP**\n\n";
+            $adminCaption .= "🆔 Media ID: #{$mediaId}\n";
+            $adminCaption .= "👤 User: {$user->first_name} {$user->last_name} (@{$user->username})\n";
+            $adminCaption .= "🎨 Creator: {$creator->display_name}\n";
+            $adminCaption .= "📅 Uploaded: " . \Carbon\Carbon::now()->format('Y-m-d H:i:s') . "\n";
+            $adminCaption .= "📎 Type: {$mediaInfo['type']}\n";
+
+            if ($mediaInfo['media_group_id']) {
+                $adminCaption .= "📚 Album: Yes (Group ID: {$mediaInfo['media_group_id']})\n";
+            } else {
+                $adminCaption .= "📄 Single Media\n";
+            }
+
+            // File size and duration not stored in database anymore
+            // Can be queried from Telegram API if needed in future
+
+            if ($mediaInfo['caption']) {
+                $adminCaption .= "\n💬 Caption:\n{$mediaInfo['caption']}\n";
+            }
+
+            $adminCaption .= "\n🔍 Status: Scheduled for posting";
+
+            // Send media with detailed caption to backup channel
+            if ($mediaInfo['type'] === 'photo') {
                 $this->telegram->sendPhoto([
                     'chat_id' => $backupChannel,
-                    'photo' => $fileId,
-                    'caption' => $caption ?? 'Backup media'
+                    'photo' => $mediaInfo['file_id'],
+                    'caption' => $adminCaption,
+                    'parse_mode' => 'Markdown'
                 ]);
-            } elseif ($type === 'video') {
+            } elseif ($mediaInfo['type'] === 'video') {
                 $this->telegram->sendVideo([
                     'chat_id' => $backupChannel,
-                    'video' => $fileId,
-                    'caption' => $caption ?? 'Backup media'
+                    'video' => $mediaInfo['file_id'],
+                    'caption' => $adminCaption,
+                    'parse_mode' => 'Markdown'
                 ]);
             }
         } catch (Exception $e) {
@@ -544,6 +707,23 @@ class Bot
 
     private function addToPostingQueue(int $mediaId): void
     {
+        $media = DB::table('media_files')->where('id', $mediaId)->first();
+        if (!$media) return;
+
+        // If this media is part of an album, check if the album is already scheduled
+        if ($media->media_group_id) {
+            $existingScheduled = DB::table('media_files')
+                ->where('media_group_id', $media->media_group_id)
+                ->where('status', 'scheduled')
+                ->exists();
+
+            if ($existingScheduled) {
+                // Album already scheduled, skip this media
+                Logger::info('Album already scheduled, skipping duplicate', ['media_id' => $mediaId, 'group_id' => $media->media_group_id]);
+                return;
+            }
+        }
+
         // Get last posted time to calculate next schedule
         $lastPosted = DB::table('media_files')
             ->where('status', 'posted')
@@ -560,6 +740,48 @@ class Bot
                 'status' => 'scheduled',
                 'scheduled_at' => $nextSchedule
             ]);
+    }
+
+    private function getQueueInfo(int $mediaId): array
+    {
+        // Get the scheduled time for this media
+        $mediaScheduledAt = DB::table('media_files')
+            ->where('id', $mediaId)
+            ->value('scheduled_at');
+
+        if (!$mediaScheduledAt) {
+            return ['position' => 0, 'estimated_time' => 'Unknown'];
+        }
+
+        // Count how many media are scheduled before this one
+        $position = DB::table('media_files')
+            ->where('status', 'scheduled')
+            ->where('scheduled_at', '<', $mediaScheduledAt)
+            ->count() + 1;
+
+        // Calculate estimated time
+        $now = \Carbon\Carbon::now();
+        $scheduledTime = \Carbon\Carbon::parse($mediaScheduledAt);
+        $minutesUntilPost = $now->diffInMinutes($scheduledTime, false);
+
+        if ($minutesUntilPost <= 0) {
+            $estimatedTime = 'Segera';
+        } elseif ($minutesUntilPost < 60) {
+            $estimatedTime = $minutesUntilPost . ' menit lagi';
+        } else {
+            $hours = floor($minutesUntilPost / 60);
+            $remainingMinutes = $minutesUntilPost % 60;
+            $estimatedTime = $hours . ' jam';
+            if ($remainingMinutes > 0) {
+                $estimatedTime .= ' ' . $remainingMinutes . ' menit';
+            }
+            $estimatedTime .= ' lagi';
+        }
+
+        return [
+            'position' => $position,
+            'estimated_time' => $estimatedTime
+        ];
     }
 
     private function handlePaymentProof($message): void
@@ -644,6 +866,10 @@ class Bot
 
         if (strpos($data, 'sawer_') === 0) {
             $this->handleSawerCallback($data, $chatId, $userId);
+        } elseif (strpos($data, 'sawer_album_') === 0) {
+            $this->handleSawerAlbumCallback($data, $chatId, $userId);
+        } elseif (strpos($data, 'cancel_media_') === 0) {
+            $this->handleCancelMediaCallback($data, $chatId, $userId);
         }
 
         $this->telegram->answerCallbackQuery([
@@ -729,6 +955,210 @@ class Bot
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => 'Terjadi kesalahan saat memproses donasi.'
+            ]);
+        }
+    }
+
+    private function handleSawerAlbumCallback(string $data, int $chatId, int $userId): void
+    {
+        $parts = explode('_', $data);
+        if (count($parts) < 4) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Callback data tidak valid.'
+            ]);
+            return;
+        }
+        $amount = (int)$parts[2];
+        $groupId = $parts[3];
+
+        if ($amount <= 0) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Jumlah donasi tidak valid.'
+            ]);
+            return;
+        }
+
+        try {
+            $balance = Wallet::getBalance($userId);
+            if ($balance < $amount) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => "⚠️ Saldo tidak cukup. Saldo Anda: Rp " . number_format($balance, 0, ',', '.')
+                ]);
+                return;
+            }
+
+            // Get first media in album for creator info
+            $media = DB::table('media_files')
+                ->where('media_group_id', $groupId)
+                ->first();
+
+            if ($media) {
+                Database::transaction(function () use ($userId, $media, $amount, $groupId) {
+                    // Use Wallet methods for consistent balance management and logging
+                    Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
+                    Wallet::addBalance($media->creator_id, $amount, 'Donasi dari sawer');
+
+                    // Additional transaction record for album-specific tracking
+                    DB::table('transactions')->insert([
+                        'user_id' => $media->creator_id,
+                        'media_id' => $media->id, // Use first media ID
+                        'from_user_id' => $userId,
+                        'type' => 'donation',
+                        'amount' => $amount,
+                        'status' => 'success',
+                        'description' => 'Donasi dari sawer album'
+                    ]);
+                });
+
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => "✅ Terima kasih atas donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\nDonasi telah diteruskan ke kreator."
+                ]);
+
+                // Send push notifications
+                NotificationManager::notifyDonor($userId, $amount);
+                NotificationManager::notifyCreatorDonation($media->creator_id, $amount, $media->id);
+            } else {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => '❌ Album tidak ditemukan.'
+                ]);
+            }
+        } catch (Exception $e) {
+            Logger::error('Error processing album sawer', [
+                'user_id' => $userId,
+                'amount' => $amount,
+                'group_id' => $groupId,
+                'error' => $e->getMessage()
+            ]);
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => 'Terjadi kesalahan saat memproses donasi.'
+            ]);
+        }
+    }
+
+    public function postApprovedContentToChannel(int $mediaId, string $channelId): void
+    {
+        try {
+            // Get media details
+            $media = DB::table('media_files')
+                ->where('id', $mediaId)
+                ->first();
+
+            if (!$media) {
+                throw new Exception('Media not found');
+            }
+
+            // Create deeplink (use username if available, otherwise use bot ID)
+            $botData = DB::table('bots')
+                ->where('id', $this->botId)
+                ->first();
+
+            $botIdentifier = $botData->username ?: "bot{$botData->id}";
+            $deeplink = "https://t.me/{$botIdentifier}?start=media_{$mediaId}";
+
+            // Create caption with deeplink
+            $caption = $media->caption ?? 'Konten dari kreator';
+            $caption .= "\n\n💸 Sawer → {$deeplink}";
+
+            // Post to channel (caption only, no media)
+            $this->telegram->sendMessage([
+                'chat_id' => $channelId,
+                'text' => $caption,
+                'parse_mode' => 'HTML'
+            ]);
+
+            // Update media status to posted
+            DB::table('media_files')
+                ->where('id', $mediaId)
+                ->update([
+                    'status' => 'posted',
+                    'posted_at' => \Carbon\Carbon::now()
+                ]);
+
+            Logger::info('Content manually posted to channel', [
+                'media_id' => $mediaId,
+                'channel' => $channelId
+            ]);
+
+        } catch (Exception $e) {
+            Logger::error('Failed to post content to channel', [
+                'media_id' => $mediaId,
+                'channel' => $channelId,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    private function handleCancelMediaCallback(string $data, int $chatId, int $userId): void
+    {
+        $parts = explode('_', $data);
+        if (count($parts) < 3) {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Callback data tidak valid.'
+            ]);
+            return;
+        }
+
+        $mediaId = (int)$parts[2];
+
+        try {
+            // Check if media exists and belongs to user
+            $media = DB::table('media_files')
+                ->where('id', $mediaId)
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$media) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => '❌ Media tidak ditemukan atau Anda tidak memiliki akses.'
+                ]);
+                return;
+            }
+
+            // Check if media can be cancelled (only if not already posted)
+            if (in_array($media->status, ['posted', 'cancelled'])) {
+                $this->telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => '❌ Media tidak dapat dibatalkan. Status: ' . ucfirst($media->status)
+                ]);
+                return;
+            }
+
+            // Update status to cancelled
+            DB::table('media_files')
+                ->where('id', $mediaId)
+                ->update(['status' => 'cancelled']);
+
+            // Log the cancellation
+            AuditLogger::log('media_cancelled', 'media_files', $mediaId, [], ['status' => 'cancelled'], $userId);
+
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => "✅ Media #{$mediaId} berhasil dibatalkan.\n\nMedia tidak akan diposting ke channel publik."
+            ]);
+
+            Logger::info('Media cancelled by user', [
+                'user_id' => $userId,
+                'media_id' => $mediaId
+            ]);
+
+        } catch (Exception $e) {
+            Logger::error('Error cancelling media', [
+                'user_id' => $userId,
+                'media_id' => $mediaId,
+                'error' => $e->getMessage()
+            ]);
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => '❌ Terjadi kesalahan saat membatalkan media.'
             ]);
         }
     }

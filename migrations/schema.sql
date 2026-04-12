@@ -41,6 +41,7 @@ CREATE TABLE `creators` (
 
 -- -----------------------------------------------------
 -- TABEL 3: media_files
+-- ✅ ENHANCED: Added bot_id, user_id, media_group_id for better tracking
 -- ✅ OPTIMIZED: Removed optional metadata fields (file_size, mime_type, duration)
 -- These can be queried from Telegram API if needed
 -- ✅ REDUNDANT FIELD REMOVED: total_donations, total_revenue, queue_number
@@ -48,20 +49,27 @@ CREATE TABLE `creators` (
 -- -----------------------------------------------------
 CREATE TABLE `media_files` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `bot_id` BIGINT UNSIGNED NULL,
   `creator_id` BIGINT UNSIGNED NOT NULL,
+  `user_id` BIGINT UNSIGNED NOT NULL,
   `telegram_file_id` VARCHAR(255) NOT NULL,
   `file_unique_id` VARCHAR(255) NOT NULL UNIQUE KEY,
   `file_type` ENUM('photo','video','document') NOT NULL,
   `caption` TEXT NULL,
+  `media_group_id` VARCHAR(255) NULL,
   `is_active` TINYINT(1) DEFAULT 1,
   `scheduled_at` TIMESTAMP NULL,
   `posted_at` TIMESTAMP NULL,
   `status` ENUM('queued','scheduled','posted','cancelled') DEFAULT 'queued',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`creator_id`) REFERENCES `creators`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`bot_id`) REFERENCES `bots`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`creator_id`) REFERENCES `creators`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   INDEX `idx_creator_active` (`creator_id`, `is_active`),
-  INDEX `idx_status_scheduled` (`status`, `scheduled_at`)
+  INDEX `idx_status_scheduled` (`status`, `scheduled_at`),
+  INDEX `idx_user_created` (`user_id`, `created_at`),
+  INDEX `idx_media_group` (`media_group_id`),
+  INDEX `idx_bot_group` (`bot_id`, `media_group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------

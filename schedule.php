@@ -76,11 +76,28 @@ try {
 
     // Create deeplink (use username if available, otherwise use bot ID)
     $botIdentifier = $botData->username ?: "bot{$botData->id}";
-    $deeplink = "https://t.me/{$botIdentifier}?start=media_{$mediaToPost->id}";
+    if ($mediaToPost->media_group_id) {
+        $deeplink = "https://t.me/{$botIdentifier}?start=album_{$mediaToPost->media_group_id}";
+    } else {
+        $deeplink = "https://t.me/{$botIdentifier}?start=media_{$mediaToPost->id}";
+    }
 
     // Create caption with deeplink
     $caption = $mediaToPost->caption ?? 'Konten dari kreator';
     $caption .= "\n\n💸 Sawer → {$deeplink}";
+
+    // Double-check status before posting (in case it was cancelled)
+    $currentStatus = DB::table('media_files')
+        ->where('id', $mediaToPost->id)
+        ->value('status');
+
+    if ($currentStatus !== 'posting') {
+        Logger::info('Media status changed during posting, skipping', [
+            'media_id' => $mediaToPost->id,
+            'status' => $currentStatus
+        ]);
+        exit(0);
+    }
 
     try {
         // Post to public channel (caption only, no media)
@@ -90,13 +107,22 @@ try {
             'parse_mode' => 'HTML'
         ]);
 
-        // Update media status to posted
-        DB::table('media_files')
-            ->where('id', $mediaToPost->id)
-            ->update([
-                'status' => 'posted',
-                'posted_at' => $now
-            ]);
+        // Update media status to posted (for album, update all in group)
+        if ($mediaToPost->media_group_id) {
+            DB::table('media_files')
+                ->where('media_group_id', $mediaToPost->media_group_id)
+                ->update([
+                    'status' => 'posted',
+                    'posted_at' => $now
+                ]);
+        } else {
+            DB::table('media_files')
+                ->where('id', $mediaToPost->id)
+                ->update([
+                    'status' => 'posted',
+                    'posted_at' => $now
+                ]);
+        }
 
         Logger::info('Media posted successfully', [
             'media_id' => $mediaToPost->id,
