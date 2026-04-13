@@ -41,6 +41,20 @@ try {
         throw new Exception('Invalid request data');
     }
 
+    // Get bot ID for multi-bot support
+    $telegramBotId = $input['botId'] ?? null;
+    $dbBotId = 1; // Default
+
+    if ($telegramBotId) {
+        // Find bot by approximate token match or add telegram_id field later
+        $bot = DB::table('bots')
+            ->where('token', 'like', substr($telegramBotId, 0, 10) . '%')
+            ->first();
+        if ($bot) {
+            $dbBotId = $bot->id;
+        }
+    }
+
     // Validate Telegram Web App data
     $userData = validateTelegramWebAppData($input['initData']);
 
@@ -67,14 +81,20 @@ try {
         $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 0];
     }
 
-    // Check if admin using AdminManager
-    $isAdmin = AdminManager::isAdmin($userData['id']);
+    // Check if admin for this specific bot
+    $isAdmin = DB::table('admins')
+        ->where('telegram_id', $userData['id'])
+        ->where('is_active', 1)
+        ->exists(); // Global admin for now, can be scoped per bot later
+
     $adminData = null;
     $adminRole = null;
 
     if ($isAdmin) {
-        $adminData = AdminManager::getAdmin($userData['id']);
-        $adminRole = $adminData->role;
+        $adminData = DB::table('admins')
+            ->where('telegram_id', $userData['id'])
+            ->first();
+        $adminRole = $adminData->role ?? null;
     }
 
     // Check if creator

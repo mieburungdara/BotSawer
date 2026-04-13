@@ -40,6 +40,7 @@ try {
 
     $userId = $input['userId'];
     $action = $input['action'];
+    $botId = $input['botId'] ?? 1; // Default bot ID
 
     // Check session authentication
     if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != $userId) {
