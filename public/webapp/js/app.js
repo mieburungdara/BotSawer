@@ -4,9 +4,9 @@ class App {
         this.telegram = new TelegramWebApp();
         this.currentPage = 'dashboard';
         this.userData = null;
-        // Get bot_id from URL parameter for multi-bot support
+        // Get bot_id from URL parameter (should be Telegram bot ID)
         const urlParams = new URLSearchParams(window.location.search);
-        this.botId = urlParams.get('bot_id') || 1; // Default to bot 1
+        this.botId = urlParams.get('bot_id') || '1'; // Default to '1' if not specified
         this.init();
     }
 

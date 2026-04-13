@@ -46,6 +46,9 @@ try {
     $dbBotId = 1; // Default
 
     if ($telegramBotId) {
+        // Ensure telegramBotId is integer for DB query
+        $telegramBotId = (int) $telegramBotId;
+
         // Find bot by telegram_id field
         $bot = DB::table('bots')
             ->where('telegram_id', $telegramBotId)
