@@ -1246,7 +1246,7 @@ class Bot
         Logger::debug('Telegram ID validation passed', ['telegram_id' => $telegramId]);
 
         $existing = DB::table('users')
-            ->where('telegram_id', $telegramId)
+            ->where('telegram_id', (string)$telegramId)  // Match string binding
             ->first();
 
         if (!$existing) {
@@ -1255,7 +1255,7 @@ class Bot
             $uuid = $this->generateUniqueId();
             $userData = [
                 'uuid' => $uuid,
-                'telegram_id' => $telegramId,
+                'telegram_id' => (string)$telegramId,  // Force string for BIGINT binding
                 'first_name' => $user->getFirstName(),
                 'last_name' => $user->getLastName(),
                 'username' => $user->getUsername(),
@@ -1296,7 +1296,7 @@ class Bot
 
             try {
                 $creatorData = [
-                    'user_id' => $userId,
+                    'user_id' => (string)$userId,  // Force string for BIGINT
                     'display_name' => $displayName,
                     'is_verified' => 1  // Auto-verified
                 ];
@@ -1356,7 +1356,7 @@ class Bot
             if ($existing->is_creator != 1) {
                 Logger::debug('User needs creator upgrade', ['user_id' => $existing->id]);
 
-                $creatorExists = DB::table('creators')->where('user_id', $existing->id)->exists();
+                $creatorExists = DB::table('creators')->where('user_id', (string)$existing->id)->exists();
                 Logger::debug('Creator exists check', [
                     'user_id' => $existing->id,
                     'creator_exists' => $creatorExists
@@ -1375,7 +1375,7 @@ class Bot
 
                     try {
                         $upgradeData = [
-                            'user_id' => $existing->id,
+                            'user_id' => (string)$existing->id,  // Force string for BIGINT
                             'display_name' => $displayName,
                             'is_verified' => 1
                         ];
