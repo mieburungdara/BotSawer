@@ -769,13 +769,22 @@ try {
             break;
 
         case 'get_creators':
-            if (!AdminManager::canModerate($user->telegram_id)) {
+            // Check admin permissions using DB
+            $isAdmin = DB::table('admins')
+                ->where('telegram_id', $user->telegram_id)
+                ->where('is_active', 1)
+                ->whereIn('role', ['super_admin', 'moderator', 'finance'])
+                ->exists();
+            if (!$isAdmin) {
                 throw new Exception('Insufficient permissions');
             }
 
             $creators = DB::table('creators as c')
                 ->join('users as u', 'c.user_id', '=', 'u.id')
-                ->leftJoin('media_files as m', 'm.user_id', '=', 'u.id')
+                ->leftJoin('media_files as m', function($join) use ($botId) {
+                    $join->on('m.user_id', '=', 'u.id')
+                         ->where('m.bot_id', '=', $botId);
+                })
                 ->leftJoin('transactions as t', function($join) {
                     $join->on('t.media_id', '=', 'm.id')
                          ->where('t.type', '=', 'donation')
