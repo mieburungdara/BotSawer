@@ -75,7 +75,7 @@ try {
         ->first();
 
     if (!$user) {
-        throw new Exception('User not found. Please start the bot first with /start');
+        throw new Exception('Akun tidak ditemukan. Silakan mulai bot terlebih dahulu dengan perintah /start');
     }
 
     // Check if admin for this specific bot
