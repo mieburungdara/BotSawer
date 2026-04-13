@@ -818,7 +818,13 @@ try {
             break;
 
         case 'verify_creator':
-            if (!AdminManager::canModerate($user->telegram_id)) {
+            // Check admin permissions using DB
+            $isAdmin = DB::table('admins')
+                ->where('telegram_id', $user->telegram_id)
+                ->where('is_active', 1)
+                ->whereIn('role', ['super_admin', 'moderator'])
+                ->exists();
+            if (!$isAdmin) {
                 throw new Exception('Insufficient permissions');
             }
 
