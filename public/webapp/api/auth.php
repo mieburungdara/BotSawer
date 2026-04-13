@@ -49,7 +49,7 @@ try {
         // Ensure telegramBotId is integer for DB query
         $telegramBotId = (int) $telegramBotId;
 
-        // Find bot by telegram_id field
+        // Find bot by telegram_id field - required for multi-bot
         $bot = DB::table('bots')
             ->where('telegram_id', $telegramBotId)
             ->where('is_active', 1)
@@ -57,7 +57,8 @@ try {
         if ($bot) {
             $dbBotId = $bot->id;
         } else {
-            Logger::warning('Bot not found for telegram_id', ['telegram_bot_id' => $telegramBotId]);
+            Logger::error('Bot not found for telegram_id - access denied', ['telegram_bot_id' => $telegramBotId]);
+            throw new Exception('Bot not recognized - please check your access');
         }
     }
 
