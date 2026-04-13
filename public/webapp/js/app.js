@@ -1483,7 +1483,6 @@ class App {
             });
         }
     }
-    }
 
     async apiCall(endpoint, data = {}) {
         const response = await fetch(`api/${endpoint}`, {
