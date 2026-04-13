@@ -103,6 +103,15 @@ try {
             if ($updateResult) {
                 // Update local user object
                 $user = (object)array_merge((array)$user, $updateData);
+
+                // Also update creator display_name if name changed
+                $newDisplayName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+                if (!empty($newDisplayName)) {
+                    DB::table('creators')
+                        ->where('user_id', $user->id)
+                        ->update(['display_name' => $newDisplayName]);
+                }
+
                 Logger::info('User profile synced', ['user_id' => $user->id, 'updates' => $updateData]);
             }
         } catch (Exception $e) {
