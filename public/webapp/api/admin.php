@@ -74,18 +74,22 @@ try {
                 throw new Exception('Access denied: Moderator admin required');
             }
 
-            $totalUsers = DB::table('users')->count();
-            $totalTransactions = DB::table('transactions')->count();
-            $totalBalance = DB::table('wallets')->sum('balance');
+            // Scope stats to current bot
+            $totalUsers = DB::table('users')->count(); // Global
+            $totalTransactions = DB::table('transactions')
+                ->where('bot_id', $botId)->count();
+            $totalBalance = DB::table('wallets')->sum('balance'); // Global
             $pendingTopups = DB::table('payment_proofs')
-                ->where('status', 'pending')->count();
+                ->where('status', 'pending')->count(); // Global for now
             $pendingWithdrawals = DB::table('withdrawals')
-                ->where('status', 'pending')->count();
+                ->where('status', 'pending')->count(); // Global
 
-            // Additional stats for moderators
+            // Additional stats for moderators - scoped to bot
             $pendingContent = DB::table('media_files')
+                ->where('bot_id', $botId)
                 ->where('status', 'queued')->count();
             $approvedToday = DB::table('media_files')
+                ->where('bot_id', $botId)
                 ->where('status', 'scheduled')
                 ->whereDate('created_at', \Carbon\Carbon::today()->toDateString())->count();
 
@@ -555,6 +559,7 @@ try {
             $content = DB::table('media_files as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
                 ->join('creators as c', 'm.creator_id', '=', 'c.id')
+                ->where('m.bot_id', $botId)
                 ->where('m.status', 'queued')
                 ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
                 ->orderBy('m.created_at', 'asc')
@@ -583,6 +588,7 @@ try {
             $content = DB::table('media_files as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
                 ->join('creators as c', 'm.creator_id', '=', 'c.id')
+                ->where('m.bot_id', $botId)
                 ->where('m.status', 'scheduled')
                 ->whereNull('m.posted_at') // Not yet posted
                 ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
@@ -686,7 +692,8 @@ try {
 
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
-                ->where('status', 'scheduled')
+                ->where('bot_id', $botId)
+                ->where('status', 'pending')
                 ->first();
 
             if (!$content) {
@@ -713,7 +720,8 @@ try {
 
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
-                ->where('status', 'queued')
+                ->where('bot_id', $botId)
+                ->where('status', 'pending')
                 ->first();
 
             if (!$content) {
