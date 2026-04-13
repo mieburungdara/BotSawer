@@ -43,16 +43,16 @@ try {
     // Convert to Update object
     $updateObject = new Update($update);
 
-    // Debug: log full update data
-    Logger::debug('WEBHOOK RECEIVED UPDATE', [
-        'full_update' => json_encode($update),
-        'update_type' => key($update),
-        'has_message' => isset($update['message']),
-        'has_callback' => isset($update['callback_query']),
-        'message_from_id' => $update['message']['from']['id'] ?? null,
-        'callback_from_id' => $update['callback_query']['from']['id'] ?? null,
-        'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
-    ]);
+    // Debug: log full update data (disabled - uncomment if needed)
+    // Logger::debug('WEBHOOK RECEIVED UPDATE', [
+    //     'full_update' => json_encode($update),
+    //     'update_type' => key($update),
+    //     'has_message' => isset($update['message']),
+    //     'has_callback' => isset($update['callback_query']),
+    //     'message_from_id' => $update['message']['from']['id'] ?? null,
+    //     'callback_from_id' => $update['callback_query']['from']['id'] ?? null,
+    //     'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+    // ]);
 
     // Route based on webhook type
     $webhookSecret = $_GET['secret'] ?? '';

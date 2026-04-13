@@ -1221,16 +1221,16 @@ class Bot
         $rawId = $user->getId();
         $telegramId = (int)$rawId;
 
-        Logger::debug('ensureUserExists ENTRY', [
-            'user_object' => json_encode($user),
-            'raw_telegram_id' => $rawId,
-            'cast_telegram_id' => $telegramId,
-            'type_raw' => gettype($rawId),
-            'type_cast' => gettype($telegramId),
-            'is_numeric' => is_numeric($rawId),
-            'is_int' => is_int($rawId),
-            'is_string' => is_string($rawId)
-        ]);
+        // Logger::debug('ensureUserExists ENTRY', [
+        //     'user_object' => json_encode($user),
+        //     'raw_telegram_id' => $rawId,
+        //     'cast_telegram_id' => $telegramId,
+        //     'type_raw' => gettype($rawId),
+        //     'type_cast' => gettype($telegramId),
+        //     'is_numeric' => is_numeric($rawId),
+        //     'is_int' => is_int($rawId),
+        //     'is_string' => is_string($rawId)
+        // ]);
 
         // Skip invalid negative telegram_id (for channels/groups)
         if ($telegramId <= 0) {
@@ -1243,14 +1243,14 @@ class Bot
             throw new Exception('Invalid user ID');
         }
 
-        Logger::debug('Telegram ID validation passed', ['telegram_id' => $telegramId]);
+        // Logger::debug('Telegram ID validation passed', ['telegram_id' => $telegramId]);
 
         $existing = DB::table('users')
             ->where('telegram_id', (string)$telegramId)  // Match string binding
             ->first();
 
         if (!$existing) {
-            Logger::debug('Creating new user', ['telegram_id' => $telegramId]);
+            // Logger::debug('Creating new user', ['telegram_id' => $telegramId]);
 
             $uuid = $this->generateUniqueId();
             $userData = [
@@ -1263,15 +1263,15 @@ class Bot
                 'is_creator' => 1  // Auto-register as creator
             ];
 
-            Logger::debug('User data to insert', ['data' => $userData]);
+            // Logger::debug('User data to insert', ['data' => $userData]);
 
             $userId = DB::table('users')->insertGetId($userData);
 
-            Logger::debug('User insert result', [
-                'telegram_id' => $telegramId,
-                'userId_returned' => $userId,
-                'userId_type' => gettype($userId)
-            ]);
+            // Logger::debug('User insert result', [
+            //     'telegram_id' => $telegramId,
+            //     'userId_returned' => $userId,
+            //     'userId_type' => gettype($userId)
+            // ]);
 
             if (!$userId) {
                 Logger::error('CRITICAL: insertGetId returned falsy value', [
@@ -1289,10 +1289,10 @@ class Bot
                 $displayName = 'Creator ' . $userId; // Fallback if no name
             }
 
-            Logger::debug('Creating creator profile', [
-                'user_id' => $userId,
-                'display_name' => $displayName
-            ]);
+            // Logger::debug('Creating creator profile', [
+            //     'user_id' => $userId,
+            //     'display_name' => $displayName
+            // ]);
 
             try {
                 $creatorData = [
@@ -1347,20 +1347,20 @@ class Bot
 
         // Auto-upgrade existing users to creators if not already
         if ($existing) {
-            Logger::debug('Processing existing user', [
-                'existing_user' => json_encode($existing),
-                'is_creator' => $existing->is_creator,
-                'telegram_id' => $existing->telegram_id
-            ]);
+            // Logger::debug('Processing existing user', [
+            //     'existing_user' => json_encode($existing),
+            //     'is_creator' => $existing->is_creator,
+            //     'telegram_id' => $existing->telegram_id
+            // ]);
 
             if ($existing->is_creator != 1) {
-                Logger::debug('User needs creator upgrade', ['user_id' => $existing->id]);
+                // Logger::debug('User needs creator upgrade', ['user_id' => $existing->id]);
 
                 $creatorExists = DB::table('creators')->where('user_id', (string)$existing->id)->exists();
-                Logger::debug('Creator exists check', [
-                    'user_id' => $existing->id,
-                    'creator_exists' => $creatorExists
-                ]);
+                // Logger::debug('Creator exists check', [
+                //     'user_id' => $existing->id,
+                //     'creator_exists' => $creatorExists
+                // ]);
 
                 if (!$creatorExists) {
                     $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
@@ -1368,10 +1368,10 @@ class Bot
                         $displayName = 'Creator ' . $existing->id;
                     }
 
-                    Logger::debug('Upgrading user to creator', [
-                        'user_id' => $existing->id,
-                        'display_name' => $displayName
-                    ]);
+                    // Logger::debug('Upgrading user to creator', [
+                    //     'user_id' => $existing->id,
+                    //     'display_name' => $displayName
+                    // ]);
 
                     try {
                         $upgradeData = [
@@ -1386,10 +1386,10 @@ class Bot
                             ->where('id', $existing->id)
                             ->update(['is_creator' => 1]);
 
-                        Logger::debug('Creator upgrade result', [
-                            'user_id' => $existing->id,
-                            'update_result' => $updateResult
-                        ]);
+                        // Logger::debug('Creator upgrade result', [
+                        //     'user_id' => $existing->id,
+                        //     'update_result' => $updateResult
+                        // ]);
 
                         Logger::info('Auto-upgraded existing user to creator', [
                             'user_id' => $existing->id,
@@ -1403,17 +1403,17 @@ class Bot
                         ]);
                     }
                 } else {
-                    Logger::debug('Creator already exists for user', ['user_id' => $existing->id]);
+                    // Logger::debug('Creator already exists for user', ['user_id' => $existing->id]);
                 }
             } else {
-                Logger::debug('User already creator', ['user_id' => $existing->id]);
+                // Logger::debug('User already creator', ['user_id' => $existing->id]);
             }
         }
 
-        Logger::debug('ensureUserExists EXIT', [
-            'final_user_id' => $existing->id,
-            'telegram_id' => $existing->telegram_id
-        ]);
+        // Logger::debug('ensureUserExists EXIT', [
+        //     'final_user_id' => $existing->id,
+        //     'telegram_id' => $existing->telegram_id
+        // ]);
 
         return (int)$existing->id;
     }
