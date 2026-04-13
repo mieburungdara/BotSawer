@@ -189,10 +189,15 @@ try {
     echo json_encode($response);
 
 } catch (Exception $e) {
-    Logger::error('WebApp auth failed', ['error' => $e->getMessage()]);
+    Logger::error('WebApp auth failed', [
+        'error' => $e->getMessage(),
+        'trace' => $e->getTraceAsString(),
+        'remote_ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+    ]);
     echo json_encode([
         'success' => false,
-        'message' => 'Authentication failed'
+        'message' => 'Authentication failed',
+        'timestamp' => \Carbon\Carbon::now()->toISOString()
     ]);
 }
 
