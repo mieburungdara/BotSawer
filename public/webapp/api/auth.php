@@ -75,43 +75,18 @@ try {
         ->first();
 
     if (!$user) {
-        // Create user if doesn't exist (auto-creator system)
+        // Create user if doesn't exist (webapp users are separate from bot users)
         $userId = DB::table('users')->insertGetId([
             'telegram_id' => (string)$userData['id'],  // Force string for BIGINT
             'first_name' => $userData['first_name'] ?? null,
             'last_name' => $userData['last_name'] ?? null,
             'username' => $userData['username'] ?? null,
             'language_code' => $userData['language_code'] ?? 'id',
-            'is_creator' => 1,  // Auto-register as creator
+            'is_creator' => 0,  // Webapp users are not auto-creators
             'is_banned' => 0,
             'created_at' => \Carbon\Carbon::now()
         ]);
-
-        // Auto-create creator profile
-        $displayName = trim(($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? ''));
-        if (empty($displayName)) {
-            $displayName = 'Creator ' . $userId;
-        }
-
-        try {
-            $creatorExists = DB::table('creators')->where('user_id', (string)$userId)->exists();
-            if (!$creatorExists) {
-                DB::table('creators')->insert([
-                    'user_id' => (string)$userId,  // Force string for BIGINT
-                    'display_name' => $displayName,
-                    'is_verified' => 1,  // Auto-verified
-                    'created_at' => \Carbon\Carbon::now()
-                ]);
-            }
-        } catch (Exception $e) {
-            Logger::error('Failed to create creator profile in webapp auth', [
-                'user_id' => $userId,
-                'error' => $e->getMessage()
-            ]);
-            // Don't rollback user - allow login without creator status
-        }
-
-        $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 1];
+        $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 0];
     }
 
     // Check if admin for this specific bot
