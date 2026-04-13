@@ -163,6 +163,7 @@ CREATE TABLE `withdrawals` (
 -- -----------------------------------------------------
 CREATE TABLE `bots` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `telegram_id` BIGINT UNSIGNED NULL UNIQUE COMMENT 'Telegram Bot ID',
   `name` VARCHAR(100) NOT NULL,
   `username` VARCHAR(100) NOT NULL UNIQUE,
   `token` VARCHAR(255) NOT NULL UNIQUE,

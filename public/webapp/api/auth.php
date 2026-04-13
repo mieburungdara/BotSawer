@@ -46,12 +46,15 @@ try {
     $dbBotId = 1; // Default
 
     if ($telegramBotId) {
-        // Find bot by approximate token match or add telegram_id field later
+        // Find bot by telegram_id field
         $bot = DB::table('bots')
-            ->where('token', 'like', substr($telegramBotId, 0, 10) . '%')
+            ->where('telegram_id', $telegramBotId)
+            ->where('is_active', 1)
             ->first();
         if ($bot) {
             $dbBotId = $bot->id;
+        } else {
+            Logger::warning('Bot not found for telegram_id', ['telegram_bot_id' => $telegramBotId]);
         }
     }
 
