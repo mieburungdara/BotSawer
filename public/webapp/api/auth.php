@@ -153,11 +153,18 @@ try {
         $adminRole = $adminData->role ?? null;
     }
 
-    // Check if creator
+    // Check if creator (webapp users from bot should all be verified creators)
     $isCreator = (bool) DB::table('creators')
         ->where('user_id', $user->id)
         ->where('is_verified', 1)
         ->exists();
+
+    // Log for monitoring
+    Logger::debug('Webapp auth completed', [
+        'user_id' => $user->id,
+        'is_admin' => $isAdmin,
+        'is_creator' => $isCreator
+    ]);
 
     echo json_encode([
         'success' => true,
