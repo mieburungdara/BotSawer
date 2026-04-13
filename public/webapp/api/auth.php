@@ -160,9 +160,11 @@ try {
         ->exists();
 
     // Log for monitoring
-    Logger::debug('Webapp auth completed', [
+    Logger::info('Webapp authentication successful', [
         'user_id' => $user->id,
+        'telegram_id' => $user->telegram_id,
         'is_admin' => $isAdmin,
+        'admin_role' => $adminRole,
         'is_creator' => $isCreator
     ]);
 
