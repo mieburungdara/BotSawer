@@ -209,18 +209,29 @@ try {
 
 function validateTelegramWebAppData(string $initData): ?array
 {
+    if (empty($initData)) {
+        return null;
+    }
+
     // Parse init data
     parse_str($initData, $data);
 
-    if (!isset($data['user'])) {
+    if (!isset($data['user']) || !isset($data['auth_date'])) {
         return null;
     }
 
     $user = json_decode($data['user'], true);
-    if (!$user || !isset($user['id'])) {
+    if (!$user || !isset($user['id']) || !is_numeric($user['id'])) {
         return null;
     }
 
-    // Basic validation - in production, verify hash with bot token
+    // Check auth_date not too old (within 24 hours)
+    $authDate = (int)($data['auth_date'] ?? 0);
+    if (time() - $authDate > 86400) { // 24 hours
+        return null;
+    }
+
+    // TODO: Verify hash with bot token for production security
+    // For now, basic validation only
     return $user;
 }
