@@ -78,6 +78,31 @@ try {
         throw new Exception('Akun tidak ditemukan. Silakan mulai bot terlebih dahulu dengan perintah /start');
     }
 
+    // Update user info if changed (name, username from Telegram)
+    $needsUpdate = false;
+    $updateData = [];
+
+    if (($user->first_name ?? '') !== ($userData['first_name'] ?? '')) {
+        $updateData['first_name'] = $userData['first_name'] ?? null;
+        $needsUpdate = true;
+    }
+    if (($user->last_name ?? '') !== ($userData['last_name'] ?? '')) {
+        $updateData['last_name'] = $userData['last_name'] ?? null;
+        $needsUpdate = true;
+    }
+    if (($user->username ?? '') !== ($userData['username'] ?? '')) {
+        $updateData['username'] = $userData['username'] ?? null;
+        $needsUpdate = true;
+    }
+
+    if ($needsUpdate) {
+        DB::table('users')
+            ->where('id', $user->id)
+            ->update($updateData);
+        // Update local user object
+        $user = (object)array_merge((array)$user, $updateData);
+    }
+
     // Check if admin for this specific bot
     $isAdmin = DB::table('admins')
         ->where('telegram_id', $userData['id'])
