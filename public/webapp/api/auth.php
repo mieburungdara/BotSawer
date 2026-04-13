@@ -96,11 +96,23 @@ try {
     }
 
     if ($needsUpdate) {
-        DB::table('users')
-            ->where('id', $user->id)
-            ->update($updateData);
-        // Update local user object
-        $user = (object)array_merge((array)$user, $updateData);
+        try {
+            $updateResult = DB::table('users')
+                ->where('id', $user->id)
+                ->update($updateData);
+            if ($updateResult) {
+                // Update local user object
+                $user = (object)array_merge((array)$user, $updateData);
+                Logger::info('User profile synced', ['user_id' => $user->id, 'updates' => $updateData]);
+            }
+        } catch (Exception $e) {
+            Logger::warning('Failed to sync user profile', [
+                'user_id' => $user->id,
+                'updates' => $updateData,
+                'error' => $e->getMessage()
+            ]);
+            // Continue with old data
+        }
     }
 
     // Check if admin for this specific bot
