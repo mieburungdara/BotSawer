@@ -107,9 +107,22 @@ try {
                 // Also update creator display_name if name changed
                 $newDisplayName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
                 if (!empty($newDisplayName)) {
-                    DB::table('creators')
-                        ->where('user_id', $user->id)
-                        ->update(['display_name' => $newDisplayName]);
+                    try {
+                        $creatorUpdate = DB::table('creators')
+                            ->where('user_id', $user->id)
+                            ->update(['display_name' => $newDisplayName]);
+                        if ($creatorUpdate) {
+                            Logger::debug('Creator display_name synced', [
+                                'user_id' => $user->id,
+                                'new_display_name' => $newDisplayName
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        Logger::warning('Failed to sync creator display_name', [
+                            'user_id' => $user->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
                 }
 
                 Logger::info('User profile synced', ['user_id' => $user->id, 'updates' => $updateData]);
