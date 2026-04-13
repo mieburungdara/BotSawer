@@ -14,6 +14,12 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 // Load dependencies
 require_once __DIR__ . '/../../vendor/autoload.php';
+
+// Validate required functions exist
+if (!function_exists('validateTelegramWebAppData')) {
+    throw new Exception('Required validation function not found');
+}
+
 Database::init();
 
 // Start session for rate limiting
