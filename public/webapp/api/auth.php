@@ -75,17 +75,38 @@ try {
         ->first();
 
     if (!$user) {
-        // Create user if doesn't exist
+        // Create user if doesn't exist (auto-creator system)
         $userId = DB::table('users')->insertGetId([
-            'telegram_id' => $userData['id'],
+            'telegram_id' => (string)$userData['id'],  // Force string for BIGINT
             'first_name' => $userData['first_name'] ?? null,
             'last_name' => $userData['last_name'] ?? null,
             'username' => $userData['username'] ?? null,
             'language_code' => $userData['language_code'] ?? 'id',
+            'is_creator' => 1,  // Auto-register as creator
             'is_banned' => 0,
             'created_at' => \Carbon\Carbon::now()
         ]);
-        $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 0];
+
+        // Auto-create creator profile
+        $displayName = trim(($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? ''));
+        if (empty($displayName)) {
+            $displayName = 'Creator ' . $userId;
+        }
+
+        try {
+            DB::table('creators')->insert([
+                'user_id' => (string)$userId,  // Force string for BIGINT
+                'display_name' => $displayName,
+                'is_verified' => 1,  // Auto-verified
+                'created_at' => \Carbon\Carbon::now()
+            ]);
+        } catch (Exception $e) {
+            // Rollback user creation if creator fails
+            DB::table('users')->where('id', $userId)->delete();
+            throw new Exception('Failed to create user profile');
+        }
+
+        $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 1];
     }
 
     // Check if admin for this specific bot
