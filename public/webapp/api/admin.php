@@ -781,12 +781,10 @@ try {
 
             $creators = DB::table('creators as c')
                 ->join('users as u', 'c.user_id', '=', 'u.id')
-                ->leftJoin('media_files as m', function($join) use ($botId) {
-                    $join->on('m.user_id', '=', 'u.id')
-                         ->where('m.bot_id', '=', $botId);
-                })
+                ->leftJoin('media_files as m', 'm.user_id', '=', 'u.id')
                 ->leftJoin('transactions as t', function($join) {
                     $join->on('t.media_id', '=', 'm.id')
+                         ->where('t.bot_id', '=', $botId)
                          ->where('t.type', '=', 'donation')
                          ->where('t.status', '=', 'success');
                 })
@@ -795,10 +793,11 @@ try {
                     'u.first_name',
                     'u.last_name',
                     'u.username',
-                    DB::raw('COUNT(DISTINCT m.id) as total_content'),
-                    DB::raw('COALESCE(SUM(t.amount), 0) as total_earnings')
+                    DB::raw('COUNT(DISTINCT CASE WHEN m.bot_id = ' . $botId . ' THEN m.id END) as total_content'),
+                    DB::raw('COALESCE(SUM(CASE WHEN m.bot_id = ' . $botId . ' THEN t.amount END), 0) as total_earnings')
                 )
-                ->groupBy('c.id', 'c.user_id', 'u.id', 'u.first_name', 'u.last_name', 'u.username')
+                ->where('c.is_verified', 1)
+                ->groupBy('c.id', 'c.user_id', 'u.id', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name', 'c.bio', 'c.bank_account', 'c.is_verified', 'c.created_at')
                 ->orderBy('c.created_at', 'desc')
                 ->get()
                 ->map(function ($item) {
