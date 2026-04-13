@@ -112,10 +112,10 @@ try {
                             ->where('user_id', $user->id)
                             ->update(['display_name' => $newDisplayName]);
                         if ($creatorUpdate) {
-                            Logger::debug('Creator display_name synced', [
-                                'user_id' => $user->id,
-                                'new_display_name' => $newDisplayName
-                            ]);
+                        Logger::info('Creator display_name synced', [
+                            'user_id' => $user->id,
+                            'new_display_name' => $newDisplayName
+                        ]);
                         }
                     } catch (Exception $e) {
                         Logger::warning('Failed to sync creator display_name', [
