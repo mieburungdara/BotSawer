@@ -963,7 +963,27 @@ class App {
                             ticks: {
                                 callback: function(value) {
                                     return 'Rp ' + value.toLocaleString('id-ID');
-                                }
+    }
+
+    async apiCall(endpoint, data = {}) {
+        const response = await fetch(`api/${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...data,
+                userId: this.telegram.getUserId(),
+                initData: this.telegram.getInitData()
+            })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.message || 'API call failed');
+        }
+        return result.data;
+    }
                             }
                         }
                     },
@@ -1484,25 +1504,7 @@ class App {
         }
     }
 
-    async apiCall(endpoint, data = {}) {
-        const response = await fetch(`api/${endpoint}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                ...data,
-                userId: this.telegram.getUserId(),
-                initData: this.telegram.getInitData()
-            })
-        });
 
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.message || 'API call failed');
-        }
-        return result.data;
-    }
 
     formatNumber(num) {
         return new Intl.NumberFormat('id-ID').format(num);
