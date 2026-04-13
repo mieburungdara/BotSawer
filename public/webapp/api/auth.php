@@ -168,18 +168,25 @@ try {
         'is_creator' => $isCreator
     ]);
 
-    echo json_encode([
+    // Final response with complete user data
+    $response = [
         'success' => true,
         'user' => [
             'id' => $user->id,
+            'telegram_id' => $user->telegram_id,
             'first_name' => $userData['first_name'] ?? '',
             'last_name' => $userData['last_name'] ?? '',
             'username' => $userData['username'] ?? '',
             'is_admin' => $isAdmin,
             'admin_role' => $adminRole,
-            'is_creator' => $isCreator
-        ]
-    ]);
+            'is_creator' => $isCreator,
+            'language_code' => $userData['language_code'] ?? 'id'
+        ],
+        'timestamp' => \Carbon\Carbon::now()->toISOString()
+    ];
+
+    Logger::debug('Webapp auth response prepared', ['user_id' => $user->id]);
+    echo json_encode($response);
 
 } catch (Exception $e) {
     Logger::error('WebApp auth failed', ['error' => $e->getMessage()]);
