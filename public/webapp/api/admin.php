@@ -797,7 +797,7 @@ try {
                     DB::raw('COALESCE(SUM(CASE WHEN m.bot_id = ? THEN t.amount END), 0) as total_earnings', [$botId])
                 )
                 ->where('c.is_verified', 1)
-                ->groupBy('c.id', 'c.user_id', 'u.id', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name', 'c.bio', 'c.bank_account', 'c.is_verified', 'c.created_at')
+                ->groupBy('c.id', 'c.user_id', 'c.display_name', 'c.bio', 'c.bank_account', 'c.is_verified', 'c.created_at', 'u.id', 'u.first_name', 'u.last_name', 'u.username')
                 ->orderBy('c.created_at', 'desc')
                 ->get()
                 ->map(function ($item) {
