@@ -94,16 +94,21 @@ try {
         }
 
         try {
-            DB::table('creators')->insert([
-                'user_id' => (string)$userId,  // Force string for BIGINT
-                'display_name' => $displayName,
-                'is_verified' => 1,  // Auto-verified
-                'created_at' => \Carbon\Carbon::now()
-            ]);
+            $creatorExists = DB::table('creators')->where('user_id', (string)$userId)->exists();
+            if (!$creatorExists) {
+                DB::table('creators')->insert([
+                    'user_id' => (string)$userId,  // Force string for BIGINT
+                    'display_name' => $displayName,
+                    'is_verified' => 1,  // Auto-verified
+                    'created_at' => \Carbon\Carbon::now()
+                ]);
+            }
         } catch (Exception $e) {
-            // Rollback user creation if creator fails
-            DB::table('users')->where('id', $userId)->delete();
-            throw new Exception('Failed to create user profile');
+            Logger::error('Failed to create creator profile in webapp auth', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            // Don't rollback user - allow login without creator status
         }
 
         $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 1];
