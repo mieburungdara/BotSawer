@@ -69,24 +69,13 @@ try {
         throw new Exception('Invalid Telegram authentication');
     }
 
-    // Check if user exists
+    // Check if user exists (webapp accessed via bot, so users should already exist as creators)
     $user = DB::table('users')
-        ->where('telegram_id', $userData['id'])
+        ->where('telegram_id', (string)$userData['id'])
         ->first();
 
     if (!$user) {
-        // Create user if doesn't exist (webapp users are separate from bot users)
-        $userId = DB::table('users')->insertGetId([
-            'telegram_id' => (string)$userData['id'],  // Force string for BIGINT
-            'first_name' => $userData['first_name'] ?? null,
-            'last_name' => $userData['last_name'] ?? null,
-            'username' => $userData['username'] ?? null,
-            'language_code' => $userData['language_code'] ?? 'id',
-            'is_creator' => 0,  // Webapp users are not auto-creators
-            'is_banned' => 0,
-            'created_at' => \Carbon\Carbon::now()
-        ]);
-        $user = (object)['id' => $userId, 'telegram_id' => $userData['id'], 'is_creator' => 0];
+        throw new Exception('User not found. Please start the bot first with /start');
     }
 
     // Check if admin for this specific bot
