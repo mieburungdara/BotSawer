@@ -995,9 +995,6 @@ class App {
         }
         return result.data;
     }
-                            }
-                        }
-                    },
                     plugins: {
                         legend: {
                             display: false
