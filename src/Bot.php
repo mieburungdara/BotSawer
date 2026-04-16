@@ -105,7 +105,7 @@ class Bot
             $this->handleHelpCommand($chatId);
         } elseif ($text === '/privacy' || $text === '/privasi') {
             $this->handlePrivacyCommand($chatId, $userId);
-        } elseif (strpos($text, '/admin') === 0) {
+        } elseif ($text && strpos($text, '/admin') === 0) {
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => '❌ Admin commands tidak tersedia di bot ini. Gunakan bot moderator.'
