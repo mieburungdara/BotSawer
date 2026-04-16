@@ -1469,11 +1469,8 @@ class App {
             const commissionAmount = (amount * commissionRate) / 100;
             const receiveAmount = amount - commissionAmount;
 
-            details.innerHTML = `
-                Jumlah penarikan: Rp ${this.formatNumber(amount)}<br>
-                Komisi platform (10%): Rp ${this.formatNumber(commissionAmount)}
-            `;
-            finalAmount.innerHTML = `💰 Anda akan menerima: Rp ${this.formatNumber(receiveAmount)}`;
+            details.innerHTML = 'Jumlah penarikan: Rp ' + this.formatNumber(amount) + '<br>Komisi platform (10%): Rp ' + this.formatNumber(commissionAmount);
+            finalAmount.innerHTML = '💰 Anda akan menerima: Rp ' + this.formatNumber(receiveAmount);
             breakdown.style.display = 'block';
         } else {
             breakdown.style.display = 'none';
