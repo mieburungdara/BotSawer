@@ -966,6 +966,13 @@ class App {
                             ticks: {
                                 callback: function(value) {
                                     return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     }
 
     async apiCall(endpoint, data = {}) {
