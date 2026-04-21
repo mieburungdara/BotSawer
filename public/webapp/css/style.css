@@ -222,7 +222,7 @@ h1, h2, h3, h4 {
 /* Premium Glassmorphism Stats */
 .header-stats {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     gap: 8px;
     background: rgba(255, 255, 255, 0.05);
     padding: 14px;
@@ -248,23 +248,12 @@ h1, h2, h3, h4 {
 }
 
 .h-stat-item {
-    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     gap: 4px;
     position: relative;
-}
-
-.h-stat-item:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    right: -4px;
-    top: 20%;
-    height: 60%;
-    width: 1px;
-    background: rgba(255, 255, 255, 0.1);
 }
 
 .h-stat-item i {

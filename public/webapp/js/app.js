@@ -45,8 +45,6 @@ class App {
         try {
             const walletData = await this.apiCall('wallet.php');
             document.getElementById('h-balance').textContent = 'Rp ' + this.formatCompactNumber(walletData.balance || 0);
-            document.getElementById('h-income').textContent = 'Rp ' + this.formatCompactNumber(walletData.total_earnings || 0);
-            document.getElementById('h-withdraw').textContent = 'Rp ' + this.formatCompactNumber(walletData.total_withdraw || 0);
             
             if (window.lucide) window.lucide.createIcons();
         } catch (e) {
