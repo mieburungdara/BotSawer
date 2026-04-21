@@ -17,7 +17,7 @@ ini_set('display_startup_errors', '0');
 error_reporting(E_ALL);
 
 // Load dependencies
-require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../../vendor/autoload.php';
 
 // Set headers AFTER loading dependencies
 header('Content-Type: application/json');
