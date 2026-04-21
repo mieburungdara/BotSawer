@@ -96,47 +96,45 @@ try {
         ]
     ];
 
-    $processed = [];
+    $processedGroups = [];
     foreach ($levels as $key => $group) {
-        $highestTier = null;
-        $nextTier = null;
-        
+        $tiersWithStatus = [];
         foreach ($group['tiers'] as $tier) {
-            if ($group['current'] >= $tier['value']) {
-                $highestTier = $tier;
-            } else {
-                $nextTier = $tier;
-                break;
-            }
+            $isUnlocked = $group['current'] >= $tier['value'];
+            $tiersWithStatus[] = [
+                'label' => $tier['label'],
+                'value' => $tier['value'],
+                'unlocked' => $isUnlocked
+            ];
         }
 
-        $progress = 0;
-        if ($nextTier) {
-            $prevValue = $highestTier ? $highestTier['value'] : 0;
-            $range = $nextTier['value'] - $prevValue;
-            $currentInRange = $group['current'] - $prevValue;
-            $progress = min(100, max(0, ($currentInRange / $range) * 100));
-        } else {
-            $progress = 100;
-        }
-
-        $processed[] = [
+        $processedGroups[] = [
             'id' => $key,
             'title' => $group['category'],
             'description' => $group['description'],
             'icon' => $group['icon'],
-            'tier' => $highestTier ? $highestTier['label'] : 'Belum Ada',
-            'next_tier' => $nextTier ? $nextTier['label'] : 'Maksimal',
-            'target' => $nextTier ? $nextTier['value'] : $highestTier['value'],
             'current' => $group['current'],
-            'progress' => $progress,
-            'unlocked' => !is_null($highestTier)
+            'tiers' => $tiersWithStatus
         ];
     }
 
+    $specialAchievements = [
+        [
+            'id' => 'early_bird',
+            'title' => 'Early Bird',
+            'description' => 'Salah satu dari 1.000 pengguna pertama',
+            'icon' => 'bird',
+            'unlocked' => (int)$user->id <= 1000,
+            'type' => 'legacy'
+        ]
+    ];
+
     echo json_encode([
         'success' => true,
-        'data' => $processed
+        'data' => [
+            'categories' => $processedGroups,
+            'special' => $specialAchievements
+        ]
     ]);
 
 } catch (Exception $e) {
