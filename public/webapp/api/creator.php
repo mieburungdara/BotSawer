@@ -44,9 +44,9 @@ try {
 
     $action = $input['action'] ?? 'get';
 
-    // Verify user is a verified creator
-    $creator = DB::table('creators')
-        ->where('user_id', $userId)
+    // Verify user is a verified creator (in unified users table)
+    $creator = DB::table('users')
+        ->where('id', $userId)
         ->where('is_verified', 1)
         ->first();
 
@@ -83,7 +83,7 @@ try {
             $formattedBankAccount = validateAndFormatBankAccount($bankAccount);
         }
 
-        DB::table('creators')
+        DB::table('users')
             ->where('id', $creator->id)
             ->update([
                 'display_name' => $displayName,
@@ -152,7 +152,7 @@ try {
 
     // Get total content count for pagination
     $totalContent = DB::table('media_files')
-        ->where('media_files.creator_id', $creator->id)
+        ->where('media_files.user_id', $creator->id)
         ->count();
 
     // Get paginated recent content
@@ -165,7 +165,7 @@ try {
                  ->where('transactions.type', '=', 'donation')
                  ->where('transactions.status', '=', 'success');
         })
-        ->where('media_files.creator_id', $creator->id)
+        ->where('media_files.user_id', $creator->id)
         ->groupBy('media_files.id')
         ->orderBy('media_files.created_at', 'desc')
         ->offset($offset)
@@ -183,7 +183,7 @@ try {
                  ->where('transactions.type', '=', 'donation')
                  ->where('transactions.status', '=', 'success');
         })
-        ->where('media_files.creator_id', $creator->id)
+        ->where('media_files.user_id', $creator->id)
         ->groupBy('media_files.id')
         ->orderByRaw('COALESCE(SUM(transactions.amount), 0) DESC')
         ->limit(10)

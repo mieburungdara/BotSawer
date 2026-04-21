@@ -143,7 +143,7 @@ try {
 
     // Notify creator
     $creator = DB::table('users')
-        ->where('id', $mediaToPost->creator_id)
+        ->where('id', $mediaToPost->user_id)
         ->value('telegram_id');
 
     if ($creator) {

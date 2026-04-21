@@ -402,7 +402,7 @@ class Bot
         try {
             // Check if already a creator
             $existingCreator = Creator::getProfile($userId);
-            if ($existingCreator) {
+            if ($existingCreator && $existingCreator->is_verified) {
                 $this->telegram->sendMessage([
                     'chat_id' => $chatId,
                     'text' => '✅ Anda sudah terdaftar sebagai kreator.'
@@ -533,15 +533,15 @@ class Bot
             }
 
             // Save to database
-            $mediaId = $this->saveMediaToDatabase($this->botId, $creator->id, $userId, $mediaInfo);
+            $mediaId = $this->saveMediaToDatabase($this->botId, $userId, $mediaInfo);
 
             // Check and notify streak milestones
-            $streakData = Creator::getStreakData((int)$creator->id);
+            $streakData = Creator::getStreakData((int)$userId);
             $currentStreak = $streakData['current_streak'];
-            $this->notifyStreakMilestone($creator->id, $currentStreak);
+            $this->notifyStreakMilestone($userId, $currentStreak);
 
             // Forward to backup channel with metadata
-            $this->forwardToBackupChannel($mediaId, $creator->id, $userId, $mediaInfo);
+            $this->forwardToBackupChannel($mediaId, $userId, $mediaInfo);
 
             // Add to posting queue
             $this->addToPostingQueue($mediaId);
@@ -576,7 +576,6 @@ class Bot
 
             Logger::info('Media uploaded successfully', [
                 'user_id' => $userId,
-                'creator_id' => $creator->id,
                 'media_id' => $mediaId,
                 'type' => $mediaInfo['type']
             ]);
@@ -637,11 +636,10 @@ class Bot
         return null;
     }
 
-    private function saveMediaToDatabase(int $botId, int $creatorId, int $userId, array $mediaInfo): int
+    private function saveMediaToDatabase(int $botId, int $userId, array $mediaInfo): int
     {
         return DB::table('media_files')->insertGetId([
             'bot_id' => $botId,
-            'creator_id' => $creatorId,
             'user_id' => $userId,
             'telegram_file_id' => $mediaInfo['file_id'],
             'file_unique_id' => $mediaInfo['file_unique_id'],
@@ -652,7 +650,7 @@ class Bot
         ]);
     }
 
-    private function forwardToBackupChannel(int $mediaId, int $creatorId, int $userId, array $mediaInfo): void
+    private function forwardToBackupChannel(int $mediaId, int $userId, array $mediaInfo): void
     {
         try {
             // Get backup channel from settings
@@ -667,7 +665,8 @@ class Bot
 
             // Get user and creator info
             $user = DB::table('users')->where('id', $userId)->first();
-            $creator = DB::table('creators')->where('id', $creatorId)->first();
+            // In unified table, creator info is in the user table
+            $creator = $user;
 
             // Create detailed caption for admin
             $adminCaption = "📁 **MEDIA BACKUP**\n\n";
@@ -925,11 +924,11 @@ class Bot
                 Database::transaction(function () use ($userId, $media, $amount, $mediaId) {
                     // Use Wallet methods for consistent balance management and logging
                     Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
-                    Wallet::addBalance($media->creator_id, $amount, 'Donasi dari sawer');
+                    Wallet::addBalance($media->user_id, $amount, 'Donasi dari sawer');
 
                     // Additional transaction record for media-specific tracking
                     DB::table('transactions')->insert([
-                        'user_id' => $media->creator_id,
+                        'user_id' => $media->user_id,
                         'media_id' => $mediaId,
                         'from_user_id' => $userId,
                         'type' => 'donation',
@@ -950,7 +949,7 @@ class Bot
 
                 // Send push notifications
                 NotificationManager::notifyDonor($userId, (int)$amount);
-                NotificationManager::notifyCreatorDonation((int)$media->creator_id, (int)$amount, (int)$mediaId, $donorName, 'Donasi dari sawer');
+                NotificationManager::notifyCreatorDonation((int)$media->user_id, (int)$amount, (int)$mediaId, $donorName, 'Donasi dari sawer');
             } else {
                 $this->telegram->sendMessage([
                     'chat_id' => $chatId,
@@ -1011,11 +1010,11 @@ class Bot
                 Database::transaction(function () use ($userId, $media, $amount, $groupId) {
                     // Use Wallet methods for consistent balance management and logging
                     Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
-                    Wallet::addBalance($media->creator_id, $amount, 'Donasi dari sawer');
+                    Wallet::addBalance($media->user_id, $amount, 'Donasi dari sawer');
 
                     // Additional transaction record for album-specific tracking
                     DB::table('transactions')->insert([
-                        'user_id' => $media->creator_id,
+                        'user_id' => $media->user_id,
                         'media_id' => $media->id, // Use first media ID
                         'from_user_id' => $userId,
                         'type' => 'donation',
@@ -1036,7 +1035,7 @@ class Bot
 
                 // Send push notifications
                 NotificationManager::notifyDonor($userId, (int)$amount);
-                NotificationManager::notifyCreatorDonation((int)$media->creator_id, (int)$amount, (int)$media->id, $donorName, 'Donasi dari sawer album');
+                NotificationManager::notifyCreatorDonation((int)$media->user_id, (int)$amount, (int)$media->id, $donorName, 'Donasi dari sawer album');
             } else {
                 $this->telegram->sendMessage([
                     'chat_id' => $chatId,
@@ -1062,7 +1061,7 @@ class Bot
         try {
             // Get media details with creator info including privacy setting
             $media = DB::table('media_files')
-                ->join('users', 'media_files.creator_id', '=', 'users.id')
+                ->join('users', 'media_files.user_id', '=', 'users.id')
                 ->where('media_files.id', $mediaId)
                 ->select('media_files.*', 'users.uuid', 'users.is_private')
                 ->first();
@@ -1089,7 +1088,7 @@ class Bot
             } else {
                 // This should not happen as UUID is generated on user login
                 Logger::warning('Creator without UUID found during posting', [
-                    'creator_id' => $media->creator_id,
+                    'user_id' => $media->user_id,
                     'media_id' => $mediaId
                 ]);
                 $caption .= "\n\n👤 Creator ID: Anonymous"; // Default to anonymous
@@ -1291,34 +1290,24 @@ class Bot
                 throw new Exception('Failed to create user account');
             }
 
-            // Auto-create creator profile
+            // Auto-create creator profile info in user table
             $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
             if (empty($displayName)) {
                 $displayName = 'Creator ' . $userId; // Fallback if no name
             }
 
-            // Logger::debug('Creating creator profile', [
-            //     'user_id' => $userId,
-            //     'display_name' => $displayName
-            // ]);
-
             try {
-                $creatorData = [
-                    'user_id' => (string)$userId,  // Force string for BIGINT
+                DB::table('users')->where('id', $userId)->update([
                     'display_name' => $displayName,
-                    'is_verified' => 1  // Auto-verified
-                ];
-                DB::table('creators')->insert($creatorData);
+                    'is_verified' => 1,
+                    'is_creator' => 1
+                ]);
                 Logger::info('Auto-registered as creator', ['user_id' => $userId, 'display_name' => $displayName]);
             } catch (Exception $e) {
-                Logger::error('Failed to auto-create creator profile', [
+                Logger::error('Failed to auto-update creator flags for user', [
                     'user_id' => $userId,
-                    'creator_data' => $creatorData,
                     'error' => $e->getMessage()
                 ]);
-                // Rollback: set user as not creator
-                DB::table('users')->where('id', $userId)->update(['is_creator' => 0]);
-                Logger::warning('Rolled back user to non-creator due to creator profile creation failure', ['user_id' => $userId]);
             }
 
             Logger::info('New user registered successfully', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
@@ -1361,57 +1350,31 @@ class Bot
             //     'telegram_id' => $existing->telegram_id
             // ]);
 
-            if ($existing->is_creator != 1) {
-                // Logger::debug('User needs creator upgrade', ['user_id' => $existing->id]);
+            if ($existing->is_creator != 1 || !$existing->is_verified) {
+                $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
+                if (empty($displayName)) {
+                    $displayName = 'Creator ' . $existing->id;
+                }
 
-                $creatorExists = DB::table('creators')->where('user_id', (string)$existing->id)->exists();
-                // Logger::debug('Creator exists check', [
-                //     'user_id' => $existing->id,
-                //     'creator_exists' => $creatorExists
-                // ]);
-
-                if (!$creatorExists) {
-                    $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
-                    if (empty($displayName)) {
-                        $displayName = 'Creator ' . $existing->id;
-                    }
-
-                    // Logger::debug('Upgrading user to creator', [
-                    //     'user_id' => $existing->id,
-                    //     'display_name' => $displayName
-                    // ]);
-
-                    try {
-                        $upgradeData = [
-                            'user_id' => (string)$existing->id,  // Force string for BIGINT
+                try {
+                    // Update user as verified creator
+                    DB::table('users')
+                        ->where('id', $existing->id)
+                        ->update([
                             'display_name' => $displayName,
+                            'is_creator' => 1,
                             'is_verified' => 1
-                        ];
-                        DB::table('creators')->insert($upgradeData);
-
-                        // Update user as creator
-                        $updateResult = DB::table('users')
-                            ->where('id', $existing->id)
-                            ->update(['is_creator' => 1]);
-
-                        // Logger::debug('Creator upgrade result', [
-                        //     'user_id' => $existing->id,
-                        //     'update_result' => $updateResult
-                        // ]);
-
-                        Logger::info('Auto-upgraded existing user to creator', [
-                            'user_id' => $existing->id,
-                            'display_name' => $displayName
                         ]);
-                    } catch (Exception $e) {
-                        Logger::error('Failed to auto-upgrade user to creator', [
-                            'user_id' => $existing->id,
-                            'upgrade_data' => $upgradeData,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                } else {
-                    // Logger::debug('Creator already exists for user', ['user_id' => $existing->id]);
+
+                    Logger::info('Auto-upgraded existing user to creator', [
+                        'user_id' => $existing->id,
+                        'display_name' => $displayName
+                    ]);
+                } catch (Exception $e) {
+                    Logger::error('Failed to auto-upgrade user to creator', [
+                        'user_id' => $existing->id,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             } else {
                 // Logger::debug('User already creator', ['user_id' => $existing->id]);

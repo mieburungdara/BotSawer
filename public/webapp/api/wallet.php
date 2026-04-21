@@ -80,8 +80,9 @@ try {
         }
 
         // Check if user is creator
-        $creator = DB::table('creators')
-            ->where('user_id', $userId)
+        $creator = DB::table('users')
+            ->where('id', $userId)
+            ->where('is_verified', 1)
             ->first();
 
         if (!$creator) {
@@ -106,7 +107,7 @@ try {
 
                 // Create withdrawal record
                 DB::table('withdrawals')->insert([
-                    'creator_id' => $userId,
+                    'user_id' => $userId,
                     'amount' => $finalAmount,
                     'original_amount' => $amount,
                     'commission_rate' => $commissionRate,
@@ -154,7 +155,7 @@ try {
         ->count();
 
     $totalMedia = DB::table('media_files')
-        ->where('creator_id', $userId)
+        ->where('user_id', $userId)
         ->count();
 
     echo json_encode([

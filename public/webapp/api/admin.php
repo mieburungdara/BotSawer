@@ -386,10 +386,9 @@ try {
 
             $content = DB::table('media_files as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
-                ->join('creators as c', 'm.creator_id', '=', 'c.id')
                 ->where('m.bot_id', $botId)
                 ->where('m.status', 'queued')
-                ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
+                ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'u.display_name')
                 ->orderBy('m.created_at', 'asc')
                 ->get()
                 ->map(function ($item) {
@@ -415,11 +414,10 @@ try {
 
             $content = DB::table('media_files as m')
                 ->join('users as u', 'm.user_id', '=', 'u.id')
-                ->join('creators as c', 'm.creator_id', '=', 'c.id')
                 ->where('m.bot_id', $botId)
                 ->where('m.status', 'scheduled')
                 ->whereNull('m.posted_at') // Not yet posted
-                ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'c.display_name')
+                ->select('m.*', 'u.first_name', 'u.last_name', 'u.username', 'u.display_name')
                 ->orderBy('m.created_at', 'asc')
                 ->get()
                 ->map(function ($item) {
@@ -449,7 +447,7 @@ try {
 
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
-                ->where('status', 'pending')
+                ->where('status', 'queued')
                 ->first();
 
             if (!$content) {
@@ -484,7 +482,7 @@ try {
 
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
-                ->where('status', 'pending')
+                ->where('status', 'queued')
                 ->first();
 
             if (!$content) {
@@ -521,7 +519,7 @@ try {
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('bot_id', $botId)
-                ->where('status', 'pending')
+                ->where('status', 'queued')
                 ->first();
 
             if (!$content) {
@@ -549,7 +547,7 @@ try {
             $content = DB::table('media_files')
                 ->where('id', $input['content_id'])
                 ->where('bot_id', $botId)
-                ->where('status', 'pending')
+                ->where('status', 'scheduled')
                 ->first();
 
             if (!$content) {
@@ -607,31 +605,27 @@ try {
                 throw new Exception('Insufficient permissions');
             }
 
-            $creators = DB::table('creators as c')
-                ->join('users as u', 'c.user_id', '=', 'u.id')
+            $creators = DB::table('users as u')
                 ->leftJoin('media_files as m', 'm.user_id', '=', 'u.id')
-                ->leftJoin('transactions as t', function($join) {
+                ->leftJoin('transactions as t', function($join) use ($botId) {
                     $join->on('t.media_id', '=', 'm.id')
                          ->where('t.bot_id', '=', $botId)
                          ->where('t.type', '=', 'donation')
                          ->where('t.status', '=', 'success');
                 })
                 ->select(
-                    'c.*',
-                    'u.first_name',
-                    'u.last_name',
-                    'u.username',
+                    'u.*',
                     DB::raw('COUNT(DISTINCT CASE WHEN m.bot_id = ? THEN m.id END) as total_content', [$botId]),
                     DB::raw('COALESCE(SUM(CASE WHEN m.bot_id = ? THEN t.amount END), 0) as total_earnings', [$botId])
                 )
-                ->where('c.is_verified', 1)
-                ->groupBy('c.id', 'c.user_id', 'c.display_name', 'c.bio', 'c.bank_account', 'c.is_verified', 'c.created_at', 'u.id', 'u.first_name', 'u.last_name', 'u.username')
-                ->orderBy('c.created_at', 'desc')
+                ->where('u.is_verified', 1)
+                ->groupBy('u.id')
+                ->orderBy('u.created_at', 'desc')
                 ->get()
                 ->map(function ($item) {
                     return [
                         'id' => $item->id,
-                        'user_id' => $item->user_id,
+                        'user_id' => $item->id,
                         'display_name' => $item->display_name,
                         'user_name' => trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? '')),
                         'username' => $item->username,
@@ -660,15 +654,15 @@ try {
                 throw new Exception('Missing creator_id');
             }
 
-            DB::table('creators')
+            DB::table('users')
                 ->where('id', $input['creator_id'])
                 ->update([
                     'is_verified' => 1,
-                    'verified_by' => $userId,
-                    'verified_at' => \Carbon\Carbon::now()
+                    'is_creator' => 1,
+                    'updated_at' => \Carbon\Carbon::now()
                 ]);
 
-            $creator = DB::table('creators')
+            $creator = DB::table('users')
                 ->where('id', $input['creator_id'])
                 ->first();
 
@@ -689,20 +683,16 @@ try {
                 throw new Exception('Missing creator_id');
             }
 
-             $profile = DB::table('creators as c')
-                ->join('users as u', 'c.user_id', '=', 'u.id')
+             $profile = DB::table('users as u')
                 ->leftJoin('media_files as m', 'm.user_id', '=', 'u.id')
                 ->leftJoin('transactions as t', function($join) {
                     $join->on('t.media_id', '=', 'm.id')
                          ->where('t.type', '=', 'donation')
                          ->where('t.status', '=', 'success');
                 })
-                ->where('c.id', $input['creator_id'])
+                ->where('u.id', $input['creator_id'])
                 ->select(
-                    'c.*',
-                    'u.first_name',
-                    'u.last_name',
-                    'u.username',
+                    'u.*',
                     DB::raw('COUNT(m.id) as total_content'),
                     DB::raw('COALESCE(SUM(t.amount), 0) as total_earnings')
                 )
