@@ -18,19 +18,12 @@ class Creator
                 throw new Exception('User not found');
             }
 
-            // Check if already a creator
-            $existing = DB::table('creators')->where('user_id', $userId)->first();
-            if ($existing) {
-                throw new Exception('User is already a creator');
-            }
-
-            DB::table('creators')->insert([
-                'user_id' => $userId,
+            // Since creators table is merged, we just update the user profile
+            DB::table('users')->where('id', $userId)->update([
                 'display_name' => $displayName,
                 'bio' => $bio,
                 'bank_account' => $bankAccount,
-                'is_verified' => 0,
-                'created_at' => \Carbon\Carbon::now()
+                'is_verified' => 0
             ]);
 
             Logger::info('Creator registered', ['user_id' => $userId, 'display_name' => $displayName]);
@@ -49,10 +42,10 @@ class Creator
     public static function updateProfile(int $creatorId, array $data): bool
     {
         try {
-            $creator = DB::table('creators')->where('id', $creatorId)->first();
+            $creator = DB::table('users')->where('id', $creatorId)->first();
             if (!$creator) {
-                Logger::warning('Creator profile update failed: creator not found', [
-                    'creator_id' => $creatorId
+                Logger::warning('User profile update failed: user not found', [
+                    'user_id' => $creatorId
                 ]);
                 return false;
             }
@@ -68,16 +61,16 @@ class Creator
 
             $updateData['updated_at'] = \Carbon\Carbon::now();
 
-            $affected = DB::table('creators')->where('id', $creatorId)->update($updateData);
+            $affected = DB::table('users')->where('id', $creatorId)->update($updateData);
 
             if ($affected > 0) {
-                Logger::info('Creator profile updated', ['creator_id' => $creatorId]);
+                Logger::info('User profile updated', ['user_id' => $creatorId]);
             }
 
             return $affected > 0;
         } catch (Exception $e) {
-            Logger::error('Creator profile update failed', [
-                'creator_id' => $creatorId,
+            Logger::error('User profile update failed', [
+                'user_id' => $creatorId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -87,30 +80,26 @@ class Creator
 
     public static function getProfile(int $userId): ?object
     {
-        return DB::table('creators')
-            ->join('users', 'creators.user_id', '=', 'users.id')
-            ->where('creators.user_id', $userId)
-            ->select('creators.*', 'users.uuid', 'users.is_private')
-            ->first();
+        return DB::table('users')->where('id', $userId)->first();
     }
 
     public static function getById(int $creatorId): ?object
     {
-        return DB::table('creators')->where('id', $creatorId)->first();
+        return DB::table('users')->where('id', $creatorId)->first();
     }
 
     public static function verifyCreator(int $creatorId, bool $verified = true): bool
     {
         try {
-            $creator = DB::table('creators')->where('id', $creatorId)->first();
+            $creator = DB::table('users')->where('id', $creatorId)->first();
             if (!$creator) {
-                Logger::warning('Creator verification failed: creator not found', [
-                    'creator_id' => $creatorId
+                Logger::warning('User verification failed: user not found', [
+                    'user_id' => $creatorId
                 ]);
                 return false;
             }
 
-            DB::table('creators')
+            DB::table('users')
                 ->where('id', $creatorId)
                 ->update(['is_verified' => $verified ? 1 : 0]);
 
@@ -132,16 +121,16 @@ class Creator
 
     public static function getMediaCount(int $creatorId): int
     {
-        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        $creator = DB::table('users')->where('id', $creatorId)->first();
         if (!$creator) {
             return 0;
         }
-        return (int) DB::table('media_files')->where('creator_id', $creatorId)->count();
+        return (int) DB::table('media_files')->where('user_id', $creatorId)->count();
     }
 
     public static function getTotalEarnings(int $creatorId): int
     {
-        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        $creator = DB::table('users')->where('id', $creatorId)->first();
         if (!$creator) {
             return 0;
         }
@@ -155,7 +144,7 @@ class Creator
     public static function getStats(int $creatorId): array
     {
         // Check if creator exists first
-        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        $creator = DB::table('users')->where('id', $creatorId)->first();
         if (!$creator) {
             return [
                 'total_media' => 0,
@@ -171,11 +160,11 @@ class Creator
         // Combined query to avoid N+1 problem
         $stats = DB::table('media_files')
             ->leftJoin('transactions', function ($join) use ($creatorId) {
-                $join->on('media_files.creator_id', '=', DB::raw($creatorId))
+                $join->on('media_files.user_id', '=', DB::raw($creatorId))
                      ->where('transactions.type', '=', 'donation')
                      ->where('transactions.status', '=', 'success');
             })
-            ->where('media_files.creator_id', $creatorId)
+            ->where('media_files.user_id', $creatorId)
             ->selectRaw('
                 COUNT(DISTINCT media_files.id) as total_media,
                 COALESCE(SUM(transactions.amount), 0) as total_earnings,
@@ -201,7 +190,7 @@ class Creator
     public static function getActiveGoal(int $creatorId): ?array
     {
         $goal = DB::table('creator_goals')
-            ->where('creator_id', $creatorId)
+            ->where('user_id', $creatorId)
             ->where('status', 'active')
             ->first();
 
@@ -234,13 +223,13 @@ class Creator
             return Database::transaction(function () use ($creatorId, $title, $targetAmount) {
                 // Deactivate any existing active goals
                 DB::table('creator_goals')
-                    ->where('creator_id', $creatorId)
+                    ->where('user_id', $creatorId)
                     ->where('status', 'active')
                     ->update(['status' => 'cancelled']);
 
                 // Insert new goal
                 DB::table('creator_goals')->insert([
-                    'creator_id' => $creatorId,
+                    'user_id' => $creatorId,
                     'title' => $title,
                     'target_amount' => $targetAmount,
                     'status' => 'active',
@@ -259,17 +248,16 @@ class Creator
     {
         return DB::table('creator_goals')
             ->where('id', $goalId)
-            ->where('creator_id', $creatorId)
+            ->where('user_id', $creatorId)
             ->update(['status' => 'cancelled']) > 0;
     }
 
     public static function getAllCreators(int $limit = 50, int $offset = 0): array
     {
-        return DB::table('creators')
-            ->join('users', 'creators.user_id', '=', 'users.id')
-            ->where('users.is_private', 0) // Exclude private users
-            ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username', 'users.photo_url')
-            ->orderBy('creators.created_at', 'desc')
+        return DB::table('users')
+            ->where('is_private', 0) // Exclude private users
+            ->select('*')
+            ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->offset($offset)
             ->get()
@@ -279,15 +267,16 @@ class Creator
     public static function searchCreators(string $query, int $limit = 20): array
     {
         $searchTerm = "%{$query}%";
-        return DB::table('creators')
-            ->join('users', 'creators.user_id', '=', 'users.id')
-            ->where('users.is_private', 0) // Exclude private users
+        return DB::table('users')
+            ->where('is_private', 0) // Exclude private users
             ->where(function($q) use ($searchTerm, $query) {
-                $q->where('creators.display_name', 'like', $searchTerm)
-                  ->orWhere('users.username', 'like', $searchTerm);
+                $q->where('display_name', 'like', $searchTerm)
+                  ->orWhere('username', 'like', $searchTerm)
+                  ->orWhere('first_name', 'like', $searchTerm)
+                  ->orWhere('last_name', 'like', $searchTerm);
             })
-            ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username', 'users.photo_url')
-            ->orderBy('creators.created_at', 'desc')
+            ->select('*')
+            ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get()
             ->toArray();
@@ -296,7 +285,7 @@ class Creator
     public static function getStreakData(int $creatorId): array
     {
         // Check if creator exists
-        $creator = DB::table('creators')->where('id', $creatorId)->first();
+        $creator = DB::table('users')->where('id', $creatorId)->first();
         if (!$creator) {
             return [
                 'current_streak' => 0,
@@ -308,7 +297,7 @@ class Creator
 
         // Get distinct publish dates
         $publishDates = DB::table('media_files')
-            ->where('creator_id', $creatorId)
+            ->where('user_id', $creatorId)
             ->selectRaw('DISTINCT DATE(created_at) as publish_date')
             ->orderBy('publish_date', 'desc')
             ->pluck('publish_date')

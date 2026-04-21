@@ -22,7 +22,6 @@ try {
 
     // Get user info
     $user = DB::table('users')->where('id', $userId)->first();
-    $creator = DB::table('creators')->where('user_id', $userId)->first();
 
     // Calculate common metrics
     $totalDonationsSent = DB::table('transactions')
@@ -37,13 +36,13 @@ try {
         ->where('status', 'success')
         ->sum('amount');
 
-    $contentCount = $creator ? DB::table('media_files')->where('creator_id', $creator->id)->count() : 0;
+    $contentCount = DB::table('media_files')->where('user_id', $userId)->count();
     
-    $totalEarnings = $creator ? DB::table('transactions')
+    $totalEarnings = DB::table('transactions')
         ->where('user_id', $userId)
         ->where('type', 'donation')
         ->where('status', 'success')
-        ->sum('amount') : 0;
+        ->sum('amount');
 
     $levels = [
         'donatur' => [

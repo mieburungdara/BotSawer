@@ -133,6 +133,13 @@ try {
         $needsUpdate = true;
     }
 
+    // Automatically sync display_name with Telegram name since that's the most up-to-date
+    $expectedDisplayName = trim(($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? ''));
+    if (!empty($expectedDisplayName) && ($user->display_name ?? '') !== $expectedDisplayName) {
+        $updateData['display_name'] = $expectedDisplayName;
+        $needsUpdate = true;
+    }
+
     if ($needsUpdate) {
         try {
             $updateResult = DB::table('users')
@@ -192,18 +199,13 @@ try {
     }
 
     // Check if creator (verified)
-    $creator = DB::table('creators')
-        ->where('user_id', $user->id)
-        ->where('is_verified', 1)
-        ->first();
-    
-    $isCreator = (bool)$creator;
+    $isCreator = (bool)$user->is_verified;
     
     // Badge logic: Check if actually posted content
     $hasPosted = false;
     if ($isCreator) {
         $hasPosted = DB::table('media_files')
-            ->where('creator_id', $creator->id)
+            ->where('user_id', $user->id)
             ->exists();
     }
 

@@ -66,12 +66,10 @@ try {
             throw new Exception('User tidak ditemukan');
         }
 
-        $creator = DB::table('creators')->where('user_id', $targetUserId)->first();
-        
         $hasPosted = false;
-        if ($creator && $creator->is_verified) {
+        if ($user->is_verified) {
             $hasPosted = DB::table('media_files')
-                ->where('creator_id', $creator->id)
+                ->where('user_id', $user->id)
                 ->exists();
         }
 
@@ -81,24 +79,19 @@ try {
             ->where('status', 'success')
             ->exists();
 
-        $stats = [];
-        if ($creator) {
-            $stats = Creator::getStats((int)$creator->id);
-            $stats['is_creator'] = true;
-        } else {
-            // General user stats
-            $stats['is_creator'] = false;
-            $stats['total_donations_sent'] = DB::table('transactions')
-                ->where('from_user_id', $targetUserId)
-                ->where('type', 'donation')
-                ->where('status', 'success')
-                ->count();
-            $stats['total_amount_sent'] = DB::table('transactions')
-                ->where('from_user_id', $targetUserId)
-                ->where('type', 'donation')
-                ->where('status', 'success')
-                ->sum('amount');
-        }
+        // Unified stats: Everyone can have both creator and donor stats
+        $stats = Creator::getStats((int)$user->id);
+        $stats['is_creator'] = (bool)$user->is_verified;
+        $stats['total_donations_sent'] = DB::table('transactions')
+            ->where('from_user_id', $targetUserId)
+            ->where('type', 'donation')
+            ->where('status', 'success')
+            ->count();
+        $stats['total_amount_sent'] = DB::table('transactions')
+            ->where('from_user_id', $targetUserId)
+            ->where('type', 'donation')
+            ->where('status', 'success')
+            ->sum('amount');
 
         $recentActivity = DB::table('transactions')
             ->where(function($q) use ($targetUserId) {
@@ -121,11 +114,11 @@ try {
                     'photo_url' => $user->photo_url ?? null,
                     'joined_at' => $user->created_at
                 ],
-                'creator' => $creator ? [
-                    'display_name' => $creator->display_name,
-                    'bio' => $creator->bio,
-                    'is_verified' => (bool)$creator->is_verified,
-                ] : null,
+                'creator' => [
+                    'display_name' => $user->display_name,
+                    'bio' => $user->bio,
+                    'is_verified' => (bool)$user->is_verified,
+                ],
                 'badges' => [
                     'has_posted' => $hasPosted,
                     'has_donated' => $hasDonated
