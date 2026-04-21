@@ -28,6 +28,7 @@ jobs:
             **/.git*
             **/.git*/**
             .github/**
+            vendor
 
       - name: 📱 Send Telegram Notification
         if: success()
