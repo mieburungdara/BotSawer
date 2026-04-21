@@ -109,7 +109,17 @@ try {
     // Default: Get creator dashboard data
     $stats = Creator::getStats($creator->id);
 
-    // Get recent content
+    // Pagination
+    $page = (int)($input['page'] ?? 1);
+    $limit = (int)($input['limit'] ?? 10);
+    $offset = ($page - 1) * $limit;
+
+    // Get total content count for pagination
+    $totalContent = DB::table('media_files')
+        ->where('media_files.creator_id', $creator->id)
+        ->count();
+
+    // Get paginated recent content
     $recentContent = DB::table('media_files')
         ->select('media_files.*')
         ->selectRaw('COALESCE(SUM(transactions.amount), 0) as total_donations')
@@ -122,11 +132,12 @@ try {
         ->where('media_files.creator_id', $creator->id)
         ->groupBy('media_files.id')
         ->orderBy('media_files.created_at', 'desc')
-        ->limit(10)
+        ->offset($offset)
+        ->limit($limit)
         ->get()
         ->toArray();
 
-    // Get top content by donations
+    // Get top content by donations (remains limited to top 10 for dashboard context)
     $topContent = DB::table('media_files')
         ->select('media_files.*')
         ->selectRaw('COALESCE(SUM(transactions.amount), 0) as total_donations')
@@ -136,7 +147,7 @@ try {
                  ->where('transactions.type', '=', 'donation')
                  ->where('transactions.status', '=', 'success');
         })
-        ->where('media_files.creator_id', $userId)
+        ->where('media_files.creator_id', $creator->id)
         ->groupBy('media_files.id')
         ->orderByRaw('COALESCE(SUM(transactions.amount), 0) DESC')
         ->limit(10)
@@ -161,7 +172,13 @@ try {
             'stats' => $stats,
             'recent_content' => $recentContent,
             'top_content' => $topContent,
-            'analytics' => $analytics
+            'analytics' => $analytics,
+            'pagination' => [
+                'total_items' => $totalContent,
+                'total_pages' => ceil($totalContent / $limit),
+                'current_page' => $page,
+                'limit' => $limit
+            ]
         ]
     ]);
 

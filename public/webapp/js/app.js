@@ -100,11 +100,11 @@ class App {
                 case 'wallet':
                     html = await this.loadWallet();
                     break;
-                case 'history':
-                    html = await this.loadHistory();
-                    break;
                 case 'creator':
                     html = await this.loadCreator();
+                    break;
+                case 'contents':
+                    html = await this.loadContents();
                     break;
                 case 'admin':
                     html = await this.loadAdmin();
@@ -150,6 +150,33 @@ class App {
 
     async loadWallet() {
         const walletData = await this.apiCall('wallet.php');
+        const transactions = await this.apiCall('transactions.php');
+
+        let tableRows = '';
+        if (transactions && transactions.length > 0) {
+            transactions.forEach(tx => {
+                const statusClass = tx.status === 'success' ? 'status-success' :
+                                  tx.status === 'pending' ? 'status-pending' : 'status-failed';
+                const iconColor = tx.amount > 0 ? 'var(--success)' : 'var(--danger)';
+
+                tableRows += `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">${tx.description}</div>
+                            <div style="font-size: 11px; color: var(--hint-color);">${new Date(tx.created_at).toLocaleDateString('id-ID')}</div>
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="font-weight: 700; color: ${iconColor};">
+                                ${tx.amount > 0 ? '+' : ''}${this.formatNumber(tx.amount)}
+                            </div>
+                            <span class="status-badge ${statusClass}">${tx.status}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            tableRows = '<tr><td colspan="2" class="text-center">Belum ada transaksi</td></tr>';
+        }
 
         return `
             <div class="fade-in">
@@ -185,7 +212,7 @@ class App {
                     <div style="background: rgba(99, 102, 241, 0.05); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px dashed var(--primary);">
                         <div style="display: flex; gap: 10px; color: var(--primary);">
                             <i data-lucide="info" style="flex-shrink: 0;"></i>
-                            <p style="font-size: 13px; font-weight: 500;">Platform mengenakan komisi <strong>10%</strong> untuk biaya operasional.</p>
+                            <p style="font-size: 13px; font-weight: 500;">Biaya komisi: <strong>10%</strong>.</p>
                         </div>
                     </div>
                     <form id="withdrawForm">
@@ -196,77 +223,125 @@ class App {
                         <div class="form-group">
                             <label>Pilih Bank</label>
                             <select id="bankName" required>
-                                <option value="">Klik untuk memilih...</option>
+                                <option value="">Pilih...</option>
                                 <option value="BCA">BCA</option>
                                 <option value="Mandiri">Mandiri</option>
                                 <option value="BRI">BRI</option>
                                 <option value="BNI">BNI</option>
-                                <option value="CIMB">CIMB Niaga</option>
-                                <option value="Danamon">Danamon</option>
-                                <option value="Permata">Permata</option>
-                                <option value="BSI">BSI</option>
                                 <option value="Lainnya">Lainnya</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Nomor Rekening</label>
-                            <input type="text" id="bankAccount" placeholder="123xxx" required>
+                            <input type="text" id="bankAccount" required>
                         </div>
                         <div class="form-group">
                             <label>Nama Pemilik</label>
-                            <input type="text" id="accountName" placeholder="Sesuai buku tabungan" required>
+                            <input type="text" id="accountName" required>
                         </div>
                         <button type="submit" class="btn btn-primary">
                             <i data-lucide="arrow-up-right"></i> Tarik Sekarang
                         </button>
                     </form>
                 </div>
+
+                <div class="card">
+                    <h3><i data-lucide="history"></i> Riwayat Transaksi</h3>
+                    <div class="table-container">
+                        <table class="table">
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         `;
     }
 
     async loadHistory() {
-        const transactions = await this.apiCall('transactions.php');
+        return await this.loadWallet();
+    }
+
+    async loadContents(page = 1) {
+        if (!this.userData.is_creator) {
+            return '<div class="card"><h3>Akses Ditolak</h3></div>';
+        }
+
+        const response = await this.apiCall('creator.php', { page: page, limit: 10 });
+        const contents = response.recent_content || [];
+        const paging = response.pagination;
 
         let tableRows = '';
-        if (transactions && transactions.length > 0) {
-            transactions.forEach(tx => {
-                const statusClass = tx.status === 'success' ? 'status-success' :
-                                  tx.status === 'pending' ? 'status-pending' : 'status-failed';
-                const icon = tx.amount > 0 ? 'arrow-down-left' : 'arrow-up-right';
-                const iconColor = tx.amount > 0 ? 'var(--success)' : 'var(--danger)';
-
+        if (contents.length > 0) {
+            contents.forEach(item => {
                 tableRows += `
                     <tr>
                         <td>
-                            <div style="font-weight: 600;">${tx.description}</div>
-                            <div style="font-size: 11px; color: var(--hint-color);">${new Date(tx.created_at).toLocaleDateString('id-ID')}</div>
+                            <div style="font-weight: 600;">Media #${item.id}</div>
+                            <div style="font-size: 11px; color: var(--hint-color);">${new Date(item.created_at).toLocaleDateString('id-ID')}</div>
                         </td>
+                        <td>${item.file_type}</td>
                         <td style="text-align: right;">
-                            <div style="font-weight: 700; color: ${iconColor};">
-                                ${tx.amount > 0 ? '+' : ''}${this.formatNumber(tx.amount)}
-                            </div>
-                            <span class="status-badge ${statusClass}">${tx.status}</span>
+                            <div style="font-weight: 700; color: var(--success);">Rp ${this.formatNumber(item.total_donations)}</div>
+                            <div style="font-size: 11px; color: var(--hint-color);">${item.donation_count} donasi</div>
                         </td>
                     </tr>
                 `;
             });
         } else {
-            tableRows = '<tr><td colspan="2" class="text-center">Belum ada transaksi</td></tr>';
+            tableRows = '<tr><td colspan="3" class="text-center">Belum ada konten</td></tr>';
         }
 
-        return `
+        // Pagination buttons
+        let paginationHtml = '';
+        if (paging.total_pages > 1) {
+            paginationHtml = `
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" style="padding: 8px 12px; width: auto;" 
+                        ${paging.current_page <= 1 ? 'disabled' : `onclick="app.loadContents(${paging.current_page - 1})"`}>
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    ${Array.from({ length: paging.total_pages }, (_, i) => i + 1).map(p => `
+                        <button class="btn ${p === paging.current_page ? 'btn-primary' : 'btn-secondary'}" 
+                            style="padding: 8px 12px; width: auto;" onclick="app.loadContents(${p})">
+                            ${p}
+                        </button>
+                    `).join('')}
+                    <button class="btn btn-secondary" style="padding: 8px 12px; width: auto;" 
+                        ${paging.current_page >= paging.total_pages ? 'disabled' : `onclick="app.loadContents(${paging.current_page + 1})"`}>
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        const html = `
             <div class="fade-in card">
-                <h3><i data-lucide="history"></i> Riwayat Transaksi</h3>
+                <h3><i data-lucide="layers"></i> Daftar Konten</h3>
                 <div class="table-container">
                     <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Konten</th>
+                                <th>Tipe</th>
+                                <th style="text-align: right;">Total Donasi</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             ${tableRows}
                         </tbody>
                     </table>
                 </div>
+                ${paginationHtml}
             </div>
         `;
+
+        if (this.currentPage === 'contents') {
+            document.getElementById('pageContent').innerHTML = html;
+            if (window.lucide) window.lucide.createIcons();
+        }
+        return html;
     }
 
     async loadAdmin() {
@@ -511,35 +586,13 @@ class App {
                         <canvas id="amountChart" width="400" height="200"></canvas>
                     </div>
                 </div>
-
-                <div class="card">
-                    <h3><i data-lucide="layers"></i> Konten Terbaru</h3>
-                    ${this.renderContentList(creatorData.recent_content || [])}
-                </div>
-
-                <div class="card">
-                    <h3><i data-lucide="user-cog"></i> Pengaturan Profil</h3>
-                    <form id="creatorProfileForm">
-                        <div class="form-group">
-                            <label>Nama Display</label>
-                            <input type="text" id="creatorDisplayName" value="${creatorData.profile?.display_name || ''}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Biografi Singkat</label>
-                            <textarea id="creatorBio" rows="3">${creatorData.profile?.bio || ''}</textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Tujuan Rekening</label>
-                            <input type="text" id="creatorBankAccount" value="${creatorData.profile?.bank_account || ''}" placeholder="BCA - 1234xxx - Nama">
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i data-lucide="save"></i> Update Profil
-                        </button>
-                        <div id="profileResult" style="margin-top: 10px;"></div>
-                    </form>
-                </div>
             </div>
         `;
+
+        // Store analytics data for post-render chart initialization
+        this._creatorAnalytics = creatorData.analytics;
+        return html;
+    }
 
         // Store analytics data for post-render chart initialization
         this._creatorAnalytics = creatorData.analytics;
