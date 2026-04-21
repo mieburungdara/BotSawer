@@ -35,16 +35,13 @@ if (!RateLimiter::check($endpoint, $userId)) {
 try {
     $input = json_decode(file_get_contents('php://input'), true);
 
-    if (!$input || !isset($input['userId'])) {
+    if (!$input) {
         throw new Exception('Invalid request');
     }
 
-    // Check session authentication
-    if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != $input['userId']) {
-        throw new Exception('Authentication required');
-    }
+    // Authenticate via Telegram initData
+    $userId = WebAppAuth::authenticate($input);
 
-    $userId = $input['userId'];
     $action = $input['action'] ?? 'get';
 
     // Verify user is a verified creator

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BotSawer;
 
 use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -34,16 +35,12 @@ if (!RateLimiter::check($endpoint, $userId)) {
 try {
     $input = json_decode(file_get_contents('php://input'), true);
 
-    if (!$input || !isset($input['userId'])) {
+    if (!$input) {
         throw new Exception('Invalid request');
     }
 
-    // Check session authentication
-    if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != $input['userId']) {
-        throw new Exception('Authentication required');
-    }
-
-    $userId = $input['userId'];
+    // Authenticate via Telegram initData
+    $userId = WebAppAuth::authenticate($input);
 
     // Get recent transactions
     $transactions = DB::table('transactions')
