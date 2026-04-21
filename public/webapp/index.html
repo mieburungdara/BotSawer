@@ -94,6 +94,24 @@
         </div>
     </div>
 
+    <div id="proofModal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="app.closeProofModal()"></div>
+        <div class="modal-content glass-modal">
+            <div class="modal-header">
+                <h3>Bukti Pembayaran</h3>
+                <button class="btn-close" onclick="app.closeProofModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="proofImageLoader" class="spinner-container">
+                    <div class="spinner"></div>
+                </div>
+                <img id="proofImage" src="" alt="Proof" style="display: none;">
+            </div>
+        </div>
+    </div>
+
     <script src="js/chart.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="js/telegram-web-app.js"></script>

@@ -83,12 +83,18 @@ class NotificationManager
         self::sendToUser($userId, $message);
     }
 
-    public static function notifyCreatorDonation(int $creatorId, int $amount, int $mediaId): void
+    public static function notifyCreatorDonation(int $creatorId, int $amount, int $mediaId, string $donorName = 'Anonymous', string $donorMessage = ''): void
     {
         $message = "🎉 <b>Anda Menerima Donasi!</b>\n\n";
-        $message .= "💰 Jumlah: Rp " . number_format($amount, 0, ',', '.') . "\n";
-        $message .= "📱 Media: #" . $mediaId . "\n";
-        $message .= "📅 Waktu: " . \Carbon\Carbon::now()->format('d/m/Y H:i') . "\n\n";
+        $message .= "💰 Jumlah: <b>Rp " . number_format($amount, 0, ',', '.') . "</b>\n";
+        $message .= "👤 Dari: <i>{$donorName}</i>\n";
+        $message .= "📱 Media ID: #{$mediaId}\n";
+        
+        if (!empty($donorMessage)) {
+            $message .= "\n💬 <b>Pesan:</b>\n<i>\"{$donorMessage}\"</i>\n";
+        }
+        
+        $message .= "\n📅 Waktu: " . \Carbon\Carbon::now()->format('d/m/Y H:i') . "\n\n";
         $message .= "Terima kasih atas konten Anda! 🎨";
 
         self::sendToUser($creatorId, $message);

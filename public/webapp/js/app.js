@@ -1252,7 +1252,7 @@ class App {
                     <div style="display: flex; gap: 10px;">
                         <button class="btn btn-success btn-sm" onclick="app.approvePayment(${payment.id}, '${payment.type}')">✅ Setujui</button>
                         <button class="btn btn-danger btn-sm" onclick="app.rejectPayment(${payment.id}, '${payment.type}')">❌ Tolak</button>
-                        <button class="btn btn-info btn-sm" onclick="app.viewPaymentProof('${payment.proof_file_id}')">👁️ Lihat Bukti</button>
+                        ${payment.type === 'topup' ? `<button class="btn btn-info btn-sm" onclick="app.viewPaymentProof(${payment.id})">👁️ Lihat Bukti</button>` : ''}
                     </div>
                 </div>
             `;
@@ -1297,14 +1297,45 @@ class App {
         }
     }
 
-    async viewPaymentProof(fileId) {
-        // For now, show placeholder. In production, this would fetch and display the payment proof image
-        alert('Fitur lihat bukti pembayaran sedang dikembangkan. File ID: ' + fileId);
-        // TODO: Implement payment proof viewing
-        // This would require:
-        // 1. API endpoint to get file URL from Telegram
-        // 2. Or serve images through our server
-        // 3. Modal to display the image
+    async viewPaymentProof(id) {
+        const modal = document.getElementById('proofModal');
+        const img = document.getElementById('proofImage');
+        const loader = document.getElementById('proofImageLoader');
+        
+        // Show modal and loader
+        modal.style.display = 'flex';
+        img.style.display = 'none';
+        loader.style.display = 'flex';
+        
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_payment_proof_url',
+                proof_id: id
+            });
+
+            if (result.url) {
+                img.src = result.url;
+                img.onload = () => {
+                    loader.style.display = 'none';
+                    img.style.display = 'block';
+                };
+                img.onerror = () => {
+                    alert('Gagal memuat gambar bukti dari server Telegram.');
+                    this.closeProofModal();
+                };
+            } else {
+                throw new Error('URL bukti tidak ditemukan');
+            }
+        } catch (error) {
+            alert('Error fetching proof: ' + error.message);
+            this.closeProofModal();
+        }
+    }
+
+    closeProofModal() {
+        const modal = document.getElementById('proofModal');
+        modal.style.display = 'none';
+        document.getElementById('proofImage').src = '';
     }
 
     async loadContentQueue() {

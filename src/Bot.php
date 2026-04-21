@@ -944,9 +944,13 @@ class Bot
                     'text' => "✅ Terima kasih atas donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\nDonasi telah diteruskan ke kreator."
                 ]);
 
+                // Fetch donor info for notification
+                $donor = DB::table('users')->where('id', $userId)->first();
+                $donorName = ($donor && !$donor->is_private) ? trim(($donor->first_name ?? '') . ' ' . ($donor->last_name ?? '')) : 'Anonymous';
+
                 // Send push notifications
-                NotificationManager::notifyDonor($userId, $amount);
-                NotificationManager::notifyCreatorDonation($media->creator_id, $amount, $mediaId);
+                NotificationManager::notifyDonor($userId, (int)$amount);
+                NotificationManager::notifyCreatorDonation((int)$media->creator_id, (int)$amount, (int)$mediaId, $donorName, 'Donasi dari sawer');
             } else {
                 $this->telegram->sendMessage([
                     'chat_id' => $chatId,
@@ -1026,9 +1030,13 @@ class Bot
                     'text' => "✅ Terima kasih atas donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\nDonasi telah diteruskan ke kreator."
                 ]);
 
+                // Fetch donor info for notification
+                $donor = DB::table('users')->where('id', $userId)->first();
+                $donorName = ($donor && !$donor->is_private) ? trim(($donor->first_name ?? '') . ' ' . ($donor->last_name ?? '')) : 'Anonymous';
+
                 // Send push notifications
-                NotificationManager::notifyDonor($userId, $amount);
-                NotificationManager::notifyCreatorDonation($media->creator_id, $amount, $media->id);
+                NotificationManager::notifyDonor($userId, (int)$amount);
+                NotificationManager::notifyCreatorDonation((int)$media->creator_id, (int)$amount, (int)$media->id, $donorName, 'Donasi dari sawer album');
             } else {
                 $this->telegram->sendMessage([
                     'chat_id' => $chatId,

@@ -156,6 +156,45 @@ try {
 
 
 
+        case 'get_payment_proof_url':
+            if (!AdminManager::canHandleFinance($user->telegram_id)) {
+                throw new Exception('Access denied: Finance admin required');
+            }
+
+            $proofId = (int)($input['proof_id'] ?? 0);
+            if (!$proofId) {
+                throw new Exception('Proof ID required');
+            }
+
+            $proof = DB::table('payment_proofs')->where('id', $proofId)->first();
+            if (!$proof || !$proof->telegram_file_id) {
+                throw new Exception('Payment proof not found or no file attached');
+            }
+
+            // Get bot token
+            $bot = DB::table('bots')->where('id', $botId)->first();
+            if (!$bot) {
+                throw new Exception('Bot configuration not found');
+            }
+
+            // Get file path from Telegram
+            $tgUrl = "https://api.telegram.org/bot{$bot->token}/getFile?file_id={$proof->telegram_file_id}";
+            $tgResponse = @file_get_contents($tgUrl);
+            if ($tgResponse === false) {
+                 throw new Exception('Failed to connect to Telegram API');
+            }
+            $tgData = json_decode($tgResponse, true);
+
+            if (!$tgData['ok']) {
+                throw new Exception('Failed to get file from Telegram: ' . ($tgData['description'] ?? 'Unknown error'));
+            }
+
+            $filePath = $tgData['result']['file_path'];
+            $finalUrl = "https://api.telegram.org/file/bot{$bot->token}/{$filePath}";
+
+            $response = ['url' => $finalUrl];
+            break;
+
         case 'get_pending_payments':
             if (!AdminManager::canHandleFinance($user->telegram_id)) {
                 throw new Exception('Access denied: Finance admin required');
@@ -223,6 +262,9 @@ try {
                         'user_id' => $payment->user_id,
                         'amount' => $payment->amount
                     ], $userId);
+
+                    // Send Telegram Notification
+                    \BotSawer\NotificationManager::notifyTopupApproved((int)$payment->user_id, (int)$payment->amount);
 
                 } elseif ($input['payment_type'] === 'withdraw') {
                     // Approve withdrawal
