@@ -1025,7 +1025,7 @@ class App {
             body: JSON.stringify({
                 ...data,
                 botId: this.botId,
-                userId: this.telegram.getUserId(),
+                userId: this.userData?.id || this.telegram.getUserId(),
                 initData: this.telegram.getInitData()
             })
         });
