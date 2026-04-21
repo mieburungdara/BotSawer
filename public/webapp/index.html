@@ -24,9 +24,35 @@
 
         <div class="main-app" id="mainApp" style="display: none;">
             <header class="app-header">
-                <h1>Bot Sawer Dashboard</h1>
-                <div class="user-info">
-                    <span id="userName">Loading...</span>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1>Bot Sawer</h1>
+                    <div class="user-info">
+                        <span id="userName">Loading...</span>
+                    </div>
+                </div>
+                
+                <div class="header-stats">
+                    <div class="h-stat-item">
+                        <i data-lucide="wallet"></i>
+                        <div class="h-stat-info">
+                            <span class="label">Saldo</span>
+                            <span id="h-balance" class="value">Rp 0</span>
+                        </div>
+                    </div>
+                    <div class="h-stat-item">
+                        <i data-lucide="trending-up"></i>
+                        <div class="h-stat-info">
+                            <span class="label">Total Earning</span>
+                            <span id="h-income" class="value">Rp 0</span>
+                        </div>
+                    </div>
+                    <div class="h-stat-item">
+                        <i data-lucide="arrow-up-circle"></i>
+                        <div class="h-stat-info">
+                            <span class="label">Penarikan</span>
+                            <span id="h-withdraw" class="value">Rp 0</span>
+                        </div>
+                    </div>
                 </div>
             </header>
 

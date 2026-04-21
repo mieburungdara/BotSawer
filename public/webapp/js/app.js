@@ -29,6 +29,7 @@ class App {
             if (response) {
                 this.userData = response;
                 this.showMainApp();
+                await this.updateHeaderStats();
                 this.loadPage('dashboard');
             } else {
                 throw new Error('Authentication failed');
@@ -38,6 +39,26 @@ class App {
             this.telegram.showAlert('Gagal mengautentikasi: ' + error.message);
             document.getElementById('authError').style.display = 'block';
         }
+    }
+
+    async updateHeaderStats() {
+        try {
+            const walletData = await this.apiCall('wallet.php');
+            document.getElementById('h-balance').textContent = 'Rp ' + this.formatCompactNumber(walletData.balance || 0);
+            document.getElementById('h-income').textContent = 'Rp ' + this.formatCompactNumber(walletData.total_earnings || 0);
+            document.getElementById('h-withdraw').textContent = 'Rp ' + this.formatCompactNumber(walletData.total_withdraw || 0);
+            
+            if (window.lucide) window.lucide.createIcons();
+        } catch (e) {
+            console.error('Failed to update header stats:', e);
+        }
+    }
+
+    formatCompactNumber(number) {
+        if (number < 1000) return number;
+        if (number >= 1000 && number < 1000000) return (number / 1000).toFixed(number % 1000 !== 0 ? 1 : 0) + 'rb';
+        if (number >= 1000000 && number < 1000000000) return (number / 1000000).toFixed(number % 1000000 !== 0 ? 1 : 0) + 'jt';
+        return (number / 1000000000).toFixed(number % 1000000000 !== 0 ? 1 : 0) + 'M';
     }
 
     showMainApp() {
@@ -115,10 +136,16 @@ class App {
 
             content.innerHTML = html;
 
-            // Initialize Lucide icons
+            // Re-initialize Lucide icons
             if (window.lucide) {
                 window.lucide.createIcons();
             }
+
+            // Re-attach event listeners for dynamic forms
+            this.setupFormHandlers();
+            this.setupWithdrawalForm();
+            this.setupTopupForm();
+            this.setupCreatorProfileForm();
 
             // Initialize charts after DOM update for creator page
             if (pageName === 'creator' && this._creatorAnalytics) {
@@ -132,17 +159,11 @@ class App {
     }
 
     async loadDashboard() {
-        const walletData = await this.apiCall('wallet.php');
-
         return `
             <div class="grid-layout fade-in">
-                <div class="card balance-card">
-                    <h3><i data-lucide="wallet"></i> Saldo Anda</h3>
-                    <div class="balance-amount">Rp ${this.formatNumber(walletData.balance || 0)}</div>
-                    <div class="balance-details">
-                        <p><i data-lucide="arrow-down-circle"></i> Selesai: Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
-                        <p><i data-lucide="arrow-up-circle"></i> Penarikan: Rp ${this.formatNumber(walletData.total_withdraw || 0)}</p>
-                    </div>
+                <div class="card">
+                    <h3><i data-lucide="sparkles"></i> Selamat Datang!</h3>
+                    <p style="color: var(--hint-color); font-size: 14px;">Gunakan menu di bawah untuk mengelola saldo, melihat statistik, atau mengatur konten Anda.</p>
                 </div>
             </div>
         `;
@@ -1150,6 +1171,7 @@ class App {
                 payment_type: type
             });
             alert(result.message);
+            await this.updateHeaderStats();
             this.loadPendingPayments(); // Refresh list
         } catch (error) {
             alert('Error approving payment: ' + error.message);
@@ -1445,6 +1467,7 @@ class App {
                     const result = await this.apiCall('admin.php', data);
                     document.getElementById('adjustResult').innerHTML =
                         '<div style="color: green;">✅ ' + result.message + '</div>';
+                    await this.updateHeaderStats();
                     adjustForm.reset();
                 } catch (error) {
                     document.getElementById('adjustResult').innerHTML =
@@ -1494,6 +1517,7 @@ class App {
                     resultDiv.innerHTML = '<div style="color: green;">✅ ' + result.message + '</div>';
                     withdrawForm.reset();
                     document.getElementById('commissionBreakdown').style.display = 'none';
+                    await this.updateHeaderStats();
 
                     // Refresh wallet data
                     if (this.currentPage === 'wallet') {
@@ -1554,6 +1578,28 @@ class App {
     }
 
 
+
+    setupTopupForm() {
+        const topupForm = document.getElementById('topupForm');
+        if (topupForm) {
+            topupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const amount = parseInt(document.getElementById('topupAmount').value);
+                try {
+                    const result = await this.apiCall('wallet.php', {
+                        action: 'topup',
+                        amount: amount
+                    });
+                    this.telegram.showAlert(result.message);
+                    topupForm.reset();
+                    await this.updateHeaderStats();
+                    if (this.currentPage === 'wallet') this.loadPage('wallet');
+                } catch (error) {
+                    this.telegram.showAlert('Error: ' + error.message);
+                }
+            });
+        }
+    }
 
     formatNumber(num) {
         return new Intl.NumberFormat('id-ID').format(num);
