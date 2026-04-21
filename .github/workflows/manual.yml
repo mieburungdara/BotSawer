@@ -23,7 +23,9 @@ jobs:
           php-version: '7.4' # Menyesuaikan dengan kebutuhan composer.json kamu
 
       - name: 🛠️ Install Composer Dependencies
-        run: composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+        run: |
+          composer config platform.php 7.4.33
+          composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
       - name: 🚀 Sync via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5 # Versi terbaru
