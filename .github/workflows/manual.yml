@@ -3,7 +3,7 @@ name: Auto Deploy Bot Sawer
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   deploy:
@@ -15,7 +15,7 @@ jobs:
       - name: 🚚 Checkout Code
         uses: actions/checkout@v4
 
-      # STEP COMPOSER DIHAPUS TOTAL
+      # --- BAGIAN COMPOSER DIHAPUS AGAR TIDAK ERROR ---
 
       - name: 🚀 Sync via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -27,6 +27,8 @@ jobs:
           exclude: |
             **/.git*
             **/.git*/**
+            .github/**
+            vendor/backup/**
 
       - name: 📱 Send Telegram Notification
         if: success()
@@ -34,7 +36,7 @@ jobs:
           TIME=$(date +'%Y-%m-%d %H:%M:%S')
           REPO="${{ github.repository }}"
           ACTOR="${{ github.actor }}"
-          TEXT="✅ *Deploy Berhasil (Tanpa Composer)!*%0A%0A*Repo:* $REPO%0A*Pusher:* $ACTOR%0A*Waktu:* $TIME"
+          TEXT="✅ *Deploy Berhasil!*%0A(Direct FTP - No Composer Check)%0A%0A*Repo:* $REPO%0A*Pusher:* $ACTOR%0A*Waktu:* $TIME"
           
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
