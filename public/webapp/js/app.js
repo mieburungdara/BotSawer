@@ -138,6 +138,9 @@ class App {
                 case 'dashboard':
                     html = await this.loadDashboard();
                     break;
+                case 'explore':
+                    html = await this.loadExplore();
+                    break;
                 case 'wallet':
                     html = await this.loadWallet();
                     break;
@@ -607,6 +610,92 @@ class App {
         }
 
         return `<div class="grid-layout fade-in">${html}</div>`;
+    }
+
+    async loadExplore() {
+        const topCreators = await this.apiCall('explore.php', { action: 'get_top', limit: 10 });
+
+        return `
+            <div class="grid-layout fade-in">
+                <div class="card col-full">
+                    <h3><i data-lucide="search"></i> Cari Kreator</h3>
+                    <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 15px;">Temukan kreator favoritmu dan berikan dukungan!</p>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="exploreSearchQuery" placeholder="Nama atau username..." style="flex: 1;">
+                        <button class="btn btn-primary" onclick="app.searchPublicCreators()" style="width: auto;">
+                            <i data-lucide="search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="exploreResults" class="col-full" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                    ${this.renderCreatorGrid(topCreators || [])}
+                </div>
+            </div>
+        `;
+    }
+
+    async searchPublicCreators() {
+        const query = document.getElementById('exploreSearchQuery').value.trim();
+        const resultsDiv = document.getElementById('exploreResults');
+        
+        if (!query) {
+            // Load top creators if query is empty
+            const topCreators = await this.apiCall('explore.php', { action: 'get_top', limit: 10 });
+            resultsDiv.innerHTML = this.renderCreatorGrid(topCreators || []);
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
+
+        resultsDiv.innerHTML = '<div class="text-center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto;"></div></div>';
+
+        try {
+            const results = await this.apiCall('explore.php', {
+                action: 'search',
+                query: query
+            });
+
+            resultsDiv.innerHTML = this.renderCreatorGrid(results || []);
+            if (window.lucide) window.lucide.createIcons();
+        } catch (error) {
+            resultsDiv.innerHTML = `<div class="card"><p>Error: ${error.message}</p></div>`;
+        }
+    }
+
+    renderCreatorGrid(creators) {
+        if (!creators || creators.length === 0) {
+            return '<div class="card text-center"><p style="color: var(--hint-color);">Tidak ada kreator ditemukan</p></div>';
+        }
+
+        return creators.map(c => `
+            <div class="card" style="display: flex; align-items: center; gap: 15px; padding: 15px;">
+                <div class="avatar-circle" style="width: 50px; height: 50px; font-size: 20px;">
+                    ${(c.display_name || 'C').charAt(0).toUpperCase()}
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; font-size: 15px;">${c.display_name}</div>
+                    <div style="font-size: 12px; color: var(--hint-color);">@${c.username}</div>
+                    <div style="font-size: 11px; margin-top: 4px; display: flex; gap: 10px;">
+                        <span><i data-lucide="layers" style="width: 10px; height: 10px;"></i> ${c.total_media || 0} Konten</span>
+                        ${c.is_verified ? '<span style="color: var(--success);"><i data-lucide="check-circle" style="width: 10px; height: 10px;"></i> Terverifikasi</span>' : ''}
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="app.viewPublicCreatorProfile(${c.user_id})" style="width: auto; padding: 8px 12px;">
+                    Lihat
+                </button>
+            </div>
+        `).join('');
+    }
+
+    viewPublicCreatorProfile(userId) {
+        // Redirect to their public page or open in bot
+        const botUsername = 'MieBurungDaraBot'; // Fallback
+        const url = `https://t.me/${botUsername}?start=creator_${userId}`;
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.openTelegramLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
     }
 
     async loadCreator() {

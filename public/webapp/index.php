@@ -63,6 +63,10 @@ $version = time();
                     <i data-lucide="layout-dashboard"></i>
                     Dashboard
                 </button>
+                <button class="nav-btn" data-page="explore">
+                    <i data-lucide="search"></i>
+                    Cari
+                </button>
                 <button class="nav-btn creator-only" data-page="contents" style="display: none;">
                     <i data-lucide="layers"></i>
                     Konten
@@ -74,6 +78,10 @@ $version = time();
                 <button class="nav-btn creator-only" data-page="creator" style="display: none;">
                     <i data-lucide="bar-chart-3"></i>
                     Statistik
+                </button>
+                <button class="nav-btn" data-page="profile">
+                    <i data-lucide="user"></i>
+                    Profil
                 </button>
                 <button class="nav-btn admin-only" data-page="admin" style="display: none;">
                     <i data-lucide="shield-check"></i>
