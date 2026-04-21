@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/boxanonm/public_html/botsawer/
+    - /bin/cp -R * $DEPLOYPATH
