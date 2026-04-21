@@ -1344,3 +1344,309 @@ h1, h2, h3, h4 {
     font-size: 13px;
     color: var(--hint-color);
 }
+
+/* ========================================
+   PROFILE PAGE - Premium Redesign
+   ======================================== */
+
+.profile-hero {
+    position: relative;
+    padding: 40px 20px 25px;
+    text-align: center;
+    border-radius: 0 0 24px 24px;
+    margin: -15px -15px 15px;
+    background: var(--bg-color);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    overflow: hidden;
+}
+
+.profile-hero-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    z-index: 0;
+    border-radius: 0 0 16px 16px;
+}
+
+.profile-hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('data:image/svg+xml;utf8,<svg width="100%" height="100%" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg"><path d="M0,200 C300,100 500,300 800,200 L800,0 L0,0 Z" fill="rgba(255,255,255,0.05)"/></svg>') no-repeat center bottom;
+    background-size: cover;
+}
+
+.profile-back-btn {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 10;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-back-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+}
+
+.profile-avatar-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 15px;
+    z-index: 2;
+    margin-top: 30px;
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border: 4px solid var(--bg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 800;
+    color: white;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-avatar.verified {
+    border-color: var(--primary);
+}
+
+.profile-verified-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 24px;
+    height: 24px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--bg-color);
+    color: white;
+}
+
+.profile-info {
+    position: relative;
+    z-index: 2;
+}
+
+.profile-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.profile-username {
+    font-size: 14px;
+    color: var(--hint-color);
+    margin-bottom: 12px;
+}
+
+.profile-badges {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.profile-bio {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-color);
+    max-width: 90%;
+    margin: 0 auto 20px;
+    opacity: 0.9;
+}
+
+.profile-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    z-index: 2;
+    position: relative;
+}
+
+.profile-support-btn {
+    width: auto;
+    padding: 12px 28px;
+    font-weight: 700;
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    transition: all 0.2s ease;
+}
+
+.profile-support-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.profile-content-padding {
+    padding: 0 5px;
+}
+
+.profile-stats-box {
+    display: flex;
+    align-items: center;
+    background: var(--bg-color);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(0,0,0,0.04);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+
+.stat-item {
+    flex: 1;
+    text-align: center;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(0,0,0,0.06);
+    margin: 0 15px;
+}
+
+.stat-value {
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--hint-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.text-primary { color: var(--primary); }
+.text-success { color: var(--success); }
+.text-accent  { color: var(--accent); }
+
+.profile-section {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    padding-left: 5px;
+}
+
+.section-title i {
+    width: 18px;
+    height: 18px;
+    color: var(--primary);
+}
+
+/* Media Grid Placeholder Style */
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.media-card {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.03);
+    aspect-ratio: 4/5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.media-card:hover {
+    transform: scale(0.98);
+}
+
+.media-icon {
+    font-size: 32px;
+    color: rgba(0,0,0,0.1);
+}
+
+.media-icon i {
+    width: 32px;
+    height: 32px;
+}
+
+.media-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 12px 12px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    color: white;
+}
+
+.media-caption {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    opacity: 0.9;
+}
+
+.media-meta span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.empty-state-simple {
+    text-align: center;
+    padding: 20px;
+    color: var(--hint-color);
+    font-size: 13px;
+    background: rgba(0,0,0,0.02);
+    border-radius: 12px;
+}

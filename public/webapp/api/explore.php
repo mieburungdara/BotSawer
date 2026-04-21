@@ -104,6 +104,35 @@ try {
             ->limit(10)
             ->get();
 
+        // Get user's posted media
+        $mediaFiles = DB::table('media_files')
+            ->where('user_id', $targetUserId)
+            ->where('status', 'posted')
+            ->select('id', 'file_type', 'caption', 'created_at', 'posted_at')
+            ->orderBy('posted_at', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(function($m) {
+                $donationCount = DB::table('transactions')
+                    ->where('media_id', $m->id)
+                    ->where('type', 'donation')
+                    ->where('status', 'success')
+                    ->count();
+                $donationTotal = DB::table('transactions')
+                    ->where('media_id', $m->id)
+                    ->where('type', 'donation')
+                    ->where('status', 'success')
+                    ->sum('amount');
+                return [
+                    'id' => $m->id,
+                    'file_type' => $m->file_type,
+                    'caption' => $m->caption,
+                    'posted_at' => $m->posted_at,
+                    'donation_count' => (int)$donationCount,
+                    'donation_total' => (int)$donationTotal,
+                ];
+            });
+
         echo json_encode([
             'success' => true,
             'data' => [
@@ -124,7 +153,8 @@ try {
                     'has_donated' => $hasDonated
                 ],
                 'stats' => $stats,
-                'activity' => $recentActivity
+                'activity' => $recentActivity,
+                'media' => $mediaFiles
             ]
         ]);
         exit;

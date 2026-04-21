@@ -768,14 +768,8 @@ class App {
     }
 
     viewPublicCreatorProfile(userId) {
-        // Redirect to their public page or open in bot
-        const botUsername = 'MieBurungDaraBot'; // Fallback
-        const url = `https://t.me/${botUsername}?start=creator_${userId}`;
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.openTelegramLink(url);
-        } else {
-            window.open(url, '_blank');
-        }
+        this.currentPage = 'profile';
+        this.viewOtherProfile(userId);
     }
 
     async loadProfile() {
@@ -784,12 +778,17 @@ class App {
 
     async viewOtherProfile(userId) {
         try {
+            // Render loading state if switching page
+            if (this.currentPage === 'profile') {
+                document.getElementById('pageContent').innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 12px; color: var(--hint-color); font-size: 13px;">Memuat profil...</p></div>';
+            }
+
             const data = await this.apiCall('explore.php', {
                 action: 'get_profile',
                 userId: userId
             });
 
-            const { user, creator, stats, activity, badges } = data;
+            const { user, creator, stats, activity, badges, media } = data;
             const isOwnProfile = (userId === this.userData.id);
 
             // Use badges from API, or fallback to current session data if own profile
@@ -797,82 +796,120 @@ class App {
             const hasDonated = isOwnProfile ? this.userData.has_donated : badges?.has_donated;
 
             let html = `
-                <div class="grid-layout fade-in">
-                    <div class="card col-full" style="text-align: center; padding: 40px 20px;">
-                        <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 32px; margin: 0 auto 15px; overflow: hidden; ${user.photo_url ? 'font-size: 0;' : ''}">
-                            ${user.photo_url ? `<img src="${user.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` : (creator?.display_name || user.name || 'U').charAt(0).toUpperCase()}
+                <div class="fade-in">
+                    <!-- Profile Header -->
+                    <div class="profile-hero">
+                        ${!isOwnProfile ? `
+                        <button class="profile-back-btn" onclick="app.loadPage('explore')">
+                            <i data-lucide="arrow-left"></i>
+                        </button>
+                        ` : ''}
+                        <div class="profile-hero-bg"></div>
+                        <div class="profile-avatar-wrapper">
+                            <div class="profile-avatar ${creator?.is_verified ? 'verified' : ''}" ${user.photo_url ? 'style="font-size: 0;"' : ''}>
+                                ${user.photo_url 
+                                    ? `<img src="${user.photo_url}" alt="Avatar">` 
+                                    : (creator?.display_name || user.name || 'U').charAt(0).toUpperCase()}
+                                ${creator?.is_verified ? '<div class="profile-verified-badge"><i data-lucide="check" style="width:12px;height:12px"></i></div>' : ''}
+                            </div>
                         </div>
-                        <h2 style="font-size: 24px;">${creator?.display_name || user.name}</h2>
-                        <p style="color: var(--hint-color); font-size: 14px;">@${user.username || 'user'}</p>
                         
-                        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
-                            ${hasPosted ? '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>' : ''}
-                            ${hasDonated ? '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>' : ''}
-                            ${creator?.is_verified ? '<span class="status-badge success"><i data-lucide="check-circle"></i> Terverifikasi</span>' : ''}
-                        </div>
+                        <div class="profile-info">
+                            <h2 class="profile-name">${creator?.display_name || user.name}</h2>
+                            <p class="profile-username">@${user.username || 'user'}</p>
+                            
+                            <div class="profile-badges">
+                                ${hasPosted ? '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>' : ''}
+                                ${hasDonated ? '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>' : ''}
+                            </div>
 
-                        ${creator?.bio ? `<p style="margin-top: 20px; font-size: 15px; color: var(--text-color); max-width: 400px; margin-left: auto; margin-right: auto;">${creator.bio}</p>` : ''}
+                            ${creator?.bio ? `<p class="profile-bio">${creator.bio}</p>` : ''}
+                        </div>
                         
-                        ${isOwnProfile ? `
-                            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 25px;">
-                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('wallet')" style="width: auto;">
+                        <div class="profile-actions">
+                            ${isOwnProfile ? `
+                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('wallet')">
                                     <i data-lucide="wallet"></i> Dompet
                                 </button>
-                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('achievements')" style="width: auto;">
+                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('achievements')">
                                     <i data-lucide="trophy"></i> Pencapaian
                                 </button>
-                            </div>
-                        ` : `
-                            <div style="margin-top: 25px;">
-                                <button class="btn btn-primary" onclick="app.viewPublicCreatorProfile(${user.id})" style="width: auto; padding: 12px 24px;">
-                                    <i data-lucide="heart"></i> Dukung Sekarang
-                                </button>
-                            </div>
-                        `}
-                    </div>
-
-                    <div class="card">
-                        <h3><i data-lucide="activity"></i> Statistik</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                            ${stats.is_creator ? `
-                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
-                                    <div style="font-size: 18px; font-weight: 800; color: var(--primary);">${stats.total_donations || 0}</div>
-                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Diterima</div>
-                                </div>
-                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
-                                    <div style="font-size: 18px; font-weight: 800; color: var(--success);">Rp ${this.formatCompactNumber(stats.total_earnings || 0)}</div>
-                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Earning</div>
-                                </div>
                             ` : `
-                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
-                                    <div style="font-size: 18px; font-weight: 800; color: var(--primary);">${stats.total_donations_sent || 0}</div>
-                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Saweran</div>
-                                </div>
-                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
-                                    <div style="font-size: 18px; font-weight: 800; color: var(--accent);">Rp ${this.formatCompactNumber(stats.total_amount_sent || 0)}</div>
-                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Total</div>
-                                </div>
+                                <button class="btn btn-primary profile-support-btn" onclick="app.viewPublicCreatorProfileLink(${user.id})">
+                                    <i data-lucide="heart"></i> Dukung Melalui Bot
+                                </button>
                             `}
                         </div>
                     </div>
 
-                    <div class="card col-full">
-                        <h3><i data-lucide="history"></i> Aktivitas ${isOwnProfile ? 'Saya' : ''}</h3>
-                        <div class="activity-feed">
-                            ${activity && activity.length > 0 ? activity.map(act => `
-                                <div class="activity-item">
-                                    <div class="activity-icon" style="background: ${act.from_user_id == user.id ? 'rgba(244, 63, 94, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">
-                                        <i data-lucide="${act.from_user_id == user.id ? 'send' : 'download'}"></i>
-                                    </div>
-                                    <div class="activity-content">
-                                        <div class="activity-header">
-                                            <span class="donor-name">${act.from_user_id == user.id ? 'Mengirim' : 'Menerima'} Saweran</span>
-                                            <span class="activity-amount" style="color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">${act.from_user_id == user.id ? '-' : '+'}Rp ${this.formatCompactNumber(act.amount)}</span>
-                                        </div>
-                                        <div class="activity-time">${this.getRelativeTime(act.created_at)}</div>
-                                    </div>
+                    <div class="profile-content-padding">
+                        <!-- Stats Box -->
+                        <div class="profile-stats-box">
+                            ${stats.is_creator ? `
+                                <div class="stat-item">
+                                    <div class="stat-value text-primary">${stats.total_donations || 0}</div>
+                                    <div class="stat-label">Dukungan</div>
                                 </div>
-                            `).join('') : '<p class="text-center" style="color: var(--hint-color); padding: 20px;">Belum ada aktivitas</p>'}
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <div class="stat-value text-success">Rp ${this.formatCompactNumber(stats.total_earnings || 0)}</div>
+                                    <div class="stat-label">Earning</div>
+                                </div>
+                            ` : `
+                                <div class="stat-item">
+                                    <div class="stat-value text-primary">${stats.total_donations_sent || 0}</div>
+                                    <div class="stat-label">Saweran</div>
+                                </div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <div class="stat-value text-accent">Rp ${this.formatCompactNumber(stats.total_amount_sent || 0)}</div>
+                                    <div class="stat-label">Total</div>
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- Media Gallery -->
+                        ${media && media.length > 0 ? `
+                            <div class="profile-section">
+                                <h3 class="section-title"><i data-lucide="grid"></i> Galeri Konten</h3>
+                                <div class="media-grid">
+                                    ${media.map(m => `
+                                        <div class="media-card">
+                                            <div class="media-icon">
+                                                <i data-lucide="${m.file_type === 'video' ? 'video' : 'image'}"></i>
+                                            </div>
+                                            <div class="media-overlay">
+                                                <div class="media-caption">${m.caption || 'Tanpa keterangan'}</div>
+                                                <div class="media-meta">
+                                                    <span><i data-lucide="heart" style="width:10px;height:10px"></i> ${m.donation_count}</span>
+                                                    <span>Rp ${this.formatCompactNumber(m.donation_total)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Activity -->
+                        <div class="profile-section">
+                            <h3 class="section-title"><i data-lucide="history"></i> Aktivitas ${isOwnProfile ? 'Saya' : 'Terbaru'}</h3>
+                            <div class="activity-feed">
+                                ${activity && activity.length > 0 ? activity.map(act => `
+                                    <div class="activity-item">
+                                        <div class="activity-icon" style="background: ${act.from_user_id == user.id ? 'rgba(244, 63, 94, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">
+                                            <i data-lucide="${act.from_user_id == user.id ? 'send' : 'download'}"></i>
+                                        </div>
+                                        <div class="activity-content">
+                                            <div class="activity-header">
+                                                <span class="donor-name">${act.from_user_id == user.id ? 'Mengirim' : 'Menerima'} Saweran</span>
+                                                <span class="activity-amount" style="color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">${act.from_user_id == user.id ? '-' : '+'}Rp ${this.formatCompactNumber(act.amount)}</span>
+                                            </div>
+                                            <div class="activity-time">${this.getRelativeTime(act.created_at)}</div>
+                                        </div>
+                                    </div>
+                                `).join('') : '<div class="empty-state-simple">Belum ada aktivitas</div>'}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -889,6 +926,17 @@ class App {
         }
     }
 
+    viewPublicCreatorProfileLink(userId) {
+    viewPublicCreatorProfileLink(userId) {
+        // Redirect to their public page or open in bot
+        const botUsername = 'MieBurungDaraBot'; // Fallback
+        const url = `https://t.me/${botUsername}?start=creator_${userId}`;
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.openTelegramLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    }
     async loadAchievements() {
         try {
             const data = await this.apiCall('achievements.php');
