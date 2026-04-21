@@ -88,19 +88,19 @@ class App {
             badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
         }
 
-        // Initialize Lucide icons for new badges
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
-
         // Show admin buttons if admin
         if (this.userData.is_admin) {
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
         }
 
         // Show creator buttons if creator
         if (this.userData.is_creator) {
-            document.querySelectorAll('.creator-only').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.creator-only').forEach(el => el.style.display = 'flex');
+        }
+
+        // Initialize Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
         }
 
         // Setup navigation
