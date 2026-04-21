@@ -45,68 +45,98 @@ try {
         ->where('status', 'success')
         ->sum('amount') : 0;
 
-    $achievements = [
-        [
-            'id' => 'early_bird',
-            'title' => 'Early Bird',
-            'description' => 'Bergabung di masa awal peluncuran',
-            'icon' => 'bird',
-            'unlocked' => (int)$user->id <= 1000,
-            'progress' => 100
-        ],
-        [
-            'id' => 'first_blood',
-            'title' => 'First Blood',
-            'description' => 'Kirim saweran pertama kamu',
+    $levels = [
+        'donatur' => [
+            'category' => 'Dermawan',
+            'description' => 'Banyaknya saweran yang kamu kirim',
             'icon' => 'heart',
-            'unlocked' => $totalDonationsSent >= 1,
-            'progress' => min(100, $totalDonationsSent * 100)
+            'tiers' => [
+                ['label' => 'Bronze', 'value' => 1, 'id' => 'donatur_1'],
+                ['label' => 'Silver', 'value' => 10, 'id' => 'donatur_2'],
+                ['label' => 'Gold', 'value' => 50, 'id' => 'donatur_3'],
+                ['label' => 'Platinum', 'value' => 100, 'id' => 'donatur_4']
+            ],
+            'current' => $totalDonationsSent
         ],
-        [
-            'id' => 'generous_donor',
-            'title' => 'Dermawan',
-            'description' => 'Kirim 10 saweran ke kreator',
-            'icon' => 'gift',
-            'unlocked' => $totalDonationsSent >= 10,
-            'progress' => min(100, ($totalDonationsSent / 10) * 100)
-        ],
-        [
-            'id' => 'content_creator',
-            'title' => 'Kreator Pemula',
-            'description' => 'Posting konten pertama kamu',
-            'icon' => 'image',
-            'unlocked' => $contentCount >= 1,
-            'progress' => min(100, $contentCount * 100)
-        ],
-        [
-            'id' => 'rising_star',
-            'title' => 'Rising Star',
-            'description' => 'Dapatkan total saweran Rp 100.000',
-            'icon' => 'star',
-            'unlocked' => $totalEarnings >= 100000,
-            'progress' => min(100, ($totalEarnings / 100000) * 100)
-        ],
-        [
-            'id' => 'content_king',
-            'title' => 'Raja Konten',
-            'description' => 'Posting total 20 konten',
-            'icon' => 'crown',
-            'unlocked' => $contentCount >= 20,
-            'progress' => min(100, ($contentCount / 20) * 100)
-        ],
-        [
-            'id' => 'big_boss',
-            'title' => 'Big Boss',
-            'description' => 'Total saweran yang kamu kirim mencapai Rp 500.000',
+        'sultan' => [
+            'category' => 'Sultan',
+            'description' => 'Total Rupiah yang kamu sawerkan',
             'icon' => 'coins',
-            'unlocked' => $totalAmountSent >= 500000,
-            'progress' => min(100, ($totalAmountSent / 500000) * 100)
+            'tiers' => [
+                ['label' => 'Bronze', 'value' => 10000, 'id' => 'sultan_1'],
+                ['label' => 'Silver', 'value' => 100000, 'id' => 'sultan_2'],
+                ['label' => 'Gold', 'value' => 1000000, 'id' => 'sultan_3'],
+                ['label' => 'Platinum', 'value' => 10000000, 'id' => 'sultan_4']
+            ],
+            'current' => $totalAmountSent
+        ],
+        'kreator' => [
+            'category' => 'Kreator',
+            'description' => 'Banyaknya konten yang kamu posting',
+            'icon' => 'image',
+            'tiers' => [
+                ['label' => 'Bronze', 'value' => 1, 'id' => 'kreator_1'],
+                ['label' => 'Silver', 'value' => 10, 'id' => 'kreator_2'],
+                ['label' => 'Gold', 'value' => 50, 'id' => 'kreator_3'],
+                ['label' => 'Platinum', 'value' => 200, 'id' => 'kreator_4']
+            ],
+            'current' => $contentCount
+        ],
+        'earning' => [
+            'category' => 'Golden Star',
+            'description' => 'Total penghasilan dari saweran',
+            'icon' => 'star',
+            'tiers' => [
+                ['label' => 'Bronze', 'value' => 100000, 'id' => 'earning_1'],
+                ['label' => 'Silver', 'value' => 1000000, 'id' => 'earning_2'],
+                ['label' => 'Gold', 'value' => 5000000, 'id' => 'earning_3'],
+                ['label' => 'Platinum', 'value' => 25000000, 'id' => 'earning_4']
+            ],
+            'current' => $totalEarnings
         ]
     ];
 
+    $processed = [];
+    foreach ($levels as $key => $group) {
+        $highestTier = null;
+        $nextTier = null;
+        
+        foreach ($group['tiers'] as $tier) {
+            if ($group['current'] >= $tier['value']) {
+                $highestTier = $tier;
+            } else {
+                $nextTier = $tier;
+                break;
+            }
+        }
+
+        $progress = 0;
+        if ($nextTier) {
+            $prevValue = $highestTier ? $highestTier['value'] : 0;
+            $range = $nextTier['value'] - $prevValue;
+            $currentInRange = $group['current'] - $prevValue;
+            $progress = min(100, max(0, ($currentInRange / $range) * 100));
+        } else {
+            $progress = 100;
+        }
+
+        $processed[] = [
+            'id' => $key,
+            'title' => $group['category'],
+            'description' => $group['description'],
+            'icon' => $group['icon'],
+            'tier' => $highestTier ? $highestTier['label'] : 'Belum Ada',
+            'next_tier' => $nextTier ? $nextTier['label'] : 'Maksimal',
+            'target' => $nextTier ? $nextTier['value'] : $highestTier['value'],
+            'current' => $group['current'],
+            'progress' => $progress,
+            'unlocked' => !is_null($highestTier)
+        ];
+    }
+
     echo json_encode([
         'success' => true,
-        'data' => $achievements
+        'data' => $processed
     ]);
 
 } catch (Exception $e) {

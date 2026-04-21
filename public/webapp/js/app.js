@@ -826,33 +826,44 @@ class App {
 
             return `
                 <div class="grid-layout fade-in">
-                    <div class="card col-full" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;">
+                    <div class="card col-full" style="background: linear-gradient(135deg, #6366f1, #a855f7); color: white; border: none;">
                         <h2 style="display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="trophy"></i> Pencapaian Saya
+                            <i data-lucide="trophy"></i> Master Milestone
                         </h2>
-                        <p style="opacity: 0.9; font-size: 14px;">Kamu telah membuka ${unlockedCount} dari ${achievements.length} pencapaian.</p>
+                        <p style="opacity: 0.9; font-size: 14px;">Kamu telah mencapai ${unlockedCount} kategori pencapaian.</p>
                         <div class="goal-bar-bg" style="background: rgba(255,255,255,0.2); margin-top: 15px;">
                             <div class="goal-bar-fill" style="width: ${(unlockedCount/achievements.length)*100}%; background: white;"></div>
                         </div>
                     </div>
 
-                    <div class="col-full" style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                    <div class="col-full" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
                         ${achievements.map(a => `
-                            <div class="card" style="display: flex; align-items: center; gap: 15px; opacity: ${a.unlocked ? '1' : '0.6'}; border-left: 4px solid ${a.unlocked ? 'var(--warning)' : 'var(--glass-border)'}">
-                                <div class="activity-icon" style="width: 48px; height: 48px; background: ${a.unlocked ? 'rgba(245, 158, 11, 0.1)' : 'rgba(0,0,0,0.05)'}; color: ${a.unlocked ? 'var(--warning)' : 'var(--hint-color)'}; border-radius: 12px;">
-                                    <i data-lucide="${a.icon}"></i>
-                                </div>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px;">
-                                        ${a.title}
-                                        ${a.unlocked ? '<i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--success);"></i>' : ''}
+                            <div class="card" style="opacity: ${a.unlocked ? '1' : '0.8'};">
+                                <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                    <div class="activity-icon" style="width: 50px; height: 50px; background: ${this.getTierColor(a.tier, true)}; color: ${this.getTierColor(a.tier)}; border-radius: 15px; flex-shrink: 0;">
+                                        <i data-lucide="${a.icon}"></i>
                                     </div>
-                                    <div style="font-size: 12px; color: var(--hint-color);">${a.description}</div>
-                                    ${!a.unlocked ? `
-                                        <div class="goal-bar-bg" style="height: 4px; margin-top: 8px;">
-                                            <div class="goal-bar-fill" style="width: ${a.progress}%"></div>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                            <div>
+                                                <div style="font-weight: 800; font-size: 16px;">${a.title}</div>
+                                                <div style="font-size: 11px; color: var(--hint-color); margin-top: 2px;">${a.description}</div>
+                                            </div>
+                                            <div class="status-badge" style="background: ${this.getTierColor(a.tier, true)}; color: ${this.getTierColor(a.tier)}; border-color: ${this.getTierColor(a.tier)}44;">
+                                                ${a.tier}
+                                            </div>
                                         </div>
-                                    ` : ''}
+
+                                        <div style="margin-top: 15px;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px;">
+                                                <span style="color: var(--hint-color);">Next: ${a.next_tier}</span>
+                                                <span style="color: var(--primary);">${this.formatCompactNumber(a.current)} / ${this.formatCompactNumber(a.target)}</span>
+                                            </div>
+                                            <div class="goal-bar-bg" style="height: 6px;">
+                                                <div class="goal-bar-fill" style="width: ${a.progress}%; background: linear-gradient(90deg, ${this.getTierColor(a.tier)}, #6366f1);"></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         `).join('')}
@@ -862,6 +873,19 @@ class App {
         } catch (error) {
             return `<div class="card"><h3>Error</h3><p>${error.message}</p></div>`;
         }
+    }
+
+    getTierColor(tier, isBg = false) {
+        const colors = {
+            'Bronze': '#cd7f32',
+            'Silver': '#9ca3af',
+            'Gold': '#facc15',
+            'Platinum': '#22d3ee',
+            'Maksimal': '#6366f1',
+            'Belum Ada': '#71717a'
+        };
+        const color = colors[tier] || colors['Belum Ada'];
+        return isBg ? color + '15' : color;
     }
 
     async loadCreator() {
