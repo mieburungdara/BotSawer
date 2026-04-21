@@ -162,20 +162,24 @@ class App {
                 tableRows += `
                     <tr>
                         <td>
-                            <div style="font-weight: 600;">${tx.description}</div>
                             <div style="font-size: 11px; color: var(--hint-color);">${new Date(tx.created_at).toLocaleDateString('id-ID')}</div>
                         </td>
+                        <td>
+                            <div style="font-weight: 600; font-size: 13px;">${tx.description}</div>
+                        </td>
                         <td style="text-align: right;">
-                            <div style="font-weight: 700; color: ${iconColor};">
+                            <div style="font-weight: 700; color: ${iconColor}; white-space: nowrap;">
                                 ${tx.amount > 0 ? '+' : ''}${this.formatNumber(tx.amount)}
                             </div>
-                            <span class="status-badge ${statusClass}">${tx.status}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="status-badge ${statusClass}" style="font-size: 10px; padding: 2px 6px;">${tx.status}</span>
                         </td>
                     </tr>
                 `;
             });
         } else {
-            tableRows = '<tr><td colspan="2" class="text-center">Belum ada transaksi</td></tr>';
+            tableRows = '<tr><td colspan="4" class="text-center">Belum ada transaksi</td></tr>';
         }
 
         return `
@@ -249,6 +253,14 @@ class App {
                     <h3><i data-lucide="history"></i> Riwayat Transaksi</h3>
                     <div class="table-container">
                         <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Deskripsi</th>
+                                    <th style="text-align: right;">Jumlah</th>
+                                    <th style="text-align: right;">Status</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 ${tableRows}
                             </tbody>
