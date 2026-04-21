@@ -6,7 +6,7 @@
     'aliases' => 
     array (
     ),
-    'reference' => 'fd467f5f6085f649c2501d3634d83ee5b68d9e0c',
+    'reference' => '87af3b0cdf1ec6fdcbff163d16235ced1ae3397c',
     'name' => 'botsawer/telegram-creator-payment',
   ),
   'versions' => 
@@ -18,7 +18,7 @@
       'aliases' => 
       array (
       ),
-      'reference' => 'fd467f5f6085f649c2501d3634d83ee5b68d9e0c',
+      'reference' => '87af3b0cdf1ec6fdcbff163d16235ced1ae3397c',
     ),
     'carbonphp/carbon-doctrine-types' => 
     array (
