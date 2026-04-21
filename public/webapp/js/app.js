@@ -67,6 +67,16 @@ class App {
             window.lucide.createIcons();
         }
 
+        // Dynamic greeting based on time of day
+        const hour = new Date().getHours();
+        let greetEmoji = '👋';
+        let greetText = 'Selamat datang';
+        if (hour >= 5 && hour < 12) { greetText = 'Selamat pagi'; greetEmoji = '☀️'; }
+        else if (hour >= 12 && hour < 15) { greetText = 'Selamat siang'; greetEmoji = '🌤️'; }
+        else if (hour >= 15 && hour < 18) { greetText = 'Selamat sore'; greetEmoji = '🌅'; }
+        else if (hour >= 18 || hour < 5) { greetText = 'Selamat malam'; greetEmoji = '🌙'; }
+        document.getElementById('greetingText').textContent = `${greetText} ${greetEmoji}`;
+
         // Update user info & profile display
         const firstName = this.userData.first_name || '';
         const lastName = this.userData.last_name || '';
@@ -81,7 +91,7 @@ class App {
         } else {
             const initials = (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
             avatarEl.textContent = initials;
-            avatarEl.style.fontSize = '14px';
+            avatarEl.style.fontSize = '20px';
         }
 
         // Render Badges
