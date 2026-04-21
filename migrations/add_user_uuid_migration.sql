@@ -1,7 +1,6 @@
 -- Migration to add UUID field for user anonymity
 -- Run this after the main schema.sql
 
-USE your_database_name;
 
 -- Add unique ID and privacy fields to users table
 ALTER TABLE `users` ADD COLUMN `uuid` VARCHAR(20) UNIQUE AFTER `id`;
