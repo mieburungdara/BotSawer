@@ -185,7 +185,7 @@ function validateAndFormatBankAccountForWithdrawal(string $bankName, string $acc
 
     $bankNameUpper = strtoupper($bankName);
     if (!in_array($bankNameUpper, $supportedBanks)) {
-        throw new Exception('Nama bank tidak didukung. Gunakan salah satu: ' . implode(', ', $supportedBanks));
+        throw new Exception('E-Wallet tidak didukung. Gunakan salah satu: ' . implode(', ', $supportedBanks));
     }
 
     // Validate account number (must be numeric, 10-20 digits)

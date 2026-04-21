@@ -266,7 +266,7 @@ class App {
                             <input type="number" id="withdrawAmount" min="50000" step="1000" placeholder="Min. Rp 50.000" required>
                         </div>
                         <div class="form-group">
-                            <label>Pilih Bank</label>
+                            <label>Pilih E-Wallet</label>
                             <select id="bankName" required>
                                 <option value="">Pilih...</option>
                                 <option value="ShopeePay">ShopeePay</option>
@@ -275,12 +275,12 @@ class App {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Nomor Rekening / HP</label>
-                            <input type="text" id="bankAccount" required>
+                            <label>Nomor Handphone</label>
+                            <input type="text" id="bankAccount" placeholder="Contoh: 0812..." required>
                         </div>
                         <div class="form-group">
-                            <label>Nama Pemilik</label>
-                            <input type="text" id="accountName" required>
+                            <label>Nama Akun</label>
+                            <input type="text" id="accountName" placeholder="Nama sesuai aplikasi" required>
                         </div>
                         <button type="submit" class="btn btn-primary">
                             <i data-lucide="arrow-up-right"></i> Tarik Sekarang
@@ -1233,7 +1233,7 @@ class App {
                     <div style="margin-bottom: 10px;">
                         <div><strong>User:</strong> ${payment.user_name} (@${payment.username})</div>
                         <div><strong>Dibuat:</strong> ${new Date(payment.created_at).toLocaleString('id-ID')}</div>
-                        ${payment.type === 'withdraw' ? `<div><strong>Bank:</strong> ${payment.bank_name} - ${payment.account_name} (${payment.bank_account})</div>` : ''}
+                        ${payment.type === 'withdraw' ? `<div><strong>E-Wallet:</strong> ${payment.bank_name} - ${payment.account_name} (${payment.bank_account})</div>` : ''}
                         ${payment.type === 'withdraw' && payment.commission_amount ? `
                             <div style="background: #fff3cd; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 12px;">
                                 <strong>💰 Detail Komisi:</strong><br>
@@ -1564,7 +1564,7 @@ class App {
             });
 
             // Display profile in a modal or alert for now
-            alert(`Creator Profile:\nName: ${profile.display_name}\nBio: ${profile.bio || 'N/A'}\nBank: ${profile.bank_account || 'N/A'}\nContent: ${profile.total_content}\nEarnings: Rp ${this.formatNumber(profile.total_earnings)}`);
+            alert(`Creator Profile:\nName: ${profile.display_name}\nBio: ${profile.bio || 'N/A'}\nE-Wallet: ${profile.bank_account || 'N/A'}\nContent: ${profile.total_content}\nEarnings: Rp ${this.formatNumber(profile.total_earnings)}`);
         } catch (error) {
             alert('Error viewing creator profile: ' + error.message);
         }
