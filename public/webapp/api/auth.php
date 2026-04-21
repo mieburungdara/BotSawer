@@ -5,24 +5,52 @@ declare(strict_types=1);
 namespace BotSawer;
 
 use Exception;
+use Throwable;
 use Illuminate\Database\Capsule\Manager as DB;
 
+// Start output buffering IMMEDIATELY to catch any PHP output
+ob_start();
+
+// Disable direct error output to browser
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(E_ALL);
+
+// Load dependencies
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+// Set headers AFTER loading dependencies
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Load dependencies
-require_once __DIR__ . '/../../vendor/autoload.php';
-
-// Validate required functions exist
-if (!function_exists('validateTelegramWebAppData')) {
-    throw new Exception('Required validation function not found');
-}
+// Register shutdown handler for fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        ob_end_clean();
+        
+        // Try to log if logger is available
+        if (class_exists('BotSawer\\Logger')) {
+            Logger::critical('Fatal error in auth endpoint', [
+                'message' => $error['message'],
+                'file' => $error['file'],
+                'line' => $error['line']
+            ]);
+        }
+        
+        echo json_encode([
+            'success' => false,
+            'message' => 'Internal server error'
+        ]);
+        exit;
+    }
+});
 
 Database::init();
 
-// Start session for rate limiting
+// Start session for rate limiting and auth state
 session_start();
 
 // Rate limiting
@@ -165,6 +193,9 @@ try {
         ->where('is_verified', 1)
         ->exists();
 
+    // Store user_id in session for subsequent API calls
+    $_SESSION['user_id'] = $user->id;
+
     // Log for monitoring
     Logger::info('Webapp authentication successful', [
         'user_id' => $user->id,
@@ -174,10 +205,10 @@ try {
         'is_creator' => $isCreator
     ]);
 
-    // Final response with complete user data
+    // Final response - use 'data' key to match frontend apiCall pattern
     $response = [
         'success' => true,
-        'user' => [
+        'data' => [
             'id' => $user->id,
             'telegram_id' => $user->telegram_id,
             'first_name' => $userData['first_name'] ?? '',
@@ -202,11 +233,17 @@ try {
     ]);
     echo json_encode([
         'success' => false,
-        'message' => 'Authentication failed',
+        'message' => $e->getMessage(),
         'timestamp' => \Carbon\Carbon::now()->toISOString()
     ]);
 }
 
+/**
+ * Validate Telegram WebApp initData and extract user information.
+ *
+ * @param string $initData The raw initData string from Telegram WebApp.
+ * @returns array|null Parsed user data or null if validation fails.
+ */
 function validateTelegramWebAppData(string $initData): ?array
 {
     if (empty($initData)) {

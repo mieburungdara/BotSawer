@@ -26,12 +26,12 @@ class App {
                 initData: this.telegram.getInitData()
             });
 
-            if (response.success) {
-                this.userData = response.user;
+            if (response) {
+                this.userData = response;
                 this.showMainApp();
                 this.loadPage('dashboard');
             } else {
-                throw new Error(response.message || 'Authentication failed');
+                throw new Error('Authentication failed');
             }
         } catch (error) {
             console.error('Auth error:', error);
