@@ -3,7 +3,7 @@
     "description": "Bot Telegram sistem pembayaran otomatis untuk kreator konten foto dan video",
     "type": "project",
     "require": {
-        "php": "^7.4",
+        "php": "^7.4 || ^8.0",
         "ext-mysqli": "*",
         "ext-json": "*",
         "ext-curl": "*",
@@ -27,7 +27,10 @@
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "platform": {
+
+        }
     },
     "minimum-stability": "stable",
     "prefer-stable": true
