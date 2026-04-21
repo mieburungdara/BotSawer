@@ -190,11 +190,24 @@ try {
         ->get()
         ->toArray();
 
+    // Get recent donations with messages
+    $recentDonations = DB::table('transactions')
+        ->join('users', 'transactions.from_user_id', '=', 'users.id')
+        ->where('transactions.user_id', $userId) // Target creator
+        ->where('transactions.type', 'donation')
+        ->where('transactions.status', 'success')
+        ->select('transactions.amount', 'transactions.description as message', 'transactions.created_at', 'users.first_name', 'users.last_name', 'users.username')
+        ->orderBy('transactions.created_at', 'desc')
+        ->limit(5)
+        ->get()
+        ->toArray();
+
     // Get analytics data for charts
     $analytics = [
         'donations_last_7_days' => getDonationsLast7Days($userId),
         'donations_by_amount' => getDonationsByAmount($userId),
-        'top_content_chart' => array_slice($topContent, 0, 5)
+        'top_content_chart' => array_slice($topContent, 0, 5),
+        'recent_donations' => $recentDonations
     ];
 
     echo json_encode([

@@ -686,13 +686,35 @@ class App {
                 </div>
 
                 <div class="card">
+                    <h3><i data-lucide="activity"></i> Aktivitas Terbaru</h3>
+                    <div class="activity-feed">
+                        ${creatorData.analytics.recent_donations && creatorData.analytics.recent_donations.length > 0 ? 
+                            creatorData.analytics.recent_donations.slice(0, 5).map(don => `
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i data-lucide="heart"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-header">
+                                        <span class="donor-name">${don.first_name || 'Anonim'}</span>
+                                        <span class="activity-amount">+Rp ${this.formatCompactNumber(don.amount)}</span>
+                                    </div>
+                                    ${don.message ? `<div class="activity-message">${don.message}</div>` : ''}
+                                    <div class="activity-time">${this.getRelativeTime(don.created_at)}</div>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center" style="font-size: 13px; color: var(--hint-color); margin-top: 20px;">Belum ada aktivitas baru</p>'}
+                    </div>
+                </div>
+
+                <div class="card col-full">
                     <h3><i data-lucide="trending-up"></i> Performa Donasi</h3>
                     <div style="margin-top: 10px;">
                         <canvas id="donationsChart" width="400" height="200"></canvas>
                     </div>
                 </div>
 
-                <div class="card">
+                <div class="card col-full">
                     <h3><i data-lucide="pie-chart"></i> Distribusi Nominal</h3>
                     <div style="margin-top: 10px;">
                         <canvas id="amountChart" width="400" height="200"></canvas>
@@ -1729,6 +1751,19 @@ class App {
 
     formatNumber(num) {
         return new Intl.NumberFormat('id-ID').format(num);
+    }
+
+    getRelativeTime(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+
+        if (diffInSeconds < 60) return 'Baru saja';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m lalu`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}j lalu`;
+        if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}h lalu`;
+
+        return date.toLocaleDateString('id-ID');
     }
 }
 
