@@ -594,53 +594,6 @@ class App {
         return html;
     }
 
-        // Store analytics data for post-render chart initialization
-        this._creatorAnalytics = creatorData.analytics;
-        return html;
-    }
-
-    renderContentList(content) {
-        if (!content.length) {
-            return '<p>Belum ada konten</p>';
-        }
-
-        return `<div style="max-height: 300px; overflow-y: auto;">
-            ${content.map(item => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
-                    <div>
-                        <div style="font-weight: 600;">Media #${item.id}</div>
-                        <div style="font-size: 12px; color: #666;">${new Date(item.created_at).toLocaleDateString('id-ID')}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 600; color: #34c759;">Rp ${this.formatNumber(item.total_donations || 0)}</div>
-                        <div style="font-size: 12px; color: #666;">${item.donation_count || 0} donasi</div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>`;
-    }
-
-    renderTopContent(content) {
-        if (!content.length) {
-            return '<p>Belum ada data</p>';
-        }
-
-        return `<div style="max-height: 300px; overflow-y: auto;">
-            ${content.map(item => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
-                    <div>
-                        <div style="font-weight: 600;">Media #${item.id}</div>
-                        <div style="font-size: 12px; color: #666;">${item.file_type}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 600; color: #ff9500;">Rp ${this.formatNumber(item.total_donations || 0)}</div>
-                        <div style="font-size: 12px; color: #666;">${item.donation_count || 0} donasi</div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>`;
-    }
-
     async searchUsers() {
         const query = document.getElementById('userSearchQuery').value.trim();
         if (!query) {
