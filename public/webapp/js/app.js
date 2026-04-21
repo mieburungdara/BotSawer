@@ -137,33 +137,12 @@ class App {
         return `
             <div class="fade-in">
                 <div class="card balance-card">
-                    <h3><i data-lucide="wallet"></i> Pendapatan Saya</h3>
+                    <h3><i data-lucide="wallet"></i> Saldo Anda</h3>
                     <div class="balance-amount">Rp ${this.formatNumber(walletData.balance || 0)}</div>
                     <div class="balance-details">
-                        <p><i data-lucide="arrow-down-circle"></i> Deposit: Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
+                        <p><i data-lucide="arrow-down-circle"></i> Selesai: Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
                         <p><i data-lucide="arrow-up-circle"></i> Penarikan: Rp ${this.formatNumber(walletData.total_withdraw || 0)}</p>
                     </div>
-                </div>
-
-                <div class="card">
-                    <h3><i data-lucide="bar-chart-2"></i> Ringkasan Konten</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
-                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: var(--primary);">${walletData.total_donations || 0}</div>
-                            <div style="font-size: 11px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Donasi</div>
-                        </div>
-                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: var(--secondary);">${walletData.total_media || 0}</div>
-                            <div style="font-size: 11px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Media</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h3><i data-lucide="zap"></i> Akses Cepat</h3>
-                    <button class="btn btn-primary" onclick="window.Telegram.WebApp.close()">
-                        <i data-lucide="log-out"></i> Tutup App
-                    </button>
                 </div>
             </div>
         `;
