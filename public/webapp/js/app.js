@@ -135,7 +135,7 @@ class App {
         const walletData = await this.apiCall('wallet.php');
 
         return `
-            <div class="fade-in">
+            <div class="grid-layout fade-in">
                 <div class="card balance-card">
                     <h3><i data-lucide="wallet"></i> Saldo Anda</h3>
                     <div class="balance-amount">Rp ${this.formatNumber(walletData.balance || 0)}</div>
@@ -183,7 +183,7 @@ class App {
         }
 
         return `
-            <div class="fade-in">
+            <div class="grid-layout fade-in">
                 <div class="card">
                     <h3><i data-lucide="credit-card"></i> Detail Saldo</h3>
                     <div style="padding: 12px; background: var(--secondary-bg-color); border-radius: var(--radius-md); margin-top: 10px;">
@@ -249,7 +249,7 @@ class App {
                     </form>
                 </div>
 
-                <div class="card">
+                <div class="card col-full">
                     <h3><i data-lucide="history"></i> Riwayat Transaksi</h3>
                     <div class="table-container">
                         <table class="table">
@@ -329,23 +329,25 @@ class App {
         }
 
         const html = `
-            <div class="fade-in card">
-                <h3><i data-lucide="layers"></i> Daftar Konten</h3>
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Konten</th>
-                                <th>Tipe</th>
-                                <th style="text-align: right;">Total Donasi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                        </tbody>
-                    </table>
+            <div class="grid-layout fade-in">
+                <div class="card col-full">
+                    <h3><i data-lucide="layers"></i> Daftar Konten</h3>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Konten</th>
+                                    <th>Tipe</th>
+                                    <th style="text-align: right;">Total Donasi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${paginationHtml}
                 </div>
-                ${paginationHtml}
             </div>
         `;
 
@@ -366,45 +368,43 @@ class App {
 
         let html = '';
 
-        // Common sections for all admins
+        // Statistik Sistem
         html += `
-            <div class="fade-in">
-                <div class="card">
-                    <h3><i data-lucide="activity"></i> Statistik Sistem</h3>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px;">
-                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
-                            <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL USER</div>
-                            <div style="font-size: 20px; font-weight: 700;">${adminData.total_users || 0}</div>
-                        </div>
-                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
-                            <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL TRX</div>
-                            <div style="font-size: 20px; font-weight: 700;">${adminData.total_transactions || 0}</div>
-                        </div>
-                        <div style="grid-column: span 2; background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
-                            <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">SALDO SISTEM</div>
-                            <div style="font-size: 20px; font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(adminData.total_balance || 0)}</div>
-                        </div>
+            <div class="card">
+                <h3><i data-lucide="activity"></i> Statistik Sistem</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px;">
+                    <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL USER</div>
+                        <div style="font-size: 20px; font-weight: 700;">${adminData.total_users || 0}</div>
+                    </div>
+                    <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL TRX</div>
+                        <div style="font-size: 20px; font-weight: 700;">${adminData.total_transactions || 0}</div>
+                    </div>
+                    <div style="grid-column: span 2; background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">SALDO SISTEM</div>
+                        <div style="font-size: 20px; font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(adminData.total_balance || 0)}</div>
                     </div>
                 </div>
+            </div>
 
-                <div class="card">
-                    <h3><i data-lucide="scroll-text"></i> Audit Logs</h3>
-                    <div class="form-group">
-                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                            <select id="auditEntityType" style="flex: 1;">
-                                <option value="">Tipe Log</option>
-                                <option value="admin">Admin</option>
-                                <option value="user">User</option>
-                                <option value="creator">Creator</option>
-                            </select>
-                            <input type="number" id="auditUserId" placeholder="User ID" style="flex: 1;">
-                        </div>
-                        <button class="btn btn-secondary" onclick="app.loadAuditLogs()">
-                            <i data-lucide="refresh-cw"></i> Load Logs
-                        </button>
+            <div class="card">
+                <h3><i data-lucide="scroll-text"></i> Audit Logs</h3>
+                <div class="form-group">
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <select id="auditEntityType" style="flex: 1;">
+                            <option value="">Tipe Log</option>
+                            <option value="admin">Admin</option>
+                            <option value="user">User</option>
+                            <option value="creator">Creator</option>
+                        </select>
+                        <input type="number" id="auditUserId" placeholder="User ID" style="flex: 1;">
                     </div>
-                    <div id="auditLogsContainer"></div>
+                    <button class="btn btn-secondary" onclick="app.loadAuditLogs()">
+                        <i data-lucide="refresh-cw"></i> Load Logs
+                    </button>
                 </div>
+                <div id="auditLogsContainer"></div>
             </div>
         `;
 
@@ -555,7 +555,7 @@ class App {
             `;
         }
 
-        return html;
+        return `<div class="grid-layout fade-in">${html}</div>`;
     }
 
     async loadCreator() {
@@ -566,7 +566,7 @@ class App {
         const creatorData = await this.apiCall('creator.php');
 
         const html = `
-            <div class="fade-in">
+            <div class="grid-layout fade-in">
                 <div class="card">
                     <h3><i data-lucide="award"></i> Statistik Kreator</h3>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;">
