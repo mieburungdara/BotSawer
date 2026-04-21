@@ -69,9 +69,31 @@ class App {
             window.lucide.createIcons();
         }
 
-        // Update user info
-        const userName = this.userData.first_name + (this.userData.last_name ? ' ' + this.userData.last_name : '');
+        // Update user info & profile display
+        const firstName = this.userData.first_name || '';
+        const lastName = this.userData.last_name || '';
+        const userName = firstName + (lastName ? ' ' + lastName : '');
         document.getElementById('userName').textContent = userName;
+
+        // Generate Avatar Initials
+        const initials = (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
+        document.getElementById('userAvatar').textContent = initials;
+
+        // Render Badges
+        const badgeContainer = document.getElementById('userBadge');
+        badgeContainer.innerHTML = ''; // Clear
+
+        if (this.userData.is_creator) {
+            badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Creator</span>';
+        }
+        if (this.userData.is_admin) {
+            badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
+        }
+
+        // Initialize Lucide icons for new badges
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
 
         // Show admin buttons if admin
         if (this.userData.is_admin) {
