@@ -118,6 +118,7 @@ try {
                     'id' => $user->id,
                     'name' => $user->first_name . ' ' . $user->last_name,
                     'username' => $user->username,
+                    'photo_url' => $user->photo_url ?? null,
                     'joined_at' => $user->created_at
                 ],
                 'creator' => $creator ? [

@@ -73,9 +73,16 @@ class App {
         const userName = firstName + (lastName ? ' ' + lastName : '');
         document.getElementById('userName').textContent = userName;
 
-        // Generate Avatar Initials
-        const initials = (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
-        document.getElementById('userAvatar').textContent = initials;
+        // Generate Avatar Initials or Photo
+        const avatarEl = document.getElementById('userAvatar');
+        if (this.userData.photo_url) {
+            avatarEl.innerHTML = `<img src="${this.userData.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            avatarEl.style.fontSize = '0';
+        } else {
+            const initials = (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
+            avatarEl.textContent = initials;
+            avatarEl.style.fontSize = '14px';
+        }
 
         // Render Badges
         const badgeContainer = document.getElementById('userBadge');
@@ -626,18 +633,30 @@ class App {
 
         return `
             <div class="grid-layout fade-in">
-                <div class="card col-full">
-                    <h3><i data-lucide="search"></i> Cari Kreator</h3>
-                    <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 15px;">Temukan kreator favoritmu dan berikan dukungan!</p>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="exploreSearchQuery" placeholder="Nama atau username..." style="flex: 1;">
-                        <button class="btn btn-primary" onclick="app.searchPublicCreators()" style="width: auto;">
-                            <i data-lucide="search"></i>
+                <!-- Premium Search Section -->
+                <div class="col-full" style="margin-top: 10px;">
+                    <div style="margin-bottom: 25px; text-align: center;">
+                        <h2 style="font-family: 'Outfit'; font-size: 26px; margin-bottom: 8px;">Explore Kreator</h2>
+                        <p style="color: var(--hint-color); font-size: 14px;">Temukan dan dukung kreator favoritmu di Bot Sawer</p>
+                    </div>
+
+                    <div style="position: relative; max-width: 500px; margin: 0 auto;">
+                        <i data-lucide="search" style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--hint-color); width: 20px; height: 20px;"></i>
+                        <input type="text" id="exploreSearchQuery" 
+                            placeholder="Cari nama atau @username..." 
+                            style="width: 100%; padding: 16px 50px 16px 50px; background: var(--secondary-bg-color); border: 2px solid transparent; border-radius: 20px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.05);"
+                            onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 4px 20px rgba(99, 102, 241, 0.1)';"
+                            onblur="this.style.borderColor='transparent'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.05)';"
+                            onkeyup="if(event.key === 'Enter') app.searchPublicCreators()"
+                        >
+                        <button onclick="app.searchPublicCreators()" 
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                            Cari
                         </button>
                     </div>
                 </div>
 
-                <div id="exploreResults" class="col-full" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                <div id="exploreResults" class="col-full" style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 20px;">
                     ${this.renderCreatorGrid(topCreators || [])}
                 </div>
             </div>
@@ -678,8 +697,8 @@ class App {
 
         return creators.map(c => `
             <div class="card" style="display: flex; align-items: center; gap: 15px; padding: 15px;">
-                <div class="avatar-circle" style="width: 50px; height: 50px; font-size: 20px;">
-                    ${(c.display_name || 'C').charAt(0).toUpperCase()}
+                <div class="avatar-circle" style="width: 50px; height: 50px; font-size: 20px; overflow: hidden; ${c.photo_url ? 'font-size: 0;' : ''}">
+                    ${c.photo_url ? `<img src="${c.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` : (c.display_name || 'C').charAt(0).toUpperCase()}
                 </div>
                 <div style="flex: 1;">
                     <div style="font-weight: 700; font-size: 15px;">${c.display_name}</div>
@@ -728,8 +747,8 @@ class App {
             let html = `
                 <div class="grid-layout fade-in">
                     <div class="card col-full" style="text-align: center; padding: 40px 20px;">
-                        <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 32px; margin: 0 auto 15px;">
-                            ${(creator?.display_name || user.name || 'U').charAt(0).toUpperCase()}
+                        <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 32px; margin: 0 auto 15px; overflow: hidden; ${user.photo_url ? 'font-size: 0;' : ''}">
+                            ${user.photo_url ? `<img src="${user.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` : (creator?.display_name || user.name || 'U').charAt(0).toUpperCase()}
                         </div>
                         <h2 style="font-size: 24px;">${creator?.display_name || user.name}</h2>
                         <p style="color: var(--hint-color); font-size: 14px;">@${user.username || 'user'}</p>

@@ -268,7 +268,7 @@ class Creator
         return DB::table('creators')
             ->join('users', 'creators.user_id', '=', 'users.id')
             ->where('users.is_private', 0) // Exclude private users
-            ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username')
+            ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username', 'users.photo_url')
             ->orderBy('creators.created_at', 'desc')
             ->limit($limit)
             ->offset($offset)
@@ -286,7 +286,7 @@ class Creator
                 $q->where('creators.display_name', 'like', $searchTerm)
                   ->orWhere('users.username', 'like', $searchTerm);
             })
-            ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username')
+            ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username', 'users.photo_url')
             ->orderBy('creators.created_at', 'desc')
             ->limit($limit)
             ->get()

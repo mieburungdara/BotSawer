@@ -128,6 +128,10 @@ try {
         $updateData['username'] = $userData['username'] ?? null;
         $needsUpdate = true;
     }
+    if (isset($userData['photo_url']) && ($user->photo_url ?? '') !== ($userData['photo_url'] ?? '')) {
+        $updateData['photo_url'] = $userData['photo_url'];
+        $needsUpdate = true;
+    }
 
     if ($needsUpdate) {
         try {
@@ -237,6 +241,7 @@ try {
             'is_creator' => $isCreator,
             'has_posted' => $hasPosted,
             'has_donated' => $hasDonated,
+            'photo_url' => $user->photo_url ?? null,
             'language_code' => $userData['language_code'] ?? 'id'
         ],
         'timestamp' => \Carbon\Carbon::now()->toISOString()
