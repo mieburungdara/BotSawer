@@ -9,26 +9,16 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      # Mengatasi peringatan Node.js 20 agar menggunakan versi 24
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
-      # Menggunakan v4 (versi terbaru yang mendukung Node 24)
       - name: 🚚 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '7.4' # Menyesuaikan dengan kebutuhan composer.json kamu
-
-      - name: 🛠️ Install Composer Dependencies
-        run: |
-          composer config platform.php 7.4.33
-          composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+      # STEP COMPOSER DIHAPUS TOTAL
 
       - name: 🚀 Sync via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5 # Versi terbaru
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
@@ -44,7 +34,7 @@ jobs:
           TIME=$(date +'%Y-%m-%d %H:%M:%S')
           REPO="${{ github.repository }}"
           ACTOR="${{ github.actor }}"
-          TEXT="✅ *Deploy Berhasil!*%0A%0A*Repo:* $REPO%0A*Pusher:* $ACTOR%0A*Waktu:* $TIME"
+          TEXT="✅ *Deploy Berhasil (Tanpa Composer)!*%0A%0A*Repo:* $REPO%0A*Pusher:* $ACTOR%0A*Waktu:* $TIME"
           
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
