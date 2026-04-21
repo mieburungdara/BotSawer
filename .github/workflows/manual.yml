@@ -1,0 +1,37 @@
+name: Auto Deploy Bot Sawer
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚚 Checkout Code
+        uses: actions/checkout@v3
+
+      - name: 🛠️ Install Composer Dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: 🚀 Sync via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ./public_html/botsawer/
+
+      - name: 📱 Send Telegram Notification
+        if: success()
+        run: |
+          MSG="✅ *Deploy Berhasil!*%0A"
+          MSG+="Repo: *${{ github.repository }}*%0A"
+          MSG+="Pusher: ${{ github.actor }}%0A"
+          MSG+="Waktu: $(date +'%Y-%m-%d %H:%M:%S')"
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+            -d text="$MSG" \
+            -d parse_mode="Markdown"
