@@ -79,8 +79,9 @@ try {
     $telegramBotId = $input['botId'] ?? null;
     $dbBotId = 1; // Default
 
-    if ($telegramBotId) {
-        // Ensure telegramBotId is integer for DB query
+    // Only do DB lookup for real Telegram bot IDs (large numbers)
+    // Skip if null, empty, or default fallback value
+    if ($telegramBotId && (int)$telegramBotId > 1) {
         $telegramBotId = (int) $telegramBotId;
 
         // Find bot by telegram_id field - required for multi-bot
@@ -91,8 +92,7 @@ try {
         if ($bot) {
             $dbBotId = $bot->id;
         } else {
-            Logger::error('Bot not found for telegram_id - access denied', ['telegram_bot_id' => $telegramBotId]);
-            throw new Exception('Bot not recognized - please check your access');
+            Logger::warning('Bot not found for telegram_id, using default', ['telegram_bot_id' => $telegramBotId]);
         }
     }
 

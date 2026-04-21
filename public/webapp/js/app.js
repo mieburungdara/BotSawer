@@ -6,7 +6,7 @@ class App {
         this.userData = null;
         // Get bot_id from URL parameter (should be Telegram bot ID)
         const urlParams = new URLSearchParams(window.location.search);
-        this.botId = urlParams.get('bot_id') || '1'; // Default to '1' if not specified
+        this.botId = urlParams.get('bot_id') || null; // null if not specified
         this.init();
     }
 
