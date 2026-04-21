@@ -68,6 +68,19 @@ try {
 
         $creator = DB::table('creators')->where('user_id', $targetUserId)->first();
         
+        $hasPosted = false;
+        if ($creator && $creator->is_verified) {
+            $hasPosted = DB::table('media_files')
+                ->where('creator_id', $creator->id)
+                ->exists();
+        }
+
+        $hasDonated = DB::table('transactions')
+            ->where('from_user_id', $targetUserId)
+            ->where('type', 'donation')
+            ->where('status', 'success')
+            ->exists();
+
         $stats = [];
         if ($creator) {
             $stats = Creator::getStats((int)$creator->id);
@@ -111,8 +124,11 @@ try {
                     'display_name' => $creator->display_name,
                     'bio' => $creator->bio,
                     'is_verified' => (bool)$creator->is_verified,
-                    'is_private' => (bool)$user->is_private
                 ] : null,
+                'badges' => [
+                    'has_posted' => $hasPosted,
+                    'has_donated' => $hasDonated
+                ],
                 'stats' => $stats,
                 'activity' => $recentActivity
             ]

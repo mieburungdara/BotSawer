@@ -187,10 +187,27 @@ try {
         $adminRole = $adminData->role ?? null;
     }
 
-    // Check if creator (webapp users from bot should all be verified creators)
-    $isCreator = (bool) DB::table('creators')
+    // Check if creator (verified)
+    $creator = DB::table('creators')
         ->where('user_id', $user->id)
         ->where('is_verified', 1)
+        ->first();
+    
+    $isCreator = (bool)$creator;
+    
+    // Badge logic: Check if actually posted content
+    $hasPosted = false;
+    if ($isCreator) {
+        $hasPosted = DB::table('media_files')
+            ->where('creator_id', $creator->id)
+            ->exists();
+    }
+
+    // Badge logic: Check if actually donated
+    $hasDonated = DB::table('transactions')
+        ->where('from_user_id', $user->id)
+        ->where('type', 'donation')
+        ->where('status', 'success')
         ->exists();
 
     // Store user_id in session for subsequent API calls
@@ -201,8 +218,9 @@ try {
         'user_id' => $user->id,
         'telegram_id' => $user->telegram_id,
         'is_admin' => $isAdmin,
-        'admin_role' => $adminRole,
-        'is_creator' => $isCreator
+        'is_creator' => $isCreator,
+        'has_posted' => $hasPosted,
+        'has_donated' => $hasDonated
     ]);
 
     // Final response - use 'data' key to match frontend apiCall pattern
@@ -217,6 +235,8 @@ try {
             'is_admin' => $isAdmin,
             'admin_role' => $adminRole,
             'is_creator' => $isCreator,
+            'has_posted' => $hasPosted,
+            'has_donated' => $hasDonated,
             'language_code' => $userData['language_code'] ?? 'id'
         ],
         'timestamp' => \Carbon\Carbon::now()->toISOString()

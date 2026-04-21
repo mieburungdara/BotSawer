@@ -81,8 +81,11 @@ class App {
         const badgeContainer = document.getElementById('userBadge');
         badgeContainer.innerHTML = ''; // Clear
 
-        if (this.userData.is_creator) {
-            badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Creator</span>';
+        if (this.userData.has_posted) {
+            badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>';
+        }
+        if (this.userData.has_donated) {
+            badgeContainer.innerHTML += '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>';
         }
         if (this.userData.is_admin) {
             badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
@@ -152,6 +155,12 @@ class App {
                     break;
                 case 'admin':
                     html = await this.loadAdmin();
+                    break;
+                case 'profile':
+                    html = await this.loadProfile();
+                    break;
+                case 'achievements':
+                    html = await this.loadAchievements();
                     break;
                 default:
                     html = '<div class="card"><h3>Halaman tidak ditemukan</h3></div>';
@@ -695,6 +704,163 @@ class App {
             window.Telegram.WebApp.openTelegramLink(url);
         } else {
             window.open(url, '_blank');
+        }
+    }
+
+    async loadProfile() {
+        return this.viewOtherProfile(this.userData.id);
+    }
+
+    async viewOtherProfile(userId) {
+        try {
+            const data = await this.apiCall('explore.php', {
+                action: 'get_profile',
+                userId: userId
+            });
+
+            const { user, creator, stats, activity, badges } = data;
+            const isOwnProfile = (userId === this.userData.id);
+
+            // Use badges from API, or fallback to current session data if own profile
+            const hasPosted = isOwnProfile ? this.userData.has_posted : badges?.has_posted;
+            const hasDonated = isOwnProfile ? this.userData.has_donated : badges?.has_donated;
+
+            let html = `
+                <div class="grid-layout fade-in">
+                    <div class="card col-full" style="text-align: center; padding: 40px 20px;">
+                        <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 32px; margin: 0 auto 15px;">
+                            ${(creator?.display_name || user.name || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <h2 style="font-size: 24px;">${creator?.display_name || user.name}</h2>
+                        <p style="color: var(--hint-color); font-size: 14px;">@${user.username || 'user'}</p>
+                        
+                        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
+                            ${hasPosted ? '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>' : ''}
+                            ${hasDonated ? '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>' : ''}
+                            ${creator?.is_verified ? '<span class="status-badge success"><i data-lucide="check-circle"></i> Terverifikasi</span>' : ''}
+                        </div>
+
+                        ${creator?.bio ? `<p style="margin-top: 20px; font-size: 15px; color: var(--text-color); max-width: 400px; margin-left: auto; margin-right: auto;">${creator.bio}</p>` : ''}
+                        
+                        ${isOwnProfile ? `
+                            <div style="display: flex; justify-content: center; gap: 8px; margin-top: 25px;">
+                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('wallet')" style="width: auto;">
+                                    <i data-lucide="wallet"></i> Dompet
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('achievements')" style="width: auto;">
+                                    <i data-lucide="trophy"></i> Pencapaian
+                                </button>
+                            </div>
+                        ` : `
+                            <div style="margin-top: 25px;">
+                                <button class="btn btn-primary" onclick="app.viewPublicCreatorProfile(${user.id})" style="width: auto; padding: 12px 24px;">
+                                    <i data-lucide="heart"></i> Dukung Sekarang
+                                </button>
+                            </div>
+                        `}
+                    </div>
+
+                    <div class="card">
+                        <h3><i data-lucide="activity"></i> Statistik</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                            ${stats.is_creator ? `
+                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
+                                    <div style="font-size: 18px; font-weight: 800; color: var(--primary);">${stats.total_donations || 0}</div>
+                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Diterima</div>
+                                </div>
+                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
+                                    <div style="font-size: 18px; font-weight: 800; color: var(--success);">Rp ${this.formatCompactNumber(stats.total_earnings || 0)}</div>
+                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Earning</div>
+                                </div>
+                            ` : `
+                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
+                                    <div style="font-size: 18px; font-weight: 800; color: var(--primary);">${stats.total_donations_sent || 0}</div>
+                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Saweran</div>
+                                </div>
+                                <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); text-align: center;">
+                                    <div style="font-size: 18px; font-weight: 800; color: var(--accent);">Rp ${this.formatCompactNumber(stats.total_amount_sent || 0)}</div>
+                                    <div style="font-size: 10px; color: var(--hint-color); font-weight: 700; text-transform: uppercase;">Total</div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+
+                    <div class="card col-full">
+                        <h3><i data-lucide="history"></i> Aktivitas ${isOwnProfile ? 'Saya' : ''}</h3>
+                        <div class="activity-feed">
+                            ${activity && activity.length > 0 ? activity.map(act => `
+                                <div class="activity-item">
+                                    <div class="activity-icon" style="background: ${act.from_user_id == user.id ? 'rgba(244, 63, 94, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">
+                                        <i data-lucide="${act.from_user_id == user.id ? 'send' : 'download'}"></i>
+                                    </div>
+                                    <div class="activity-content">
+                                        <div class="activity-header">
+                                            <span class="donor-name">${act.from_user_id == user.id ? 'Mengirim' : 'Menerima'} Saweran</span>
+                                            <span class="activity-amount" style="color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">${act.from_user_id == user.id ? '-' : '+'}Rp ${this.formatCompactNumber(act.amount)}</span>
+                                        </div>
+                                        <div class="activity-time">${this.getRelativeTime(act.created_at)}</div>
+                                    </div>
+                                </div>
+                            `).join('') : '<p class="text-center" style="color: var(--hint-color); padding: 20px;">Belum ada aktivitas</p>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (this.currentPage === 'profile' || isOwnProfile === false) {
+                document.getElementById('pageContent').innerHTML = html;
+                if (window.lucide) window.lucide.createIcons();
+            }
+            return html;
+        } catch (error) {
+            console.error('Profile error:', error);
+            return `<div class="card"><h3>Error</h3><p>${error.message}</p></div>`;
+        }
+    }
+
+    async loadAchievements() {
+        try {
+            const achievements = await this.apiCall('achievements.php');
+            
+            let unlockedCount = achievements.filter(a => a.unlocked).length;
+
+            return `
+                <div class="grid-layout fade-in">
+                    <div class="card col-full" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;">
+                        <h2 style="display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="trophy"></i> Pencapaian Saya
+                        </h2>
+                        <p style="opacity: 0.9; font-size: 14px;">Kamu telah membuka ${unlockedCount} dari ${achievements.length} pencapaian.</p>
+                        <div class="goal-bar-bg" style="background: rgba(255,255,255,0.2); margin-top: 15px;">
+                            <div class="goal-bar-fill" style="width: ${(unlockedCount/achievements.length)*100}%; background: white;"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-full" style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                        ${achievements.map(a => `
+                            <div class="card" style="display: flex; align-items: center; gap: 15px; opacity: ${a.unlocked ? '1' : '0.6'}; border-left: 4px solid ${a.unlocked ? 'var(--warning)' : 'var(--glass-border)'}">
+                                <div class="activity-icon" style="width: 48px; height: 48px; background: ${a.unlocked ? 'rgba(245, 158, 11, 0.1)' : 'rgba(0,0,0,0.05)'}; color: ${a.unlocked ? 'var(--warning)' : 'var(--hint-color)'}; border-radius: 12px;">
+                                    <i data-lucide="${a.icon}"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px;">
+                                        ${a.title}
+                                        ${a.unlocked ? '<i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--success);"></i>' : ''}
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--hint-color);">${a.description}</div>
+                                    ${!a.unlocked ? `
+                                        <div class="goal-bar-bg" style="height: 4px; margin-top: 8px;">
+                                            <div class="goal-bar-fill" style="width: ${a.progress}%"></div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            return `<div class="card"><h3>Error</h3><p>${error.message}</p></div>`;
         }
     }
 
