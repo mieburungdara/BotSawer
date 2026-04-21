@@ -3,3 +3,12 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/boxanonm/public_html/botsawer/
     - /bin/cp -R * $DEPLOYPATH
+    - composer install --no-dev --no-interaction --prefer-dist --working-dir=$DEPLOYPATH
+    - |
+      curl -s -X POST "https://api.telegram.org/bot7715036030:AAHlRifKGc-a1Y0b3yPdfhdnNix91C7rtvI/sendMessage" \
+        -d chat_id="7602143247" \
+        -d text="✅ *Deploy Berhasil!*
+      Repo: `BOT SAWER`
+      Commit: $(git log -1 --pretty=%B)
+      Waktu: $(date '+%Y-%m-%d %H:%M:%S')" \
+        -d parse_mode="Markdown"
