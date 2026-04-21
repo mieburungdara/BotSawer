@@ -269,15 +269,13 @@ class App {
                             <label>Pilih Bank</label>
                             <select id="bankName" required>
                                 <option value="">Pilih...</option>
-                                <option value="BCA">BCA</option>
-                                <option value="Mandiri">Mandiri</option>
-                                <option value="BRI">BRI</option>
-                                <option value="BNI">BNI</option>
-                                <option value="Lainnya">Lainnya</option>
+                                <option value="ShopeePay">ShopeePay</option>
+                                <option value="DANA">DANA</option>
+                                <option value="GoPay">GoPay</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Nomor Rekening</label>
+                            <label>Nomor Rekening / HP</label>
                             <input type="text" id="bankAccount" required>
                         </div>
                         <div class="form-group">

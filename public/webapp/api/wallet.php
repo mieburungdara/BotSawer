@@ -180,12 +180,11 @@ function validateAndFormatBankAccountForWithdrawal(string $bankName, string $acc
 {
     // Validate bank name (must be one of supported banks)
     $supportedBanks = [
-        'BCA', 'MANDIRI', 'BRI', 'BNI', 'CIMB', 'DANAMON', 'PERMATA', 'BSI',
-        'OCBC', 'MAYBANK', 'PANIN', 'MEGA', 'BUKOPIN', 'SAHABAT SAMPOERNA'
+        'SHOPEEPAY', 'DANA', 'GOPAY'
     ];
 
     $bankNameUpper = strtoupper($bankName);
-    if (!in_array($bankNameUpper, $supportedBanks) && strpos($bankNameUpper, 'LAINNYA') === false) {
+    if (!in_array($bankNameUpper, $supportedBanks)) {
         throw new Exception('Nama bank tidak didukung. Gunakan salah satu: ' . implode(', ', $supportedBanks));
     }
 
