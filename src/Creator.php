@@ -267,6 +267,7 @@ class Creator
     {
         return DB::table('creators')
             ->join('users', 'creators.user_id', '=', 'users.id')
+            ->where('users.is_private', 0) // Exclude private users
             ->select('creators.*', 'users.first_name', 'users.last_name', 'users.username')
             ->orderBy('creators.created_at', 'desc')
             ->limit($limit)
@@ -280,7 +281,8 @@ class Creator
         $searchTerm = "%{$query}%";
         return DB::table('creators')
             ->join('users', 'creators.user_id', '=', 'users.id')
-            ->where(function($q) use ($searchTerm) {
+            ->where('users.is_private', 0) // Exclude private users
+            ->where(function($q) use ($searchTerm, $query) {
                 $q->where('creators.display_name', 'like', $searchTerm)
                   ->orWhere('users.username', 'like', $searchTerm);
             })
