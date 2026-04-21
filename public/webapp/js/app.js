@@ -927,7 +927,6 @@ class App {
     }
 
     viewPublicCreatorProfileLink(userId) {
-    viewPublicCreatorProfileLink(userId) {
         // Redirect to their public page or open in bot
         const botUsername = 'MieBurungDaraBot'; // Fallback
         const url = `https://t.me/${botUsername}?start=creator_${userId}`;
@@ -1279,7 +1278,7 @@ class App {
         container.innerHTML = html;
     }
 
-    async     updateSetting(key) {
+    async updateSetting(key) {
         const value = document.getElementById(`setting_${key}`).value;
 
         try {
