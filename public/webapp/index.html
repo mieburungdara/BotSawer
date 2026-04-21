@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bot Sawer - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -27,11 +31,26 @@
             </header>
 
             <nav class="app-nav">
-                <button class="nav-btn active" data-page="dashboard">Dashboard</button>
-                <button class="nav-btn" data-page="wallet">Dompet</button>
-                <button class="nav-btn" data-page="history">Riwayat</button>
-                <button class="nav-btn creator-only" data-page="creator" style="display: none;">Kreator</button>
-                <button class="nav-btn admin-only" data-page="admin" style="display: none;">Admin</button>
+                <button class="nav-btn active" data-page="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    Dashboard
+                </button>
+                <button class="nav-btn" data-page="wallet">
+                    <i data-lucide="wallet"></i>
+                    Dompet
+                </button>
+                <button class="nav-btn" data-page="history">
+                    <i data-lucide="history"></i>
+                    Riwayat
+                </button>
+                <button class="nav-btn creator-only" data-page="creator" style="display: none;">
+                    <i data-lucide="star"></i>
+                    Kreator
+                </button>
+                <button class="nav-btn admin-only" data-page="admin" style="display: none;">
+                    <i data-lucide="shield-check"></i>
+                    Admin
+                </button>
             </nav>
 
             <main class="app-content">

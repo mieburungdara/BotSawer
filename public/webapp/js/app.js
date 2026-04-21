@@ -43,6 +43,11 @@ class App {
     showMainApp() {
         document.getElementById('mainApp').style.display = 'block';
 
+        // Initialize Lucide icons for static elements (nav)
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
         // Update user info
         const userName = this.userData.first_name + (this.userData.last_name ? ' ' + this.userData.last_name : '');
         document.getElementById('userName').textContent = userName;
@@ -110,6 +115,11 @@ class App {
 
             content.innerHTML = html;
 
+            // Initialize Lucide icons
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+
             // Initialize charts after DOM update for creator page
             if (pageName === 'creator' && this._creatorAnalytics) {
                 this.renderCreatorCharts(this._creatorAnalytics);
@@ -125,22 +135,36 @@ class App {
         const walletData = await this.apiCall('wallet.php');
 
         return `
-            <div class="card balance-card">
-                <h3>Saldo Dompet</h3>
-                <div class="balance-amount">Rp ${this.formatNumber(walletData.balance || 0)}</div>
-                <p>Total Deposit: Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
-                <p>Total Penarikan: Rp ${this.formatNumber(walletData.total_withdraw || 0)}</p>
-            </div>
+            <div class="fade-in">
+                <div class="card balance-card">
+                    <h3><i data-lucide="wallet"></i> Pendapatan Saya</h3>
+                    <div class="balance-amount">Rp ${this.formatNumber(walletData.balance || 0)}</div>
+                    <div class="balance-details">
+                        <p><i data-lucide="arrow-down-circle"></i> Deposit: Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
+                        <p><i data-lucide="arrow-up-circle"></i> Penarikan: Rp ${this.formatNumber(walletData.total_withdraw || 0)}</p>
+                    </div>
+                </div>
 
-            <div class="card">
-                <h3>Statistik</h3>
-                <p>Donasi Sukses: ${walletData.total_donations || 0}</p>
-                <p>Media Diunggah: ${walletData.total_media || 0}</p>
-            </div>
+                <div class="card">
+                    <h3><i data-lucide="bar-chart-2"></i> Ringkasan Konten</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--primary);">${walletData.total_donations || 0}</div>
+                            <div style="font-size: 11px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Donasi</div>
+                        </div>
+                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: var(--secondary);">${walletData.total_media || 0}</div>
+                            <div style="font-size: 11px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Media</div>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="card">
-                <h3>Aksi Cepat</h3>
-                <button class="btn btn-primary" onclick="window.Telegram.WebApp.close()">Tutup App</button>
+                <div class="card">
+                    <h3><i data-lucide="zap"></i> Akses Cepat</h3>
+                    <button class="btn btn-primary" onclick="window.Telegram.WebApp.close()">
+                        <i data-lucide="log-out"></i> Tutup App
+                    </button>
+                </div>
             </div>
         `;
     }
@@ -149,78 +173,75 @@ class App {
         const walletData = await this.apiCall('wallet.php');
 
         return `
-            <div class="card">
-                <h3>Informasi Dompet</h3>
-                <p><strong>Saldo Tersedia:</strong> Rp ${this.formatNumber(walletData.balance || 0)}</p>
-                <p><strong>Total Deposit:</strong> Rp ${this.formatNumber(walletData.total_deposit || 0)}</p>
-                <p><strong>Total Penarikan:</strong> Rp ${this.formatNumber(walletData.total_withdraw || 0)}</p>
-            </div>
-
-            <div class="card">
-                <h3>Topup Saldo</h3>
-                <form id="topupForm">
-                    <div class="form-group">
-                        <label>Nominal Topup</label>
-                        <input type="number" id="topupAmount" min="10000" step="1000" required>
-                    </div>
-                    <button type="submit" class="btn btn-success">Ajukan Topup</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h3>Penarikan Saldo</h3>
-                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <strong>ℹ️ Info Biaya:</strong> Platform mengenakan komisi 10% dari nominal penarikan untuk biaya operasional.
-                </div>
-                <form id="withdrawForm">
-                    <div class="form-group">
-                        <label>Nominal Penarikan (Min: Rp 50.000)</label>
-                        <input type="number" id="withdrawAmount" min="50000" step="1000" required>
-                        <div id="commissionBreakdown" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; display: none;">
-                            <small>
-                                <div id="commissionDetails"></div>
-                                <div id="finalAmount" style="font-weight: bold; margin-top: 5px;"></div>
-                            </small>
+            <div class="fade-in">
+                <div class="card">
+                    <h3><i data-lucide="credit-card"></i> Detail Saldo</h3>
+                    <div style="padding: 12px; background: var(--secondary-bg-color); border-radius: var(--radius-md); margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--hint-color);">Saldo Tersedia</span>
+                            <span style="font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(walletData.balance || 0)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--hint-color);">Total Transaksi</span>
+                            <span style="font-weight: 600;">${(walletData.total_donations || 0)} Trx</span>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Nama Bank</label>
-                        <select id="bankName" required>
-                            <option value="">Pilih Bank</option>
-                            <option value="BCA">BCA</option>
-                            <option value="Mandiri">Mandiri</option>
-                            <option value="BRI">BRI</option>
-                            <option value="BNI">BNI</option>
-                            <option value="CIMB">CIMB Niaga</option>
-                            <option value="Danamon">Danamon</option>
-                            <option value="Permata">Permata</option>
-                            <option value="BSI">BSI</option>
-                            <option value="OCBC">OCBC NISP</option>
-                            <option value="Maybank">Maybank</option>
-                            <option value="Panin">Panin</option>
-                            <option value="Mega">Mega</option>
-                            <option value="Bukopin">Bukopin</option>
-                            <option value="Sahabat Sampoerna">Sahabat Sampoerna</option>
-                            <option value="Lainnya">Lainnya</option>
-                        </select>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="plus-circle"></i> Isi Saldo (Topup)</h3>
+                    <form id="topupForm">
+                        <div class="form-group">
+                            <label>Nominal Topup</label>
+                            <input type="number" id="topupAmount" min="10000" step="1000" placeholder="Min. Rp 10.000" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i data-lucide="send"></i> Ajukan Topup
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="arrow-up-right"></i> Tarik Saldo</h3>
+                    <div style="background: rgba(99, 102, 241, 0.05); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px dashed var(--primary);">
+                        <div style="display: flex; gap: 10px; color: var(--primary);">
+                            <i data-lucide="info" style="flex-shrink: 0;"></i>
+                            <p style="font-size: 13px; font-weight: 500;">Platform mengenakan komisi <strong>10%</strong> untuk biaya operasional.</p>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Nomor Rekening</label>
-                        <input type="text" id="bankAccount" placeholder="Contoh: 1234567890" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Nama Pemilik Rekening</label>
-                        <input type="text" id="accountName" placeholder="Sesuai KTP" required>
-                    </div>
-                    <div class="form-group">
-                        <label style="display: flex; align-items: center;">
-                            <input type="checkbox" id="withdrawConfirmation" required style="margin-right: 10px;">
-                            Saya setuju dengan biaya komisi 10% dan memahami bahwa admin akan memproses pembayaran dalam 1-3 hari kerja
-                        </label>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Ajukan Penarikan</button>
-                    <div id="withdrawResult" style="margin-top: 10px;"></div>
-                </form>
+                    <form id="withdrawForm">
+                        <div class="form-group">
+                            <label>Nominal Penarikan</label>
+                            <input type="number" id="withdrawAmount" min="50000" step="1000" placeholder="Min. Rp 50.000" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Pilih Bank</label>
+                            <select id="bankName" required>
+                                <option value="">Klik untuk memilih...</option>
+                                <option value="BCA">BCA</option>
+                                <option value="Mandiri">Mandiri</option>
+                                <option value="BRI">BRI</option>
+                                <option value="BNI">BNI</option>
+                                <option value="CIMB">CIMB Niaga</option>
+                                <option value="Danamon">Danamon</option>
+                                <option value="Permata">Permata</option>
+                                <option value="BSI">BSI</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nomor Rekening</label>
+                            <input type="text" id="bankAccount" placeholder="123xxx" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nama Pemilik</label>
+                            <input type="text" id="accountName" placeholder="Sesuai buku tabungan" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="arrow-up-right"></i> Tarik Sekarang
+                        </button>
+                    </form>
+                </div>
             </div>
         `;
     }
@@ -233,35 +254,38 @@ class App {
             transactions.forEach(tx => {
                 const statusClass = tx.status === 'success' ? 'status-success' :
                                   tx.status === 'pending' ? 'status-pending' : 'status-failed';
+                const icon = tx.amount > 0 ? 'arrow-down-left' : 'arrow-up-right';
+                const iconColor = tx.amount > 0 ? 'var(--success)' : 'var(--danger)';
+
                 tableRows += `
                     <tr>
-                        <td>${new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
-                        <td>${tx.description}</td>
-                        <td>Rp ${this.formatNumber(tx.amount)}</td>
-                        <td><span class="status-badge ${statusClass}">${tx.status}</span></td>
+                        <td>
+                            <div style="font-weight: 600;">${tx.description}</div>
+                            <div style="font-size: 11px; color: var(--hint-color);">${new Date(tx.created_at).toLocaleDateString('id-ID')}</div>
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="font-weight: 700; color: ${iconColor};">
+                                ${tx.amount > 0 ? '+' : ''}${this.formatNumber(tx.amount)}
+                            </div>
+                            <span class="status-badge ${statusClass}">${tx.status}</span>
+                        </td>
                     </tr>
                 `;
             });
         } else {
-            tableRows = '<tr><td colspan="4">Belum ada transaksi</td></tr>';
+            tableRows = '<tr><td colspan="2" class="text-center">Belum ada transaksi</td></tr>';
         }
 
         return `
-            <div class="card">
-                <h3>Riwayat Transaksi</h3>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Tanggal</th>
-                            <th>Deskripsi</th>
-                            <th>Jumlah</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
+            <div class="fade-in card">
+                <h3><i data-lucide="history"></i> Riwayat Transaksi</h3>
+                <div class="table-container">
+                    <table class="table">
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
@@ -278,26 +302,43 @@ class App {
 
         // Common sections for all admins
         html += `
-            <div class="card">
-                <h3>Statistik Sistem</h3>
-                <p>Total User: ${adminData.total_users || 0}</p>
-                <p>Total Transaksi: ${adminData.total_transactions || 0}</p>
-                <p>Saldo Sistem: Rp ${this.formatNumber(adminData.total_balance || 0)}</p>
-            </div>
-
-            <div class="card">
-                <h3>Audit Logs</h3>
-                <div style="margin-bottom: 15px;">
-                    <select id="auditEntityType" style="margin-right: 10px;">
-                        <option value="">All Types</option>
-                        <option value="admin">Admin</option>
-                        <option value="user">User</option>
-                        <option value="creator">Creator</option>
-                    </select>
-                    <input type="number" id="auditUserId" placeholder="User ID (optional)" style="margin-right: 10px;">
-                    <button class="btn btn-secondary" onclick="app.loadAuditLogs()">Load Logs</button>
+            <div class="fade-in">
+                <div class="card">
+                    <h3><i data-lucide="activity"></i> Statistik Sistem</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px;">
+                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                            <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL USER</div>
+                            <div style="font-size: 20px; font-weight: 700;">${adminData.total_users || 0}</div>
+                        </div>
+                        <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                            <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL TRX</div>
+                            <div style="font-size: 20px; font-weight: 700;">${adminData.total_transactions || 0}</div>
+                        </div>
+                        <div style="grid-column: span 2; background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                            <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">SALDO SISTEM</div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(adminData.total_balance || 0)}</div>
+                        </div>
+                    </div>
                 </div>
-                <div id="auditLogsContainer"></div>
+
+                <div class="card">
+                    <h3><i data-lucide="scroll-text"></i> Audit Logs</h3>
+                    <div class="form-group">
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <select id="auditEntityType" style="flex: 1;">
+                                <option value="">Tipe Log</option>
+                                <option value="admin">Admin</option>
+                                <option value="user">User</option>
+                                <option value="creator">Creator</option>
+                            </select>
+                            <input type="number" id="auditUserId" placeholder="User ID" style="flex: 1;">
+                        </div>
+                        <button class="btn btn-secondary" onclick="app.loadAuditLogs()">
+                            <i data-lucide="refresh-cw"></i> Load Logs
+                        </button>
+                    </div>
+                    <div id="auditLogsContainer"></div>
+                </div>
             </div>
         `;
 
@@ -453,68 +494,71 @@ class App {
 
     async loadCreator() {
         if (!this.userData.is_creator) {
-            return '<div class="card"><h3>Akses Ditolak</h3><p>Anda bukan kreator terverifikasi</p></div>';
+            return '<div class="card"><h3><i data-lucide="alert-circle"></i> Akses Ditolak</h3><p>Anda bukan kreator terverifikasi</p></div>';
         }
 
         const creatorData = await this.apiCall('creator.php');
 
         const html = `
-            <div class="card">
-                <h3>Statistik Kreator</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 15px;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: bold; color: #34c759;">${creatorData.total_media || 0}</div>
-                        <div style="font-size: 12px; color: #666;">Konten</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: bold; color: #007aff;">Rp ${this.formatNumber(creatorData.total_earnings || 0)}</div>
-                        <div style="font-size: 12px; color: #666;">Pendapatan</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: bold; color: #ff9500;">${creatorData.total_donations || 0}</div>
-                        <div style="font-size: 12px; color: #666;">Donasi</div>
+            <div class="fade-in">
+                <div class="card">
+                    <h3><i data-lucide="award"></i> Statistik Kreator</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;">
+                        <div style="text-align: center; padding: 12px; background: rgba(16, 185, 129, 0.05); border-radius: var(--radius-md);">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--success);">${creatorData.total_media || 0}</div>
+                            <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Konten</div>
+                        </div>
+                        <div style="text-align: center; padding: 12px; background: rgba(99, 102, 241, 0.05); border-radius: var(--radius-md);">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(creatorData.total_earnings || 0)}</div>
+                            <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Earning</div>
+                        </div>
+                        <div style="text-align: center; padding: 12px; background: rgba(168, 85, 247, 0.05); border-radius: var(--radius-md);">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--secondary);">${creatorData.total_donations || 0}</div>
+                            <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Donasi</div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="card">
-                <h3>Donasi 7 Hari Terakhir</h3>
-                <canvas id="donationsChart" width="400" height="200"></canvas>
-            </div>
-
-            <div class="card">
-                <h3>Distribusi Nominal Donasi</h3>
-                <canvas id="amountChart" width="400" height="200"></canvas>
-            </div>
-
-            <div class="card">
-                <h3>Konten Terbaru</h3>
-                ${this.renderContentList(creatorData.recent_content || [])}
-            </div>
-
-            <div class="card">
-                <h3>Top Konten</h3>
-                ${this.renderTopContent(creatorData.top_content || [])}
-            </div>
-
-            <div class="card">
-                <h3>Pengaturan Profil</h3>
-                <form id="creatorProfileForm">
-                    <div class="form-group">
-                        <label>Display Name</label>
-                        <input type="text" id="creatorDisplayName" value="${creatorData.profile?.display_name || ''}" required>
+                <div class="card">
+                    <h3><i data-lucide="trending-up"></i> Performa Donasi</h3>
+                    <div style="margin-top: 10px;">
+                        <canvas id="donationsChart" width="400" height="200"></canvas>
                     </div>
-                    <div class="form-group">
-                        <label>Bio</label>
-                        <textarea id="creatorBio" rows="3">${creatorData.profile?.bio || ''}</textarea>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="pie-chart"></i> Distribusi Nominal</h3>
+                    <div style="margin-top: 10px;">
+                        <canvas id="amountChart" width="400" height="200"></canvas>
                     </div>
-                    <div class="form-group">
-                        <label>Rekening Bank (untuk penarikan)</label>
-                        <input type="text" id="creatorBankAccount" value="${creatorData.profile?.bank_account || ''}" placeholder="Contoh: BCA - 1234567890 - Nama Pemilik">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Update Profil</button>
-                    <div id="profileResult" style="margin-top: 10px;"></div>
-                </form>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="layers"></i> Konten Terbaru</h3>
+                    ${this.renderContentList(creatorData.recent_content || [])}
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="user-cog"></i> Pengaturan Profil</h3>
+                    <form id="creatorProfileForm">
+                        <div class="form-group">
+                            <label>Nama Display</label>
+                            <input type="text" id="creatorDisplayName" value="${creatorData.profile?.display_name || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Biografi Singkat</label>
+                            <textarea id="creatorBio" rows="3">${creatorData.profile?.bio || ''}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Tujuan Rekening</label>
+                            <input type="text" id="creatorBankAccount" value="${creatorData.profile?.bank_account || ''}" placeholder="BCA - 1234xxx - Nama">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="save"></i> Update Profil
+                        </button>
+                        <div id="profileResult" style="margin-top: 10px;"></div>
+                    </form>
+                </div>
             </div>
         `;
 
