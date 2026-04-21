@@ -7,11 +7,11 @@ namespace BotSawer;
 class RateLimiter
 {
     private static $limits = [
-        'auth.php' => ['max' => 10, 'window' => 3600], // 10 requests per hour
-        'wallet.php' => ['max' => 30, 'window' => 3600], // 30 requests per hour
-        'transactions.php' => ['max' => 20, 'window' => 3600], // 20 requests per hour
-        'creator.php' => ['max' => 20, 'window' => 3600], // 20 requests per hour
-        'admin.php' => ['max' => 50, 'window' => 3600], // 50 requests per hour
+        'auth.php' => ['max' => 100, 'window' => 3600], // 100 requests per hour
+        'wallet.php' => ['max' => 100, 'window' => 3600], // 100 requests per hour
+        'transactions.php' => ['max' => 100, 'window' => 3600], // 100 requests per hour
+        'creator.php' => ['max' => 100, 'window' => 3600], // 100 requests per hour
+        'admin.php' => ['max' => 200, 'window' => 3600], // 200 requests per hour
     ];
 
     public static function check(string $endpoint, string $identifier): bool
