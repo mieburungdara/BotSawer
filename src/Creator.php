@@ -184,6 +184,7 @@ class Creator
             ->first();
 
         $streakData = self::getStreakData($creatorId);
+        $activeGoal = self::getActiveGoal($creatorId);
 
         return [
             'total_media' => (int)$stats->total_media,
@@ -192,8 +193,74 @@ class Creator
             'current_streak' => $streakData['current_streak'],
             'max_streak' => $streakData['max_streak'],
             'last_publish_date' => $streakData['last_publish_date'],
-            'streak_badge' => $streakData['streak_badge']
+            'streak_badge' => $streakData['streak_badge'],
+            'active_goal' => $activeGoal
         ];
+    }
+
+    public static function getActiveGoal(int $creatorId): ?array
+    {
+        $goal = DB::table('creator_goals')
+            ->where('creator_id', $creatorId)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$goal) {
+            return null;
+        }
+
+        // Calculate current progress since goal was created
+        $currentAmount = DB::table('transactions')
+            ->where('user_id', $creatorId)
+            ->where('type', 'donation')
+            ->where('status', 'success')
+            ->where('created_at', '>=', $goal->created_at)
+            ->sum('amount') ?? 0;
+
+        return [
+            'id' => (int)$goal->id,
+            'title' => $goal->title,
+            'target_amount' => (float)$goal->target_amount,
+            'current_amount' => (float)$currentAmount,
+            'percentage' => min(100, round(($currentAmount / $goal->target_amount) * 100, 1)),
+            'is_completed' => $currentAmount >= $goal->target_amount,
+            'created_at' => $goal->created_at
+        ];
+    }
+
+    public static function saveGoal(int $creatorId, string $title, float $targetAmount): bool
+    {
+        try {
+            return Database::transaction(function () use ($creatorId, $title, $targetAmount) {
+                // Deactivate any existing active goals
+                DB::table('creator_goals')
+                    ->where('creator_id', $creatorId)
+                    ->where('status', 'active')
+                    ->update(['status' => 'cancelled']);
+
+                // Insert new goal
+                DB::table('creator_goals')->insert([
+                    'creator_id' => $creatorId,
+                    'title' => $title,
+                    'target_amount' => $targetAmount,
+                    'status' => 'active',
+                    'created_at' => \Carbon\Carbon::now()
+                ]);
+
+                return true;
+            });
+        } catch (\Exception $e) {
+            Logger::error('Failed to save creator goal', ['creator_id' => $creatorId, 'error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    public static function deleteGoal(int $creatorId, int $goalId): bool
+    {
+        return DB::table('creator_goals')
+            ->where('id', $goalId)
+            ->where('creator_id', $creatorId)
+            ->update(['status' => 'cancelled']) > 0;
     }
 
     public static function getAllCreators(int $limit = 50, int $offset = 0): array

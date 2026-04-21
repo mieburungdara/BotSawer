@@ -106,6 +106,42 @@ try {
         exit;
     }
 
+    if ($action === 'save_goal') {
+        $title = trim($input['title'] ?? '');
+        $targetAmount = (float)($input['targetAmount'] ?? 0);
+
+        if (empty($title)) {
+            throw new Exception('Judul target tidak boleh kosong');
+        }
+
+        if ($targetAmount < 1000) {
+            throw new Exception('Minimal target adalah Rp 1.000');
+        }
+
+        $success = Creator::saveGoal($creator->id, $title, $targetAmount);
+
+        echo json_encode([
+            'success' => $success,
+            'message' => $success ? 'Target donasi berhasil disimpan' : 'Gagal menyimpan target'
+        ]);
+        exit;
+    }
+
+    if ($action === 'delete_goal') {
+        $goalId = (int)($input['goalId'] ?? 0);
+        if ($goalId <= 0) {
+            throw new Exception('Invalid Goal ID');
+        }
+
+        $success = Creator::deleteGoal($creator->id, $goalId);
+
+        echo json_encode([
+            'success' => $success,
+            'message' => $success ? 'Target donasi berhasil dibatalkan' : 'Gagal membatalkan target'
+        ]);
+        exit;
+    }
+
     // Default: Get creator dashboard data
     $stats = Creator::getStats($creator->id);
 
@@ -170,6 +206,7 @@ try {
                 'bank_account' => $creator->bank_account
             ],
             'stats' => $stats,
+            'active_goal' => $stats['active_goal'] ?? null,
             'recent_content' => $recentContent,
             'top_content' => $topContent,
             'analytics' => $analytics,

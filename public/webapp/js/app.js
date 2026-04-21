@@ -292,8 +292,20 @@ class App {
         `;
     }
 
-    async loadHistory() {
-        return await this.loadWallet();
+    async loadCreator() {
+        if (!this.userData.is_creator) {
+            return '<div class="card"><h3><i data-lucide="alert-circle"></i> Akses Ditolak</h3><p>Anda bukan kreator terverifikasi</p></div>';
+        }
+
+        const creatorData = await this.apiCall('creator.php');
+        const transactions = await this.apiCall('transactions.php');
+
+        let tableRows = '';
+        if (transactions && transactions.length > 0) {
+            transactions.forEach(tx => {
+                // ... (rest of implementation)
+            });
+        }
     }
 
     async loadContents(page = 1) {
@@ -585,6 +597,7 @@ class App {
         }
 
         const creatorData = await this.apiCall('creator.php');
+        const activeGoal = creatorData.active_goal;
 
         const html = `
             <div class="grid-layout fade-in">
@@ -592,18 +605,62 @@ class App {
                     <h3><i data-lucide="award"></i> Statistik Kreator</h3>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;">
                         <div style="text-align: center; padding: 12px; background: rgba(16, 185, 129, 0.05); border-radius: var(--radius-md);">
-                            <div style="font-size: 18px; font-weight: 700; color: var(--success);">${creatorData.total_media || 0}</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--success);">${creatorData.stats.total_media || 0}</div>
                             <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Konten</div>
                         </div>
                         <div style="text-align: center; padding: 12px; background: rgba(99, 102, 241, 0.05); border-radius: var(--radius-md);">
-                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(creatorData.total_earnings || 0)}</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);">Rp ${this.formatCompactNumber(creatorData.stats.total_earnings || 0)}</div>
                             <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Earning</div>
                         </div>
                         <div style="text-align: center; padding: 12px; background: rgba(168, 85, 247, 0.05); border-radius: var(--radius-md);">
-                            <div style="font-size: 18px; font-weight: 700; color: var(--secondary);">${creatorData.total_donations || 0}</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--secondary);">${creatorData.stats.total_donations || 0}</div>
                             <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Donasi</div>
                         </div>
                     </div>
+                </div>
+
+                <div class="card goal-card">
+                    <h3><i data-lucide="target"></i> Target Donasi</h3>
+                    ${activeGoal ? `
+                        <div class="goal-progress-container">
+                            <div class="goal-header">
+                                <span class="goal-title">${activeGoal.title}</span>
+                                <span class="goal-percentage">${activeGoal.percentage}%</span>
+                            </div>
+                            <div class="goal-bar-bg">
+                                <div class="goal-bar-fill" style="width: ${activeGoal.percentage}%"></div>
+                            </div>
+                            <div class="goal-footer">
+                                <span>Rp ${this.formatCompactNumber(activeGoal.current_amount)}</span>
+                                <span>Target: Rp ${this.formatCompactNumber(activeGoal.target_amount)}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="app.deleteGoal(${activeGoal.id})" style="width: 100%; margin-top: 10px;">
+                            <i data-lucide="trash-2"></i> Batalkan Target
+                        </button>
+                    ` : `
+                        <div class="goal-empty-state">
+                            <i data-lucide="goal"></i>
+                            <p style="font-size: 14px; color: var(--hint-color); margin-bottom: 15px;">Belum ada target donasi aktif.</p>
+                            <button class="btn btn-primary btn-sm" onclick="app.showGoalForm()">
+                                <i data-lucide="plus"></i> Pasang Target Baru
+                            </button>
+                        </div>
+                        <div id="goalFormContainer" style="display: none; margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Judul Target</label>
+                                <input type="text" id="goalTitle" placeholder="Misal: Beli Laptop Baru">
+                            </div>
+                            <div class="form-group">
+                                <label>Nominal Target (Rp)</label>
+                                <input type="number" id="goalAmount" placeholder="Minimal 1000">
+                            </div>
+                            <div class="form-group" style="display: flex; gap: 8px;">
+                                <button class="btn btn-primary" onclick="app.saveGoal()" style="flex: 1;">Simpan</button>
+                                <button class="btn btn-secondary" onclick="app.hideGoalForm()" style="flex: 1;">Batal</button>
+                            </div>
+                        </div>
+                    `}
                 </div>
 
                 <div class="card">
@@ -1578,6 +1635,53 @@ class App {
     }
 
 
+
+    showGoalForm() {
+        document.querySelector('.goal-empty-state').style.display = 'none';
+        document.getElementById('goalFormContainer').style.display = 'block';
+    }
+
+    hideGoalForm() {
+        document.querySelector('.goal-empty-state').style.display = 'block';
+        document.getElementById('goalFormContainer').style.display = 'none';
+    }
+
+    async saveGoal() {
+        const title = document.getElementById('goalTitle').value.trim();
+        const amount = document.getElementById('goalAmount').value;
+
+        if (!title || !amount) {
+            this.telegram.showAlert('Mohon isi semua bidang');
+            return;
+        }
+
+        try {
+            await this.apiCall('creator.php', {
+                action: 'save_goal',
+                title: title,
+                targetAmount: amount
+            });
+            this.telegram.showAlert('Target donasi berhasil disimpan!');
+            this.loadPage('creator');
+        } catch (error) {
+            this.telegram.showAlert('Gagal menyimpan target: ' + error.message);
+        }
+    }
+
+    async deleteGoal(goalId) {
+        if (!confirm('Apakah Anda yakin ingin membatalkan target donasi ini?')) return;
+
+        try {
+            await this.apiCall('creator.php', {
+                action: 'delete_goal',
+                goalId: goalId
+            });
+            this.telegram.showAlert('Target donasi berhasil dibatalkan');
+            this.loadPage('creator');
+        } catch (error) {
+            this.telegram.showAlert('Gagal membatalkan target: ' + error.message);
+        }
+    }
 
     setupTopupForm() {
         const topupForm = document.getElementById('topupForm');
