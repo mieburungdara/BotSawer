@@ -109,6 +109,12 @@ class App {
             }
 
             content.innerHTML = html;
+
+            // Initialize charts after DOM update for creator page
+            if (pageName === 'creator' && this._creatorAnalytics) {
+                this.renderCreatorCharts(this._creatorAnalytics);
+                this._creatorAnalytics = null;
+            }
         } catch (error) {
             console.error('Load page error:', error);
             content.innerHTML = '<div class="card"><h3>Error</h3><p>Gagal memuat halaman</p></div>';
@@ -452,7 +458,7 @@ class App {
 
         const creatorData = await this.apiCall('creator.php');
 
-        return `
+        const html = `
             <div class="card">
                 <h3>Statistik Kreator</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 15px;">
@@ -512,10 +518,9 @@ class App {
             </div>
         `;
 
-        // Render charts after DOM is updated
-        setTimeout(() => {
-            this.renderCreatorCharts(creatorData.analytics);
-        }, 100);
+        // Store analytics data for post-render chart initialization
+        this._creatorAnalytics = creatorData.analytics;
+        return html;
     }
 
     renderContentList(content) {
@@ -942,6 +947,8 @@ class App {
     }
 
     renderCreatorCharts(analytics) {
+        if (!analytics) return;
+
         // Donations last 7 days chart
         const donationsCtx = document.getElementById('donationsChart');
         if (donationsCtx && analytics.donations_last_7_days) {
@@ -969,32 +976,7 @@ class App {
                                 }
                             }
                         }
-                    }
-                }
-            });
-        }
-    }
-
-    async apiCall(endpoint, data = {}) {
-        const response = await fetch(`api/${endpoint}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                ...data,
-                botId: this.botId,
-                userId: this.telegram.getUserId(),
-                initData: this.telegram.getInitData()
-            })
-        });
-
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.message || 'API call failed');
-        }
-        return result.data;
-    }
+                    },
                     plugins: {
                         legend: {
                             display: false
@@ -1032,6 +1014,27 @@ class App {
                 }
             });
         }
+    }
+
+    async apiCall(endpoint, data = {}) {
+        const response = await fetch(`api/${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...data,
+                botId: this.botId,
+                userId: this.telegram.getUserId(),
+                initData: this.telegram.getInitData()
+            })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.message || 'API call failed');
+        }
+        return result.data;
     }
 
     async loadPendingPayments() {
