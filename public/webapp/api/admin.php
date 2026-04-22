@@ -59,8 +59,34 @@ try {
     if (!$admin) {
         throw new Exception('Authentication required');
     }
+
+    switch ($action) {
+
+        case 'stats':
+            // Get admin dashboard statistics
+            $stats = [
+                'total_users' => DB::table('users')->count(),
+                'total_transactions' => DB::table('transactions')->where('status', 'success')->count(),
+                'total_balance' => DB::table('wallets')->sum('balance'),
+                'pending_topups' => DB::table('transactions')->where('type', 'topup')->where('status', 'pending')->count(),
+                'pending_withdrawals' => DB::table('withdrawals')->where('status', 'pending')->count(),
+                'pending_content' => DB::table('media_files')->where('status', 'pending')->count(),
+                'approved_today' => DB::table('media_files')->where('status', 'approved')->whereDate('updated_at', date('Y-m-d'))->count()
+            ];
+            
+            $response = $stats;
+            break;
+
+        case 'update_setting':
             if (!$admin) {
                 throw new Exception('Admin data not found');
+            }
+
+            $key = trim($input['key'] ?? '');
+            $value = trim($input['value'] ?? '');
+
+            if (empty($key)) {
+                throw new Exception('Setting key is required');
             }
 
             $oldSetting = DB::table('settings')
