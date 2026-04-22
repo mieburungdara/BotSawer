@@ -417,10 +417,20 @@ class App {
     renderCreatorCharts(analytics) {
         if (!analytics) return;
 
+        // Destroy existing chart instances first to prevent "Canvas already in use" error
+        if (this._donationsChart) {
+            this._donationsChart.destroy();
+            this._donationsChart = null;
+        }
+        if (this._amountChart) {
+            this._amountChart.destroy();
+            this._amountChart = null;
+        }
+
         // Donations last 7 days chart
         const donationsCtx = document.getElementById('donationsChart');
         if (donationsCtx && analytics.donations_last_7_days && window.Chart) {
-            new Chart(donationsCtx, {
+            this._donationsChart = new Chart(donationsCtx, {
                 type: 'line',
                 data: {
                     labels: analytics.donations_last_7_days.map(d => new Date(d.date).toLocaleDateString('id-ID')),
@@ -435,6 +445,7 @@ class App {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -453,7 +464,7 @@ class App {
         // Donations by amount chart
         const amountCtx = document.getElementById('amountChart');
         if (amountCtx && analytics.donations_by_amount && window.Chart) {
-            new Chart(amountCtx, {
+            this._amountChart = new Chart(amountCtx, {
                 type: 'doughnut',
                 data: {
                     labels: analytics.donations_by_amount.map(d => d.range),
@@ -464,6 +475,7 @@ class App {
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: { legend: { position: 'bottom' } }
                 }
             });
