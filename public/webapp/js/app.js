@@ -24,6 +24,8 @@ class App {
         this.userData = null;
         this.currentPage = 'dashboard';
         this._creatorAnalytics = null; // Store for post-render chart init - SET EXTERNALLY BY loadCreator() IN creator.js
+        this._donationsChart = null;
+        this._amountChart = null;
         
         // Parse ALL start params ONCE - Single Source of Truth
         this.parseStartParams();
@@ -78,12 +80,6 @@ class App {
     async apiCall(endpoint, data = {}) {
         return apiCall(this, endpoint, data);
     }
-    
-    formatCompactNumber(num) { return formatCompactNumber(num); }
-    formatNumber(num) { return formatNumber(num); }
-    formatFileSize(bytes) { return formatFileSize(bytes); }
-    getTierColor(tier, isBg = false) { return getTierColor(tier, isBg); }
-    getRelativeTime(dateString) { return getRelativeTime(dateString); }
 
     async init() {
         if (!this.botId) {
@@ -111,6 +107,8 @@ class App {
             
             // Handle deep link actions first
             if (this.startAction === 'view_creator') {
+                this.currentPage = 'profile';
+                this.updateActiveTab('profile');
                 this.viewPublicCreatorProfile(this.startPayload);
                 return;
             }
@@ -294,22 +292,18 @@ class App {
         else if (hour >= 15 && hour < 18) { greetText = 'Selamat sore'; greetEmoji = '🌅'; }
         else if (hour >= 18 || hour < 5) { greetText = 'Selamat malam'; greetEmoji = '🌙'; }
         
-        const greetingEl = document.getElementById('greetingText');
-        if (greetingEl) {
-            greetingEl.textContent = `${greetText} ${greetEmoji}`;
-        }
+        document.getElementById('greetingText').textContent = `${greetText} ${greetEmoji}`;
 
         // Generate Avatar Initials or Photo
         const avatarEl = document.getElementById('userAvatar');
-        if (avatarEl && this.userData.photo_url) {
+        if (this.userData.photo_url) {
             avatarEl.innerHTML = `<img src="${this.userData.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
             avatarEl.style.fontSize = '0';
         }
 
         // Render Badges
         const badgeContainer = document.getElementById('userBadge');
-        if (badgeContainer) {
-            badgeContainer.innerHTML = ''; // Clear
+        badgeContainer.innerHTML = ''; // Clear
 
             if (this.userData.has_posted) {
                 badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>';
@@ -326,6 +320,14 @@ class App {
         if (window.lucide) {
             window.lucide.createIcons();
         }
+        
+        // Setup navigation click handlers - RUN ONLY ONCE
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                this.loadPage(page);
+            });
+        });
     }
 
     async updateHeaderStats() {
@@ -407,14 +409,6 @@ class App {
     }
 
     setupPageHandlers(page) {
-        // Setup navigation click handlers
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const page = btn.dataset.page;
-                this.loadPage(page);
-            });
-        });
-
         if (page === 'wallet') {
             setupTopupForm(this);
             setupWithdrawalForm(this);
@@ -534,6 +528,9 @@ class App {
     loadPendingPayments() { return loadPendingPayments(this); }
     approvePayment(paymentId, type) { return approvePayment(this, paymentId, type); }
     rejectPayment(paymentId, type) { return rejectPayment(this, paymentId, type); }
+    loadCreators() { return loadCreators(this); }
+    verifyCreator(creatorId) { return verifyCreator(this, creatorId); }
+    viewCreatorProfile(creatorId) { return viewCreatorProfile(this, creatorId); }
     viewPaymentProof(id) { return viewPaymentProof(this, id); }
     closeProofModal() { 
         const modal = document.getElementById('proofModal');
@@ -551,9 +548,6 @@ class App {
     viewCreatorProfile(creatorId) { return viewCreatorProfile(this, creatorId); }
     loadSettings() { return loadSettings(this); }
     updateSetting(key) { return updateSetting(this, key); }
-    
-    // Pagination for contents
-    loadContentsList(page) { this.loadPage('contents', page); }
 }
 
 // Initialize app when DOM is loaded and attach to window
