@@ -10,8 +10,8 @@ export async function apiCall(app, endpoint, data = {}) {
         body: JSON.stringify({
             ...data,
             botId: app.botId,
-            userId: app.userData?.id || app.telegram?.initDataUnsafe?.user?.id,
-            initData: app.telegram?.initData
+            userId: (app.userData ? app.userData.id : null) || (app.telegram && app.telegram.initDataUnsafe && app.telegram.initDataUnsafe.user ? app.telegram.initDataUnsafe.user.id : null),
+            initData: app.telegram ? app.telegram.initData : null
         })
     });
 

@@ -41,7 +41,7 @@ class App {
         this.startAction = null;
         this.startPayload = null;
         
-        const startParam = this.telegram.initDataUnsafe?.start_param;
+        const startParam = this.telegram.initDataUnsafe ? this.telegram.initDataUnsafe.start_param : null;
         
         if (startParam) {
             if (startParam.startsWith('creator_')) {
@@ -53,7 +53,7 @@ class App {
             // BOT ID SELALU DIAMBIL DARI START_PARAM TERLEBIH DAHULU
             // Jika start_param adalah deep link (creator_xxx), maka botId ditentukan oleh bot mana yang dipanggil
             // Telegram akan selalu mengirim bot ID di tgWebAppBotId di initDataUnsafe
-            const botIdFromTg = this.telegram.initDataUnsafe?.bot_id;
+            const botIdFromTg = this.telegram.initDataUnsafe ? this.telegram.initDataUnsafe.bot_id : null;
             if (botIdFromTg) {
                 this.botId = botIdFromTg;
             } else {
@@ -313,8 +313,7 @@ class App {
             if (this.userData.is_admin) {
                 badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
             }
-        }
-
+        
         // Initialize Lucide icons
         if (window.lucide) {
             window.lucide.createIcons();
@@ -512,7 +511,7 @@ class App {
     deleteGoal(goalId) { return deleteGoal(this, goalId); }
     
     // Wallet
-    calculateWithdrawalCommission() { return calculateWithdrawalCommission(); }
+    calculateWithdrawalCommission() { return calculateWithdrawalCommission(this); }
     
     // Admin features
     searchUsers() { return searchUsers(this); }
