@@ -1,5 +1,5 @@
 import { apiCall } from './api.js';
-import { formatCompactNumber, formatNumber, formatFileSize, getTierColor, getRelativeTime } from './utils.js';
+import { formatCompactNumber } from './utils.js';
 
 // Page Modules
 import { loadDashboard } from './pages/dashboard.js';
@@ -295,10 +295,9 @@ class App {
         document.getElementById('greetingText').textContent = `${greetText} ${greetEmoji}`;
 
         // Generate Avatar Initials or Photo
-        const avatarEl = document.getElementById('userAvatar');
         if (this.userData.photo_url) {
-            avatarEl.innerHTML = `<img src="${this.userData.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
-            avatarEl.style.fontSize = '0';
+            document.querySelector('.avatar-circle').innerHTML = `<img src="${this.userData.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            document.querySelector('.avatar-circle').style.fontSize = '0';
         }
 
         // Render Badges
@@ -428,6 +427,7 @@ class App {
 
     // ------------------------------------------------------------------------
     // CHART RENDERING (Kept in app.js due to Chart.js global dependency)
+    // TODO (OPT): Pindahkan logika ini ke creator.js untuk mengurangi coupling
     // ------------------------------------------------------------------------
     renderCreatorCharts(analytics) {
         if (!analytics) return;
@@ -543,9 +543,6 @@ class App {
     rejectContent(contentId) { return rejectContent(this, contentId); }
     postContentToChannel(contentId) { return postContentToChannel(this, contentId); }
     viewContent(contentId) { return viewContent(this, contentId); }
-    loadCreators() { return loadCreators(this); }
-    verifyCreator(creatorId) { return verifyCreator(this, creatorId); }
-    viewCreatorProfile(creatorId) { return viewCreatorProfile(this, creatorId); }
     loadSettings() { return loadSettings(this); }
     updateSetting(key) { return updateSetting(this, key); }
 }
