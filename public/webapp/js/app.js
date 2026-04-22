@@ -72,6 +72,8 @@ class App {
             this.botId = urlParams.get('bot_id');
             console.warn('[DEV] Bot ID diambil dari URL param - ini hanya untuk testing');
         }
+        
+        console.log('App: Bot ID resolved as:', this.botId);
     }
 
     // ------------------------------------------------------------------------
@@ -83,16 +85,7 @@ class App {
 
     async init() {
         if (!this.botId) {
-            document.getElementById('app').innerHTML = `
-                <div class="card" style="margin: 20px; text-align: center;">
-                    <h3>🚫 Akses Tidak Valid</h3>
-                    <p style="color: var(--hint-color); margin-top: 10px;">
-                        Aplikasi ini hanya dapat diakses melalui bot Telegram.<br>
-                        Silakan buka bot Telegram resmi untuk mengakses aplikasi ini.
-                    </p>
-                </div>
-            `;
-            return;
+            console.warn('Bot ID not found in start_param or URL. App will attempt to continue using backend fallback.');
         }
 
         try {

@@ -28,12 +28,23 @@ class WebAppAuth
         }
 
         $initData = $input['initData'];
-        $botId = (int)$input['botId'];
+        $botId = isset($input['botId']) ? (int)$input['botId'] : 0;
+        $bot = null;
 
-        // Get bot token for hash verification
-        $bot = DB::table('bots')->where('id', $botId)->first();
+        if ($botId > 0) {
+            $bot = DB::table('bots')->where('id', $botId)->first();
+        }
+
+        // Fallback: if no botId provided or not found, but only one active bot exists, use it.
         if (!$bot) {
-            throw new Exception('Bot tidak ditemukan.');
+            $activeBots = DB::table('bots')->where('is_active', 1)->get();
+            if ($activeBots->count() === 1) {
+                $bot = $activeBots->first();
+            }
+        }
+
+        if (!$bot) {
+            throw new Exception('Bot tidak ditemukan. Pastikan parameter botId benar.');
         }
 
         // Parse init data to extract user and hash
