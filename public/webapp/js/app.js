@@ -1,287 +1,1559 @@
-import { apiCall } from './api.js';
-import { formatCompactNumber, formatNumber, formatFileSize, getTierColor, getRelativeTime } from './utils.js';
-
-// Page Modules
-import { loadDashboard } from './pages/dashboard.js';
-import { loadExplore, searchPublicCreators } from './pages/explore.js';
-import { loadWallet, setupWithdrawalForm, setupTopupForm, calculateWithdrawalCommission } from './pages/wallet.js';
-import { loadCreator, setupCreatorProfileForm, showGoalForm, hideGoalForm, saveGoal, deleteGoal } from './pages/creator.js';
-import { loadContents } from './pages/contents.js';
-import { loadAchievements } from './pages/achievements.js';
-import { loadProfile, viewPublicCreatorProfile, viewOtherProfile, viewPublicCreatorProfileLink } from './pages/profile.js';
-import { loadSettings, updateSetting } from './pages/settings.js';
-import { 
-    loadAdmin, searchUsers, toggleUserBan, adjustUserBalance, loadAuditLogs, loadBots, addBot, toggleBot,
-    loadAdmins, addAdmin, deactivateAdmin, loadPendingPayments, approvePayment, rejectPayment, viewPaymentProof,
-    loadContentQueue, approveContent, rejectContent, postContentToChannel, viewContent, loadCreators, verifyCreator, viewCreatorProfile,
-    setupAdminFormHandlers
-} from './pages/admin.js';
-
+// Main App JavaScript
 class App {
     constructor() {
-        this.telegram = window.Telegram.WebApp;
-        this.telegram.expand();
-        this.botId = this.telegram.initDataUnsafe?.start_param || null;
-        this.userData = null;
+        this.telegram = new TelegramWebApp();
         this.currentPage = 'dashboard';
-        this._creatorAnalytics = null; // Store for post-render chart init
-
+        this.userData = null;
+        // Get bot_id from URL parameter (should be Telegram bot ID)
+        const urlParams = new URLSearchParams(window.location.search);
+        this.botId = urlParams.get('bot_id') || null; // null if not specified
         this.init();
     }
 
-    // ------------------------------------------------------------------------
-    // CORE SYSTEM & UTILS
-    // ------------------------------------------------------------------------
-    async apiCall(endpoint, data = {}) {
-        return apiCall(this, endpoint, data);
-    }
-    
-    formatCompactNumber(num) { return formatCompactNumber(num); }
-    formatNumber(num) { return formatNumber(num); }
-    formatFileSize(bytes) { return formatFileSize(bytes); }
-    getTierColor(tier, isBg = false) { return getTierColor(tier, isBg); }
-    getRelativeTime(dateString) { return getRelativeTime(dateString); }
-
     async init() {
-        if (!this.botId) {
-            // Check if URL has bot_id param (for local testing/direct webapp access without start_param)
-            const urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.has('bot_id')) {
-                this.botId = urlParams.get('bot_id');
-            } else {
-                document.getElementById('app').innerHTML = '<div class="card" style="margin: 20px;"><h3>Error</h3><p>Bot ID tidak ditemukan.</p></div>';
-                return;
-            }
+        // Hide loading
+        document.getElementById('loading').style.display = 'none';
+
+        // Check authentication
+        if (!this.telegram.isValid()) {
+            document.getElementById('authError').style.display = 'block';
+            return;
         }
 
+        // Authenticate with server
         try {
-            const loadingHtml = '<div style="text-align: center; margin-top: 50px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 15px; color: var(--hint-color);">Memuat data...</p></div>';
-            document.getElementById('app').innerHTML = loadingHtml;
+            const response = await this.apiCall('auth.php', {
+                initData: this.telegram.getInitData()
+            });
 
-            // Load user profile & session first
-            await this.loadUserProfile();
-            
-            // Render main shell
-            this.renderShell();
-            
-            // Set initial page from URL param
-            const urlParams = new URLSearchParams(window.location.search);
-            const startPage = urlParams.get('page');
-            
-            // Handle Telegram deep links via start_param
-            const startParam = this.telegram.initDataUnsafe?.start_param;
-            if (startParam) {
-                if (startParam.startsWith('creator_')) {
-                    const creatorId = startParam.replace('creator_', '');
-                    this.viewPublicCreatorProfile(creatorId);
-                    return;
-                }
-            }
-
-            if (startPage) {
-                this.loadPage(startPage);
-            } else {
+            if (response) {
+                this.userData = response;
+                this.showMainApp();
+                await this.updateHeaderStats();
                 this.loadPage('dashboard');
+            } else {
+                throw new Error('Authentication failed');
             }
         } catch (error) {
-            console.error("Init Error:", error);
-            document.getElementById('app').innerHTML = `<div class="card" style="margin: 20px;"><h3>Error</h3><p>${error.message}</p></div>`;
+            console.error('Auth error:', error);
+            this.telegram.showAlert('Gagal mengautentikasi: ' + error.message);
+            document.getElementById('authError').style.display = 'block';
         }
     }
 
-    async loadUserProfile() {
+    async updateHeaderStats() {
         try {
-            this.userData = await this.apiCall('profile.php');
+            const walletData = await this.apiCall('wallet.php');
+            document.getElementById('h-balance').textContent = 'Rp ' + this.formatCompactNumber(walletData.balance || 0);
             
-            if (this.userData.is_banned) {
-                document.getElementById('app').innerHTML = `
-                    <div style="padding: 20px; text-align: center;">
-                        <i data-lucide="ban" style="width: 48px; height: 48px; color: var(--danger); margin-bottom: 10px;"></i>
-                        <h2 style="color: var(--danger);">Akun Dibanned</h2>
-                        <p style="color: var(--hint-color); margin-top: 10px;">
-                            Akun Anda telah ditangguhkan karena melanggar ketentuan layanan kami.
-                        </p>
-                    </div>
-                `;
-                if (window.lucide) window.lucide.createIcons();
-                throw new Error("Akun dibanned"); // Stop execution
-            }
-
-        } catch (error) {
-            console.error('Failed to load profile:', error);
-            throw error;
+            if (window.lucide) window.lucide.createIcons();
+        } catch (e) {
+            console.error('Failed to update header stats:', e);
         }
     }
 
-    renderShell() {
-        const adminTab = this.userData.is_admin ? 
-            `<div class="tab-item" onclick="app.loadPage('admin')" id="tab-admin">
-                <i data-lucide="shield"></i>
-                <span>Admin</span>
-            </div>` : '';
+    formatCompactNumber(number) {
+        if (number < 1000) return number;
+        if (number >= 1000 && number < 1000000) return (number / 1000).toFixed(number % 1000 !== 0 ? 1 : 0) + 'rb';
+        if (number >= 1000000 && number < 1000000000) return (number / 1000000).toFixed(number % 1000000 !== 0 ? 1 : 0) + 'jt';
+        return (number / 1000000000).toFixed(number % 1000000000 !== 0 ? 1 : 0) + 'M';
+    }
 
-        const shellHtml = `
-            <!-- Header -->
-            <header class="header">
-                <div class="user-info">
-                    <div class="avatar ${this.userData.is_verified ? 'verified' : ''}" onclick="app.loadPage('profile')" ${this.userData.photo_url ? 'style="font-size: 0;"' : ''}>
-                        ${this.userData.photo_url 
-                            ? `<img src="${this.userData.photo_url}" alt="Avatar">` 
-                            : (this.userData.name || 'U').charAt(0).toUpperCase()}
-                        ${this.userData.is_verified ? '<div class="verified-tick"><i data-lucide="check" style="width:8px;height:8px;color:white"></i></div>' : ''}
+    showMainApp() {
+        document.getElementById('mainApp').style.display = 'block';
+
+        // Initialize Lucide icons for static elements (nav)
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
+        // Dynamic greeting based on time of day
+        const hour = new Date().getHours();
+        let greetEmoji = '≡ƒæï';
+        let greetText = 'Selamat datang';
+        if (hour >= 5 && hour < 12) { greetText = 'Selamat pagi'; greetEmoji = 'ΓÿÇ∩╕Å'; }
+        else if (hour >= 12 && hour < 15) { greetText = 'Selamat siang'; greetEmoji = '≡ƒîñ∩╕Å'; }
+        else if (hour >= 15 && hour < 18) { greetText = 'Selamat sore'; greetEmoji = '≡ƒîà'; }
+        else if (hour >= 18 || hour < 5) { greetText = 'Selamat malam'; greetEmoji = '≡ƒîÖ'; }
+        document.getElementById('greetingText').textContent = `${greetText} ${greetEmoji}`;
+
+        // Update user info & profile display
+        const firstName = this.userData.first_name || '';
+        const lastName = this.userData.last_name || '';
+        const userName = firstName + (lastName ? ' ' + lastName : '');
+        document.getElementById('userName').textContent = userName;
+
+        // Generate Avatar Initials or Photo
+        const avatarEl = document.getElementById('userAvatar');
+        if (this.userData.photo_url) {
+            avatarEl.innerHTML = `<img src="${this.userData.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            avatarEl.style.fontSize = '0';
+        } else {
+            const initials = (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
+            avatarEl.textContent = initials;
+            avatarEl.style.fontSize = '20px';
+        }
+
+        // Render Badges
+        const badgeContainer = document.getElementById('userBadge');
+        badgeContainer.innerHTML = ''; // Clear
+
+        if (this.userData.has_posted) {
+            badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>';
+        }
+        if (this.userData.has_donated) {
+            badgeContainer.innerHTML += '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>';
+        }
+        if (this.userData.is_admin) {
+            badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
+        }
+
+        // Show admin buttons if admin
+        if (this.userData.is_admin) {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
+        }
+
+        // Show creator buttons if creator
+        if (this.userData.is_creator) {
+            document.querySelectorAll('.creator-only').forEach(el => el.style.display = 'flex');
+        }
+
+        // Initialize Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
+        // Setup navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                this.loadPage(page);
+            });
+        });
+
+        // Setup form handlers
+        this.setupFormHandlers();
+
+        // Setup withdrawal form handler
+        this.setupWithdrawalForm();
+
+        // Setup creator profile form handler
+        this.setupCreatorProfileForm();
+    }
+
+    async loadPage(pageName) {
+        this.currentPage = pageName;
+
+        // Update active nav
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.page === pageName);
+        });
+
+        const content = document.getElementById('pageContent');
+
+        try {
+            let html = '';
+
+            switch (pageName) {
+                case 'dashboard':
+                    html = await this.loadDashboard();
+                    break;
+                case 'explore':
+                    html = await this.loadExplore();
+                    break;
+                case 'wallet':
+                    html = await this.loadWallet();
+                    break;
+                case 'creator':
+                    html = await this.loadCreator();
+                    break;
+                case 'contents':
+                    html = await this.loadContents();
+                    break;
+                case 'admin':
+                    html = await this.loadAdmin();
+                    break;
+                case 'profile':
+                    html = await this.loadProfile();
+                    break;
+                case 'achievements':
+                    html = await this.loadAchievements();
+                    break;
+                default:
+                    html = '<div class="card"><h3>Halaman tidak ditemukan</h3></div>';
+            }
+
+            content.innerHTML = html;
+
+            // Re-initialize Lucide icons
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+
+            // Re-attach event listeners for dynamic forms
+            this.setupFormHandlers();
+            this.setupWithdrawalForm();
+            this.setupTopupForm();
+            this.setupCreatorProfileForm();
+
+            // Initialize charts after DOM update for creator page
+            if (pageName === 'creator' && this._creatorAnalytics) {
+                this.renderCreatorCharts(this._creatorAnalytics);
+                this._creatorAnalytics = null;
+            }
+        } catch (error) {
+            console.error('Load page error:', error);
+            content.innerHTML = '<div class="card"><h3>Error</h3><p>Gagal memuat halaman</p></div>';
+        }
+    }
+
+    async loadDashboard() {
+        return `
+            <div class="grid-layout fade-in">
+                <div class="card">
+                    <h3><i data-lucide="sparkles"></i> Selamat Datang!</h3>
+                    <p style="color: var(--hint-color); font-size: 14px;">Gunakan menu di bawah untuk mengelola saldo, melihat statistik, atau mengatur konten Anda.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    async loadWallet() {
+        const walletData = await this.apiCall('wallet.php');
+        const transactions = await this.apiCall('transactions.php');
+
+        let tableRows = '';
+        if (transactions && transactions.length > 0) {
+            transactions.forEach(tx => {
+                const statusClass = tx.status === 'success' ? 'status-success' :
+                                  tx.status === 'pending' ? 'status-pending' : 'status-failed';
+                const iconColor = tx.amount > 0 ? 'var(--success)' : 'var(--danger)';
+
+                tableRows += `
+                    <tr>
+                        <td>
+                            <div style="font-size: 11px; color: var(--hint-color);">${new Date(tx.created_at).toLocaleDateString('id-ID')}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; font-size: 13px;">${tx.description}</div>
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="font-weight: 700; color: ${iconColor}; white-space: nowrap;">
+                                ${tx.amount > 0 ? '+' : ''}${this.formatNumber(tx.amount)}
+                            </div>
+                        </td>
+                        <td style="text-align: right;">
+                            <span class="status-badge ${statusClass}" style="font-size: 10px; padding: 2px 6px;">${tx.status}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            tableRows = '<tr><td colspan="4" class="text-center">Belum ada transaksi</td></tr>';
+        }
+
+        return `
+            <div class="grid-layout fade-in">
+                <div class="card">
+                    <h3><i data-lucide="credit-card"></i> Detail Saldo</h3>
+                    <div style="padding: 12px; background: var(--secondary-bg-color); border-radius: var(--radius-md); margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--hint-color);">Saldo Tersedia</span>
+                            <span style="font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(walletData.balance || 0)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--hint-color);">Total Transaksi</span>
+                            <span style="font-weight: 600;">${(walletData.total_donations || 0)} Trx</span>
+                        </div>
                     </div>
-                    <div>
-                        <div style="font-weight: 600;">${this.userData.name}</div>
-                        <div style="font-size: 12px; color: var(--hint-color);">@${this.userData.username || 'user'}</div>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="plus-circle"></i> Isi Saldo (Topup)</h3>
+                    <form id="topupForm">
+                        <div class="form-group">
+                            <label>Nominal Topup</label>
+                            <input type="number" id="topupAmount" min="10000" step="1000" placeholder="Min. Rp 10.000" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i data-lucide="send"></i> Ajukan Topup
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="arrow-up-right"></i> Tarik Saldo</h3>
+                    <div style="background: rgba(99, 102, 241, 0.05); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px dashed var(--primary);">
+                        <div style="display: flex; gap: 10px; color: var(--primary);">
+                            <i data-lucide="info" style="flex-shrink: 0;"></i>
+                            <p style="font-size: 13px; font-weight: 500;">Biaya komisi: <strong>10%</strong>.</p>
+                        </div>
+                    </div>
+                    <form id="withdrawForm">
+                        <div class="form-group">
+                            <label>Nominal Penarikan</label>
+                            <input type="number" id="withdrawAmount" min="50000" step="1000" placeholder="Min. Rp 50.000" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Pilih E-Wallet</label>
+                            <select id="bankName" required>
+                                <option value="">Pilih...</option>
+                                <option value="ShopeePay">ShopeePay</option>
+                                <option value="DANA">DANA</option>
+                                <option value="GoPay">GoPay</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nomor Handphone</label>
+                            <input type="text" id="bankAccount" placeholder="Contoh: 0812..." required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nama Akun</label>
+                            <input type="text" id="accountName" placeholder="Nama sesuai aplikasi" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="arrow-up-right"></i> Tarik Sekarang
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card col-full">
+                    <h3><i data-lucide="history"></i> Riwayat Transaksi</h3>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Deskripsi</th>
+                                    <th style="text-align: right;">Jumlah</th>
+                                    <th style="text-align: right;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="balance-badge" onclick="app.loadPage('wallet')">
-                    Rp <span id="headerBalance">${this.formatCompactNumber(this.userData.balance)}</span>
-                </div>
-            </header>
+            </div>
+        `;
+    }
 
-            <!-- Main Content Area -->
-            <main class="content-area" id="pageContent">
-                <!-- Content injected here -->
-            </main>
+    async loadCreator() {
+        if (!this.userData.is_creator) {
+            return '<div class="card"><h3><i data-lucide="alert-circle"></i> Akses Ditolak</h3><p>Anda bukan kreator terverifikasi</p></div>';
+        }
 
-            <!-- Bottom Navigation Tab Bar -->
-            <nav class="tab-bar">
-                <div class="tab-item active" onclick="app.loadPage('dashboard')" id="tab-dashboard">
-                    <i data-lucide="layout-dashboard"></i>
-                    <span>Home</span>
-                </div>
-                <div class="tab-item" onclick="app.loadPage('explore')" id="tab-explore">
-                    <i data-lucide="compass"></i>
-                    <span>Explore</span>
-                </div>
-                <div class="tab-item" onclick="app.loadPage('wallet')" id="tab-wallet">
-                    <i data-lucide="wallet"></i>
-                    <span>Dompet</span>
-                </div>
-                <div class="tab-item" onclick="app.loadPage('creator')" id="tab-creator">
-                    <i data-lucide="award"></i>
-                    <span>Kreator</span>
-                </div>
-                ${adminTab}
-            </nav>
+        const creatorData = await this.apiCall('creator.php');
+        const transactions = await this.apiCall('transactions.php');
 
-            <!-- Modals -->
-            <div id="proofModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px;">
-                <div style="background: var(--bg-color); border-radius: var(--radius-lg); max-width: 90%; max-height: 90%; overflow: hidden; position: relative; display: flex; flex-direction: column;">
-                    <div style="padding: 15px; border-bottom: 1px solid var(--secondary-bg-color); display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="margin: 0;">Bukti Transfer</h3>
-                        <button onclick="app.closeProofModal()" style="background: none; border: none; color: var(--text-color); cursor: pointer;"><i data-lucide="x"></i></button>
+        let tableRows = '';
+        if (transactions && transactions.length > 0) {
+            transactions.forEach(tx => {
+                // ... (rest of implementation)
+            });
+        }
+    }
+
+    async loadContents(page = 1) {
+        if (!this.userData.is_creator) {
+            return '<div class="card"><h3>Akses Ditolak</h3></div>';
+        }
+
+        const response = await this.apiCall('creator.php', { page: page, limit: 10 });
+        const contents = response.recent_content || [];
+        const paging = response.pagination;
+
+        let tableRows = '';
+        if (contents.length > 0) {
+            contents.forEach(item => {
+                tableRows += `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">Media #${item.id}</div>
+                            <div style="font-size: 11px; color: var(--hint-color);">${new Date(item.created_at).toLocaleDateString('id-ID')}</div>
+                        </td>
+                        <td>${item.file_type}</td>
+                        <td style="text-align: right;">
+                            <div style="font-weight: 700; color: var(--success);">Rp ${this.formatNumber(item.total_donations)}</div>
+                            <div style="font-size: 11px; color: var(--hint-color);">${item.donation_count} donasi</div>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            tableRows = '<tr><td colspan="3" class="text-center">Belum ada konten</td></tr>';
+        }
+
+        // Pagination buttons
+        let paginationHtml = '';
+        if (paging.total_pages > 1) {
+            paginationHtml = `
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 20px;">
+                    <button class="btn btn-secondary" style="padding: 8px 12px; width: auto;" 
+                        ${paging.current_page <= 1 ? 'disabled' : `onclick="app.loadContents(${paging.current_page - 1})"`}>
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    ${Array.from({ length: paging.total_pages }, (_, i) => i + 1).map(p => `
+                        <button class="btn ${p === paging.current_page ? 'btn-primary' : 'btn-secondary'}" 
+                            style="padding: 8px 12px; width: auto;" onclick="app.loadContents(${p})">
+                            ${p}
+                        </button>
+                    `).join('')}
+                    <button class="btn btn-secondary" style="padding: 8px 12px; width: auto;" 
+                        ${paging.current_page >= paging.total_pages ? 'disabled' : `onclick="app.loadContents(${paging.current_page + 1})"`}>
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        const html = `
+            <div class="grid-layout fade-in">
+                <div class="card col-full">
+                    <h3><i data-lucide="layers"></i> Daftar Konten</h3>
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Konten</th>
+                                    <th>Tipe</th>
+                                    <th style="text-align: right;">Total Donasi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
                     </div>
-                    <div style="padding: 20px; overflow-y: auto; text-align: center; position: relative; min-height: 200px; display: flex; justify-content: center; align-items: center;">
-                        <div id="proofImageLoader" class="spinner"></div>
-                        <img id="proofImage" src="" style="max-width: 100%; max-height: 70vh; border-radius: 8px; display: none;">
+                    ${paginationHtml}
+                </div>
+            </div>
+        `;
+
+        if (this.currentPage === 'contents') {
+            document.getElementById('pageContent').innerHTML = html;
+            if (window.lucide) window.lucide.createIcons();
+        }
+        return html;
+    }
+
+    async loadAdmin() {
+        if (!this.userData.is_admin) {
+            return '<div class="card"><h3>Akses Ditolak</h3><p>Anda bukan admin</p></div>';
+        }
+
+        const adminRole = this.userData.admin_role;
+        const adminData = await this.apiCall('admin.php', { action: 'stats' });
+
+        let html = '';
+
+        // Statistik Sistem
+        html += `
+            <div class="card">
+                <h3><i data-lucide="activity"></i> Statistik Sistem</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px;">
+                    <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL USER</div>
+                        <div style="font-size: 20px; font-weight: 700;">${adminData.total_users || 0}</div>
+                    </div>
+                    <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">TOTAL TRX</div>
+                        <div style="font-size: 20px; font-weight: 700;">${adminData.total_transactions || 0}</div>
+                    </div>
+                    <div style="grid-column: span 2; background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 12px; color: var(--hint-color); font-weight: 600;">SALDO SISTEM</div>
+                        <div style="font-size: 20px; font-weight: 700; color: var(--primary);">Rp ${this.formatNumber(adminData.total_balance || 0)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i data-lucide="scroll-text"></i> Audit Logs</h3>
+                <div class="form-group">
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <select id="auditEntityType" style="flex: 1;">
+                            <option value="">Tipe Log</option>
+                            <option value="admin">Admin</option>
+                            <option value="user">User</option>
+                            <option value="creator">Creator</option>
+                        </select>
+                        <input type="number" id="auditUserId" placeholder="User ID" style="flex: 1;">
+                    </div>
+                    <button class="btn btn-secondary" onclick="app.loadAuditLogs()">
+                        <i data-lucide="refresh-cw"></i> Load Logs
+                    </button>
+                </div>
+                <div id="auditLogsContainer"></div>
+            </div>
+        `;
+
+        // Finance admin sections
+        if (adminRole === 'finance' || adminRole === 'super_admin') {
+            html += `
+                <div class="card">
+                    <h3>≡ƒÆ░ Payment Management</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div style="text-align: center; padding: 15px; background: #fff3cd; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #856404;">${adminData.pending_topups || 0}</div>
+                            <div style="font-size: 12px; color: #856404;">Topup Pending</div>
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #d1ecf1; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #0c5460;">${adminData.pending_withdrawals || 0}</div>
+                            <div style="font-size: 12px; color: #0c5460;">Penarikan Pending</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="app.loadPendingPayments()">Kelola Pembayaran</button>
+                    <div id="paymentContainer" style="margin-top: 15px;"></div>
+                </div>
+            `;
+        }
+
+        // Moderator admin sections
+        if (adminRole === 'moderator' || adminRole === 'super_admin') {
+            html += `
+                <div class="card">
+                    <h3>≡ƒöº Content Moderation</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div style="text-align: center; padding: 15px; background: #f8d7da; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #721c24;">${adminData.pending_content || 0}</div>
+                            <div style="font-size: 12px; color: #721c24;">Konten Pending</div>
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #d4edda; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #155724;">${adminData.approved_today || 0}</div>
+                            <div style="font-size: 12px; color: #155724;">Disetujui Hari Ini</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="app.loadContentQueue()">Kelola Konten</button>
+                    <div id="contentContainer" style="margin-top: 15px;"></div>
+                </div>
+
+                <div class="card">
+                    <h3>Creator Management</h3>
+                    <button class="btn btn-secondary" onclick="app.loadCreators()">Load Creators</button>
+                    <div id="creatorsContainer" style="margin-top: 15px;"></div>
+                </div>
+            `;
+        }
+
+        // Super admin only sections
+        if (adminRole === 'super_admin') {
+            html += `
+                <div class="card">
+                    <h3>Cari User</h3>
+                    <div class="form-group">
+                        <input type="text" id="userSearchQuery" placeholder="Cari nama atau username..." style="margin-bottom: 10px;">
+                        <button class="btn btn-secondary" onclick="app.searchUsers()">Cari</button>
+                    </div>
+                    <div id="userSearchResults"></div>
+                </div>
+
+                <div class="card">
+                    <h3>Manajemen Saldo</h3>
+                    <form id="adjustBalanceForm">
+                        <div class="form-group">
+                            <label>User ID</label>
+                            <input type="number" id="adjustUserId" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Jumlah (positif = tambah, negatif = kurang)</label>
+                            <input type="number" id="adjustAmount" step="1000" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Deskripsi</label>
+                            <input type="text" id="adjustDescription" required>
+                        </div>
+                        <button type="submit" class="btn btn-danger">Sesuaikan Saldo</button>
+                    </form>
+                    <div id="adjustResult" style="margin-top: 10px;"></div>
+                </div>
+
+                <div class="card">
+                    <h3>Pengaturan Sistem</h3>
+                    <button class="btn btn-secondary" onclick="app.loadSettings()">Load Settings</button>
+                    <div id="settingsContainer" style="margin-top: 15px;"></div>
+                </div>
+
+                <div class="card">
+                    <h3>Bot Management</h3>
+                    <button class="btn btn-secondary" onclick="app.loadBots()">Load Bots</button>
+                    <div id="botsContainer" style="margin-top: 15px;"></div>
+                    <div id="addBotForm" style="margin-top: 15px; display: none;">
+                        <h4>Add New Bot</h4>
+                        <div class="form-group">
+                            <label>Bot Name</label>
+                            <input type="text" id="botName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Username (without @)</label>
+                            <input type="text" id="botUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Bot Token</label>
+                            <input type="text" id="botToken" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Webhook Secret (optional)</label>
+                            <input type="text" id="botWebhookSecret">
+                        </div>
+                        <button type="submit" class="btn btn-primary" onclick="app.addBot()">Add Bot</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('addBotForm').style.display='none'">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Admin Management</h3>
+                    <button class="btn btn-secondary" onclick="app.loadAdmins()">Load Admins</button>
+                    <div id="adminsContainer" style="margin-top: 15px;"></div>
+                    <div id="addAdminForm" style="margin-top: 15px; display: none;">
+                        <h4>Add New Admin</h4>
+                        <div class="form-group">
+                            <label>Telegram ID</label>
+                            <input type="number" id="adminTelegramId" placeholder="Contoh: 123456789" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="adminUsername" placeholder="@username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="adminFullName" placeholder="Nama Lengkap" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Role</label>
+                            <select id="adminRole" required>
+                                <option value="">Select Role</option>
+                                <option value="moderator">Moderator (Content Management)</option>
+                                <option value="finance">Finance (Payment Management)</option>
+                                <option value="super_admin">Super Admin (Full Access)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" onclick="app.addAdmin()">Add Admin</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('addAdminForm').style.display='none'">Cancel</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `<div class="grid-layout fade-in">${html}</div>`;
+    }
+
+    async loadExplore() {
+        const topCreators = await this.apiCall('explore.php', { action: 'get_top', limit: 10 });
+
+        return `
+            <div class="fade-in">
+                <!-- Hero Search Section -->
+                <div class="explore-hero">
+                    <div class="explore-hero-bg"></div>
+                    <div class="explore-hero-content">
+                        <div class="explore-hero-icon">
+                            <i data-lucide="compass"></i>
+                        </div>
+                        <h2 class="explore-title">Explore Kreator</h2>
+                        <p class="explore-subtitle">Temukan dan dukung kreator favoritmu</p>
+                        
+                        <div class="explore-search-container">
+                            <div class="explore-search-box">
+                                <div class="explore-search-icon">
+                                    <i data-lucide="search"></i>
+                                </div>
+                                <input type="text" id="exploreSearchQuery" 
+                                    class="explore-search-input"
+                                    placeholder="Cari nama atau @username..." 
+                                    onkeyup="if(event.key === 'Enter') app.searchPublicCreators()"
+                                    autocomplete="off"
+                                >
+                                <button class="explore-search-btn" onclick="app.searchPublicCreators()">
+                                    <i data-lucide="arrow-right"></i>
+                                </button>
+                            </div>
+                            <div class="explore-search-hints">
+                                <span class="explore-hint-pill" onclick="document.getElementById('exploreSearchQuery').value=''; app.searchPublicCreators()">
+                                    <i data-lucide="flame" style="width:12px;height:12px"></i> Trending
+                                </span>
+                                <span class="explore-hint-pill" onclick="document.getElementById('exploreSearchQuery').value=''; app.searchPublicCreators()">
+                                    <i data-lucide="star" style="width:12px;height:12px"></i> Top
+                                </span>
+                                <span class="explore-hint-pill" onclick="document.getElementById('exploreSearchQuery').value=''; app.searchPublicCreators()">
+                                    <i data-lucide="sparkles" style="width:12px;height:12px"></i> Terbaru
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="explore-results-section">
+                    <div class="explore-results-header">
+                        <h3><i data-lucide="users"></i> Kreator Populer</h3>
+                        <span class="explore-count" id="exploreCount">${(topCreators || []).length} kreator</span>
+                    </div>
+                    <div id="exploreResults" class="explore-grid">
+                        ${this.renderCreatorGrid(topCreators || [])}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async searchPublicCreators() {
+        const query = document.getElementById('exploreSearchQuery').value.trim();
+        const resultsDiv = document.getElementById('exploreResults');
+        const countEl = document.getElementById('exploreCount');
+        
+        if (!query) {
+            const topCreators = await this.apiCall('explore.php', { action: 'get_top', limit: 10 });
+            resultsDiv.innerHTML = this.renderCreatorGrid(topCreators || []);
+            if (countEl) countEl.textContent = `${(topCreators || []).length} kreator`;
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
+
+        resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 12px; color: var(--hint-color); font-size: 13px;">Mencari kreator...</p></div>';
+
+        try {
+            const results = await this.apiCall('explore.php', {
+                action: 'search',
+                query: query
+            });
+
+            resultsDiv.innerHTML = this.renderCreatorGrid(results || []);
+            if (countEl) countEl.textContent = `${(results || []).length} hasil untuk "${query}"`;
+            if (window.lucide) window.lucide.createIcons();
+        } catch (error) {
+            resultsDiv.innerHTML = `<div class="card"><p style="color: var(--danger);">Error: ${error.message}</p></div>`;
+        }
+    }
+
+    renderCreatorGrid(creators) {
+        if (!creators || creators.length === 0) {
+            return `
+                <div class="explore-empty-state">
+                    <div class="explore-empty-icon">
+                        <i data-lucide="user-search"></i>
+                    </div>
+                    <h4>Tidak ada kreator ditemukan</h4>
+                    <p>Coba kata kunci lain atau jelajahi kreator populer</p>
+                </div>
+            `;
+        }
+
+        return creators.map((c, index) => `
+            <div class="explore-creator-card" style="animation-delay: ${index * 0.05}s">
+                <div class="creator-card-left">
+                    <div class="creator-avatar ${c.is_verified ? 'verified' : ''}" ${c.photo_url ? 'style="font-size: 0;"' : ''}>
+                        ${c.photo_url 
+                            ? `<img src="${c.photo_url}" alt="${c.display_name}">` 
+                            : (c.display_name || 'C').charAt(0).toUpperCase()
+                        }
+                        ${c.is_verified ? '<div class="creator-verified-tick"><i data-lucide="check" style="width:10px;height:10px;color:white"></i></div>' : ''}
+                    </div>
+                </div>
+                <div class="creator-card-info">
+                    <div class="creator-card-name">${c.display_name || 'Kreator'}</div>
+                    <div class="creator-card-username">@${c.username || 'user'}</div>
+                    <div class="creator-card-stats">
+                        <span class="creator-stat-chip">
+                            <i data-lucide="layers" style="width:11px;height:11px"></i>
+                            ${c.total_media || 0} Konten
+                        </span>
+                    </div>
+                </div>
+                <button class="creator-card-btn" onclick="app.viewPublicCreatorProfile(${c.user_id || c.id})">
+                    <i data-lucide="chevron-right"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    viewPublicCreatorProfile(userId) {
+        this.currentPage = 'profile';
+        this.viewOtherProfile(userId);
+    }
+
+    async loadProfile() {
+        return this.viewOtherProfile(this.userData.id);
+    }
+
+    async viewOtherProfile(userId) {
+        try {
+            // Render loading state if switching page
+            if (this.currentPage === 'profile') {
+                document.getElementById('pageContent').innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 12px; color: var(--hint-color); font-size: 13px;">Memuat profil...</p></div>';
+            }
+
+            const data = await this.apiCall('explore.php', {
+                action: 'get_profile',
+                userId: userId
+            });
+
+            const { user, creator, stats, activity, badges, media } = data;
+            const isOwnProfile = (userId === this.userData.id);
+
+            // Use badges from API, or fallback to current session data if own profile
+            const hasPosted = isOwnProfile ? this.userData.has_posted : badges?.has_posted;
+            const hasDonated = isOwnProfile ? this.userData.has_donated : badges?.has_donated;
+
+            let html = `
+                <div class="fade-in">
+                    <!-- Profile Header -->
+                    <div class="profile-hero">
+                        ${!isOwnProfile ? `
+                        <button class="profile-back-btn" onclick="app.loadPage('explore')">
+                            <i data-lucide="arrow-left"></i>
+                        </button>
+                        ` : ''}
+                        <div class="profile-hero-bg"></div>
+                        <div class="profile-avatar-wrapper">
+                            <div class="profile-avatar ${creator?.is_verified ? 'verified' : ''}" ${user.photo_url ? 'style="font-size: 0;"' : ''}>
+                                ${user.photo_url 
+                                    ? `<img src="${user.photo_url}" alt="Avatar">` 
+                                    : (creator?.display_name || user.name || 'U').charAt(0).toUpperCase()}
+                                ${creator?.is_verified ? '<div class="profile-verified-badge"><i data-lucide="check" style="width:12px;height:12px"></i></div>' : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="profile-info">
+                            <h2 class="profile-name">${creator?.display_name || user.name}</h2>
+                            <p class="profile-username">@${user.username || 'user'}</p>
+                            
+                            <div class="profile-badges">
+                                ${hasPosted ? '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>' : ''}
+                                ${hasDonated ? '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>' : ''}
+                            </div>
+
+                            ${creator?.bio ? `<p class="profile-bio">${creator.bio}</p>` : ''}
+                        </div>
+                        
+                        <div class="profile-actions">
+                            ${isOwnProfile ? `
+                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('wallet')">
+                                    <i data-lucide="wallet"></i> Dompet
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="app.loadPage('achievements')">
+                                    <i data-lucide="trophy"></i> Pencapaian
+                                </button>
+                            ` : `
+                                <button class="btn btn-primary profile-support-btn" onclick="app.viewPublicCreatorProfileLink(${user.id})">
+                                    <i data-lucide="heart"></i> Dukung Melalui Bot
+                                </button>
+                            `}
+                        </div>
+                    </div>
+
+                    <div class="profile-content-padding">
+                        <!-- Stats Box -->
+                        <div class="profile-stats-box">
+                            ${stats.is_creator ? `
+                                <div class="stat-item">
+                                    <div class="stat-value text-primary">${stats.total_donations || 0}</div>
+                                    <div class="stat-label">Dukungan</div>
+                                </div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <div class="stat-value text-success">Rp ${this.formatCompactNumber(stats.total_earnings || 0)}</div>
+                                    <div class="stat-label">Earning</div>
+                                </div>
+                            ` : `
+                                <div class="stat-item">
+                                    <div class="stat-value text-primary">${stats.total_donations_sent || 0}</div>
+                                    <div class="stat-label">Saweran</div>
+                                </div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <div class="stat-value text-accent">Rp ${this.formatCompactNumber(stats.total_amount_sent || 0)}</div>
+                                    <div class="stat-label">Total</div>
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- Media Gallery -->
+                        ${media && media.length > 0 ? `
+                            <div class="profile-section">
+                                <h3 class="section-title"><i data-lucide="grid"></i> Galeri Konten</h3>
+                                <div class="media-grid">
+                                    ${media.map(m => `
+                                        <div class="media-card">
+                                            <div class="media-icon">
+                                                <i data-lucide="${m.file_type === 'video' ? 'video' : 'image'}"></i>
+                                            </div>
+                                            <div class="media-overlay">
+                                                <div class="media-caption">${m.caption || 'Tanpa keterangan'}</div>
+                                                <div class="media-meta">
+                                                    <span><i data-lucide="heart" style="width:10px;height:10px"></i> ${m.donation_count}</span>
+                                                    <span>Rp ${this.formatCompactNumber(m.donation_total)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Activity -->
+                        <div class="profile-section">
+                            <h3 class="section-title"><i data-lucide="history"></i> Aktivitas ${isOwnProfile ? 'Saya' : 'Terbaru'}</h3>
+                            <div class="activity-feed">
+                                ${activity && activity.length > 0 ? activity.map(act => `
+                                    <div class="activity-item">
+                                        <div class="activity-icon" style="background: ${act.from_user_id == user.id ? 'rgba(244, 63, 94, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">
+                                            <i data-lucide="${act.from_user_id == user.id ? 'send' : 'download'}"></i>
+                                        </div>
+                                        <div class="activity-content">
+                                            <div class="activity-header">
+                                                <span class="donor-name">${act.from_user_id == user.id ? 'Mengirim' : 'Menerima'} Saweran</span>
+                                                <span class="activity-amount" style="color: ${act.from_user_id == user.id ? 'var(--accent)' : 'var(--success)'}">${act.from_user_id == user.id ? '-' : '+'}Rp ${this.formatCompactNumber(act.amount)}</span>
+                                            </div>
+                                            <div class="activity-time">${this.getRelativeTime(act.created_at)}</div>
+                                        </div>
+                                    </div>
+                                `).join('') : '<div class="empty-state-simple">Belum ada aktivitas</div>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (this.currentPage === 'profile' || isOwnProfile === false) {
+                document.getElementById('pageContent').innerHTML = html;
+                if (window.lucide) window.lucide.createIcons();
+            }
+            return html;
+        } catch (error) {
+            console.error('Profile error:', error);
+            return `<div class="card"><h3>Error</h3><p>${error.message}</p></div>`;
+        }
+    }
+
+    viewPublicCreatorProfileLink(userId) {
+        // Redirect to their public page or open in bot
+        const botUsername = 'MieBurungDaraBot'; // Fallback
+        const url = `https://t.me/${botUsername}?start=creator_${userId}`;
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.openTelegramLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    }
+    async loadAchievements() {
+        try {
+            const data = await this.apiCall('achievements.php');
+            const { categories, special } = data;
+            
+            let unlockedTiersCount = 0;
+            categories.forEach(cat => {
+                unlockedTiersCount += cat.tiers.filter(t => t.unlocked).length;
+            });
+            const specialUnlocked = special.filter(s => s.unlocked).length;
+
+            return `
+                <div class="grid-layout fade-in">
+                    <div class="card col-full" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white; border: none; padding: 30px 20px;">
+                        <h2 style="font-family: 'Outfit'; font-size: 28px; margin-bottom: 5px;">Hall of Fame</h2>
+                        <p style="opacity: 0.7; font-size: 14px;">Koleksi pencapaian dan perjalananmu di Bot Sawer.</p>
+                        <div style="display: flex; gap: 15px; margin-top: 20px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 12px; flex: 1; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 800; color: #facc15;">${unlockedTiersCount}</div>
+                                <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6;">Tiers Unlocked</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 12px; flex: 1; text-align: center;">
+                                <div style="font-size: 20px; font-weight: 800; color: #6366f1;">${specialUnlocked}</div>
+                                <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6;">Special Badges</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${special && special.length > 0 ? `
+                        <div class="col-full">
+                            <h3 style="margin-bottom: 12px; font-size: 14px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">Special Badges</h3>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                                ${special.map(s => `
+                                    <div class="card" style="display: flex; align-items: center; gap: 15px; background: ${s.unlocked ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.1), transparent)' : 'rgba(0,0,0,0.02)'}; opacity: ${s.unlocked ? '1' : '0.5'}">
+                                        <div style="width: 44px; height: 44px; background: ${s.unlocked ? 'var(--primary)' : 'var(--hint-color)'}; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <i data-lucide="${s.icon}"></i>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 700; font-size: 15px;">${s.title}</div>
+                                            <div style="font-size: 12px; color: var(--hint-color);">${s.description}</div>
+                                        </div>
+                                        ${s.unlocked ? '<div style="margin-left: auto; color: var(--success);"><i data-lucide="check-circle"></i></div>' : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div class="col-full">
+                        <h3 style="margin-bottom: 12px; font-size: 14px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">Pencapaian Bertingkat</h3>
+                        ${categories.map(cat => {
+                            const currentTier = [...cat.tiers].reverse().find(t => t.unlocked) || { label: 'None', value: 0 };
+                            const nextTier = cat.tiers.find(t => !t.unlocked);
+                            const progress = nextTier ? Math.min(100, (cat.current / nextTier.value) * 100) : 100;
+
+                            return `
+                                <div class="card mb-4" style="padding: 20px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                                        <div style="display: flex; gap: 15px;">
+                                            <div style="width: 48px; height: 48px; background: var(--secondary-bg-color); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                                                <i data-lucide="${cat.icon}"></i>
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 800; font-size: 18px;">${cat.title}</div>
+                                                <div style="font-size: 12px; color: var(--hint-color);">${cat.description}</div>
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 20px; font-weight: 900; color: var(--primary);">${this.formatCompactNumber(cat.current)}</div>
+                                            <div style="font-size: 10px; font-weight: 700; opacity: 0.5; text-transform: uppercase;">Total</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-bottom: 25px;">
+                                        <div style="display: flex; justify-content: flex-start; gap: 4px; margin-bottom: 10px;">
+                                            ${cat.tiers.map((t, idx) => `
+                                                <div style="flex: 1; height: 6px; border-radius: 3px; background: ${t.unlocked ? this.getTierColor(t.label) : 'rgba(0,0,0,0.05)'}; position: relative;">
+                                                    <div style="position: absolute; top: 10px; left: 0; font-size: 8px; font-weight: 800; text-transform: uppercase; color: ${t.unlocked ? this.getTierColor(t.label) : 'var(--hint-color)'}; opacity: ${t.unlocked ? '1' : '0.4'}">
+                                                        ${t.label}
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <div style="background: var(--secondary-bg-color); padding: 12px; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="font-size: 11px; font-weight: 700;">
+                                            ${nextTier ? `Butuh <span style="color: var(--primary);">${this.formatCompactNumber(nextTier.value - cat.current)}</span> lagi untuk <span style="color: ${this.getTierColor(nextTier.label)};">${nextTier.label}</span>` : '<span style="color: var(--success);">Sudah Level Maksimal!</span>'}
+                                        </div>
+                                        <div style="font-size: 11px; font-weight: 800; color: var(--primary);">${Math.round(progress)}%</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Achievements UI failed:', error);
+            return `<div class="card"><h3>Error</h3><p>${error.message}</p></div>`;
+        }
+    }
+
+    getTierColor(tier, isBg = false) {
+        const colors = {
+            'Bronze': '#cd7f32',
+            'Silver': '#9ca3af',
+            'Gold': '#facc15',
+            'Platinum': '#22d3ee',
+            'Maksimal': '#6366f1',
+            'Belum Ada': '#71717a'
+        };
+        const color = colors[tier] || colors['Belum Ada'];
+        return isBg ? color + '15' : color;
+    }
+
+    async loadCreator() {
+        if (!this.userData.is_creator) {
+            return '<div class="card"><h3><i data-lucide="alert-circle"></i> Akses Ditolak</h3><p>Anda bukan kreator terverifikasi</p></div>';
+        }
+
+        const creatorData = await this.apiCall('creator.php');
+        const activeGoal = creatorData.active_goal;
+
+        const html = `
+            <div class="grid-layout fade-in">
+                <div class="card">
+                    <h3><i data-lucide="award"></i> Statistik Kreator</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;">
+                        <div style="text-align: center; padding: 12px; background: rgba(16, 185, 129, 0.05); border-radius: var(--radius-md);">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--success);">${creatorData.stats.total_media || 0}</div>
+                            <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Konten</div>
+                        </div>
+                        <div style="text-align: center; padding: 12px; background: rgba(99, 102, 241, 0.05); border-radius: var(--radius-md);">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--primary);">Rp ${this.formatCompactNumber(creatorData.stats.total_earnings || 0)}</div>
+                            <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Earning</div>
+                        </div>
+                        <div style="text-align: center; padding: 12px; background: rgba(168, 85, 247, 0.05); border-radius: var(--radius-md);">
+                            <div style="font-size: 18px; font-weight: 700; color: var(--secondary);">${creatorData.stats.total_donations || 0}</div>
+                            <div style="font-size: 10px; color: var(--hint-color); font-weight: 600; text-transform: uppercase;">Donasi</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card goal-card">
+                    <h3><i data-lucide="target"></i> Target Donasi</h3>
+                    ${activeGoal ? `
+                        <div class="goal-progress-container">
+                            <div class="goal-header">
+                                <span class="goal-title">${activeGoal.title}</span>
+                                <span class="goal-percentage">${activeGoal.percentage}%</span>
+                            </div>
+                            <div class="goal-bar-bg">
+                                <div class="goal-bar-fill" style="width: ${activeGoal.percentage}%"></div>
+                            </div>
+                            <div class="goal-footer">
+                                <span>Rp ${this.formatCompactNumber(activeGoal.current_amount)}</span>
+                                <span>Target: Rp ${this.formatCompactNumber(activeGoal.target_amount)}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="app.deleteGoal(${activeGoal.id})" style="width: 100%; margin-top: 10px;">
+                            <i data-lucide="trash-2"></i> Batalkan Target
+                        </button>
+                    ` : `
+                        <div class="goal-empty-state">
+                            <i data-lucide="goal"></i>
+                            <p style="font-size: 14px; color: var(--hint-color); margin-bottom: 15px;">Belum ada target donasi aktif.</p>
+                            <button class="btn btn-primary btn-sm" onclick="app.showGoalForm()">
+                                <i data-lucide="plus"></i> Pasang Target Baru
+                            </button>
+                        </div>
+                        <div id="goalFormContainer" style="display: none; margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Judul Target</label>
+                                <input type="text" id="goalTitle" placeholder="Misal: Beli Laptop Baru">
+                            </div>
+                            <div class="form-group">
+                                <label>Nominal Target (Rp)</label>
+                                <input type="number" id="goalAmount" placeholder="Minimal 1000">
+                            </div>
+                            <div class="form-group" style="display: flex; gap: 8px;">
+                                <button class="btn btn-primary" onclick="app.saveGoal()" style="flex: 1;">Simpan</button>
+                                <button class="btn btn-secondary" onclick="app.hideGoalForm()" style="flex: 1;">Batal</button>
+                            </div>
+                        </div>
+                    `}
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="activity"></i> Aktivitas Terbaru</h3>
+                    <div class="activity-feed">
+                        ${creatorData.analytics.recent_donations && creatorData.analytics.recent_donations.length > 0 ? 
+                            creatorData.analytics.recent_donations.slice(0, 5).map(don => `
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i data-lucide="heart"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-header">
+                                        <span class="donor-name">${don.first_name || 'Anonim'}</span>
+                                        <span class="activity-amount">+Rp ${this.formatCompactNumber(don.amount)}</span>
+                                    </div>
+                                    ${don.message ? `<div class="activity-message">${don.message}</div>` : ''}
+                                    <div class="activity-time">${this.getRelativeTime(don.created_at)}</div>
+                                </div>
+                            </div>
+                        `).join('') : '<p class="text-center" style="font-size: 13px; color: var(--hint-color); margin-top: 20px;">Belum ada aktivitas baru</p>'}
+                    </div>
+                </div>
+
+                <div class="card col-full">
+                    <h3><i data-lucide="trending-up"></i> Performa Donasi</h3>
+                    <div style="margin-top: 10px;">
+                        <canvas id="donationsChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+
+                <div class="card col-full">
+                    <h3><i data-lucide="pie-chart"></i> Distribusi Nominal</h3>
+                    <div style="margin-top: 10px;">
+                        <canvas id="amountChart" width="400" height="200"></canvas>
                     </div>
                 </div>
             </div>
         `;
 
-        document.getElementById('app').innerHTML = shellHtml;
-        if (window.lucide) window.lucide.createIcons();
+        // Store analytics data for post-render chart initialization
+        this._creatorAnalytics = creatorData.analytics;
+        return html;
     }
 
-    async updateHeaderStats() {
-        try {
-            const data = await this.apiCall('profile.php');
-            this.userData = data;
-            document.getElementById('headerBalance').textContent = this.formatCompactNumber(data.balance);
-        } catch (e) {
-            console.error('Failed to update stats:', e);
+    async searchUsers() {
+        const query = document.getElementById('userSearchQuery').value.trim();
+        if (!query) {
+            alert('Masukkan query pencarian');
+            return;
         }
-    }
 
-    updateActiveTab(page) {
-        document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-        const activeTab = document.getElementById(`tab-${page}`);
-        if (activeTab) activeTab.classList.add('active');
-    }
-
-    // ------------------------------------------------------------------------
-    // PAGE ROUTING & RENDERERS
-    // ------------------------------------------------------------------------
-
-    async loadPage(page, ...args) {
-        this.currentPage = page;
-        this.updateActiveTab(page);
-
-        const contentDiv = document.getElementById('pageContent');
-        contentDiv.innerHTML = '<div style="text-align: center; margin-top: 40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 15px; color: var(--hint-color);">Memuat halaman...</p></div>';
-
-        let html = '';
         try {
-            switch(page) {
-                case 'dashboard':
-                    html = await loadDashboard(this);
-                    break;
-                case 'explore':
-                    html = await loadExplore(this);
-                    break;
-                case 'wallet':
-                    html = await loadWallet(this);
-                    break;
-                case 'creator':
-                    html = await loadCreator(this);
-                    break;
-                case 'contents':
-                    html = await loadContents(this, args[0] || 1);
-                    break;
-                case 'admin':
-                    html = await loadAdmin(this);
-                    break;
-                case 'profile':
-                    html = await loadProfile(this);
-                    break;
-                case 'achievements':
-                    html = await loadAchievements(this);
-                    break;
-                default:
-                    html = `<div class="card"><h3>Halaman tidak ditemukan</h3></div>`;
-            }
+            const result = await this.apiCall('admin.php', {
+                action: 'search_users',
+                query: query
+            });
+
+            this.displayUserSearchResults(result);
         } catch (error) {
-            console.error(`Error loading page ${page}:`, error);
-            html = `<div class="card"><h3>Error</h3><p>${error.message}</p></div>`;
-        }
-
-        // Only update if we haven't navigated away
-        if (this.currentPage === page && html) {
-            contentDiv.innerHTML = html;
-            if (window.lucide) window.lucide.createIcons();
-            this.setupPageHandlers(page);
+            alert('Error: ' + error.message);
         }
     }
 
-    setupPageHandlers(page) {
-        if (page === 'wallet') {
-            setupTopupForm(this);
-            setupWithdrawalForm(this);
-        } else if (page === 'creator') {
-            setupCreatorProfileForm(this);
-            
-            // Wait for DOM to finish painting before rendering charts
-            if (this._creatorAnalytics) {
-                setTimeout(() => {
-                    this.renderCreatorCharts(this._creatorAnalytics);
-                }, 100);
-            }
-        } else if (page === 'admin') {
-            setupAdminFormHandlers(this);
+    displayUserSearchResults(users) {
+        const container = document.getElementById('userSearchResults');
+
+        if (!users || users.length === 0) {
+            container.innerHTML = '<p>Tidak ada user ditemukan</p>';
+            return;
+        }
+
+        let html = '<div style="max-height: 300px; overflow-y: auto;">';
+        users.forEach(user => {
+            const banBtnText = user.is_banned ? 'Unban' : 'Ban';
+            const banBtnClass = user.is_banned ? 'btn-success' : 'btn-danger';
+
+            html += `
+                <div style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${user.name}</strong> ${user.is_creator ? '(Kreator' + (user.is_verified ? ' Γ£ô' : ' ΓÜá∩╕Å') + ')' : ''}
+                            <br><small>@${user.username} | ID: ${user.id}</small>
+                            <br><small>Saldo: Rp ${this.formatNumber(user.balance)}</small>
+                        </div>
+                        <div>
+                            <button class="btn ${banBtnClass}" onclick="app.toggleUserBan(${user.id}, ${user.is_banned})">${banBtnText}</button>
+                            <button class="btn btn-primary" onclick="app.adjustUserBalance(${user.id}, '${user.name}')">Adjust Saldo</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    async toggleUserBan(userId, currentlyBanned) {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'ban_user',
+                targetUserId: userId,
+                ban: !currentlyBanned
+            });
+
+            alert(result.message);
+            // Refresh search results
+            this.searchUsers();
+        } catch (error) {
+            alert('Error: ' + error.message);
         }
     }
 
-    // ------------------------------------------------------------------------
-    // CHART RENDERING (Kept in app.js due to Chart.js global dependency)
-    // ------------------------------------------------------------------------
+    adjustUserBalance(userId, userName) {
+        document.getElementById('adjustUserId').value = userId;
+        document.getElementById('adjustDescription').value = `Adjustment for ${userName}`;
+        // Scroll to adjust form
+        document.getElementById('adjustBalanceForm').scrollIntoView();
+    }
+
+    async loadSettings() {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_settings'
+            });
+
+            this.displaySettings(result);
+        } catch (error) {
+            alert('Error loading settings: ' + error.message);
+        }
+    }
+
+    displaySettings(settings) {
+        const container = document.getElementById('settingsContainer');
+
+        let html = '<div style="max-height: 400px; overflow-y: auto;">';
+        Object.values(settings).forEach(setting => {
+            html += `
+                <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 8px;">
+                    <div style="margin-bottom: 5px;">
+                        <strong>${setting.key}</strong>
+                        <br><small style="color: #666;">${setting.description}</small>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="setting_${setting.key}" value="${setting.value || ''}" style="flex: 1;">
+                        <button class="btn btn-sm btn-primary" onclick="app.updateSetting('${setting.key}')">Update</button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    async updateSetting(key) {
+        const value = document.getElementById(`setting_${key}`).value;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'update_setting',
+                key: key,
+                value: value
+            });
+
+            alert(result.message);
+        } catch (error) {
+            alert('Error updating setting: ' + error.message);
+        }
+    }
+
+    async loadAuditLogs() {
+        const entityType = document.getElementById('auditEntityType').value;
+        const userId = document.getElementById('auditUserId').value;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_audit_logs',
+                entity_type: entityType || undefined,
+                user_id: userId || undefined,
+                limit: 100
+            });
+
+            this.displayAuditLogs(result);
+        } catch (error) {
+            alert('Error loading audit logs: ' + error.message);
+        }
+    }
+
+    displayAuditLogs(logs) {
+        const container = document.getElementById('auditLogsContainer');
+
+        if (!logs || logs.length === 0) {
+            container.innerHTML = '<p>Tidak ada audit logs</p>';
+            return;
+        }
+
+        let html = '<div style="max-height: 400px; overflow-y: auto; font-size: 12px;">';
+        html += '<table style="width: 100%; border-collapse: collapse;">';
+        html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #ddd;">Time</th><th>Action</th><th>Entity</th><th>User</th><th>Details</th></tr></thead><tbody>';
+
+        logs.forEach(log => {
+            const changes = log.changes || {};
+            const changesText = Object.keys(changes).length > 0
+                ? Object.entries(changes).map(([k, v]) => `${k}: ${v.old || 'null'} ΓåÆ ${v.new || 'null'}`).join('; ')
+                : 'No changes';
+
+            html += `<tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${new Date(log.created_at).toLocaleString()}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.action}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.entity_type}:${log.entity_id}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${log.user_id || 'System'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; max-width: 300px; word-wrap: break-word;">${changesText}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    async loadBots() {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_bots'
+            });
+
+            this.displayBots(result);
+        } catch (error) {
+            alert('Error loading bots: ' + error.message);
+        }
+    }
+
+    displayBots(bots) {
+        const container = document.getElementById('botsContainer');
+        const form = document.getElementById('addBotForm');
+
+        let html = '<button class="btn btn-success" onclick="document.getElementById(\'addBotForm\').style.display=\'block\'">Add New Bot</button>';
+        html += '<div style="margin-top: 15px;">';
+
+        if (!bots || bots.length === 0) {
+            html += '<p>No bots configured</p>';
+        } else {
+            html += '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #ddd;">ID</th><th>Name</th><th>Username</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+
+            bots.forEach(bot => {
+                const statusText = bot.is_active ? 'Active' : 'Inactive';
+                const statusClass = bot.is_active ? 'status-success' : 'status-failed';
+                const toggleText = bot.is_active ? 'Deactivate' : 'Activate';
+                const toggleClass = bot.is_active ? 'btn-danger' : 'btn-success';
+
+                html += `<tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${bot.id}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${bot.name}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">@${bot.username}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
+                        <button class="btn ${toggleClass}" onclick="app.toggleBot(${bot.id}, ${!bot.is_active})">${toggleText}</button>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    async addBot() {
+        const name = document.getElementById('botName').value;
+        const username = document.getElementById('botUsername').value;
+        const token = document.getElementById('botToken').value;
+        const webhookSecret = document.getElementById('botWebhookSecret').value;
+
+        if (!name || !username || !token) {
+            alert('Name, username, and token are required');
+            return;
+        }
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'add_bot',
+                name: name,
+                username: username,
+                token: token,
+                webhook_secret: webhookSecret
+            });
+
+            alert(result.message);
+            document.getElementById('addBotForm').style.display = 'none';
+            // Clear form
+            document.getElementById('botName').value = '';
+            document.getElementById('botUsername').value = '';
+            document.getElementById('botToken').value = '';
+            document.getElementById('botWebhookSecret').value = '';
+            // Reload bots
+            this.loadBots();
+        } catch (error) {
+            alert('Error adding bot: ' + error.message);
+        }
+    }
+
+    async toggleBot(botId, active) {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'toggle_bot',
+                bot_id: botId,
+                active: active
+            });
+
+            alert(result.message);
+            this.loadBots();
+        } catch (error) {
+            alert('Error toggling bot: ' + error.message);
+        }
+    }
+
+    async loadAdmins() {
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_admins'
+            });
+
+            this.displayAdmins(result);
+        } catch (error) {
+            alert('Error loading admins: ' + error.message);
+        }
+    }
+
+    displayAdmins(admins) {
+        const container = document.getElementById('adminsContainer');
+        const form = document.getElementById('addAdminForm');
+
+        let html = '<button class="btn btn-success" onclick="document.getElementById(\'addAdminForm\').style.display=\'block\'">Add New Admin</button>';
+        html += '<div style="margin-top: 15px;">';
+
+        if (!admins || admins.length === 0) {
+            html += '<p>No admins found</p>';
+        } else {
+            html += '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>';
+
+            admins.forEach(admin => {
+                const statusText = admin.is_active ? 'Active' : 'Inactive';
+                const statusClass = admin.is_active ? 'status-success' : 'status-failed';
+                const roleEmoji = admin.role === 'super_admin' ? '≡ƒææ' :
+                                 admin.role === 'moderator' ? '≡ƒöº' :
+                                 admin.role === 'finance' ? '≡ƒÆ░' : '≡ƒæñ';
+
+                const lastLogin = admin.last_login ? new Date(admin.last_login).toLocaleDateString() : 'Never';
+
+                html += `<tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${admin.full_name}<br>
+                        <small>${admin.telegram_username} (${admin.telegram_id})</small>
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${roleEmoji} ${admin.role}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${lastLogin}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
+                        ${admin.is_active ? `<button class="btn btn-danger btn-sm" onclick="app.deactivateAdmin(${admin.id})">Deactivate</button>` : '<span style="color: #999;">Inactive</span>'}
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    async addAdmin() {
+        const telegramId = document.getElementById('adminTelegramId').value;
+        const username = document.getElementById('adminUsername').value;
+        const fullName = document.getElementById('adminFullName').value;
+        const role = document.getElementById('adminRole').value;
+
+        if (!telegramId || !username || !fullName || !role) {
+            alert('All fields are required');
+            return;
+        }
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'add_admin',
+                telegram_id: parseInt(telegramId),
+                username: username,
+                full_name: fullName,
+                role: role
+            });
+
+            alert(result.message);
+            document.getElementById('addAdminForm').style.display = 'none';
+            // Clear form
+            document.getElementById('adminTelegramId').value = '';
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminFullName').value = '';
+            document.getElementById('adminRole').value = '';
+            // Reload admins
+            this.loadAdmins();
+        } catch (error) {
+            alert('Error adding admin: ' + error.message);
+        }
+    }
+
+    async deactivateAdmin(adminId) {
+        if (!confirm('Are you sure you want to deactivate this admin?')) {
+            return;
+        }
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'deactivate_admin',
+                admin_id: adminId
+            });
+
+            alert(result.message);
+            this.loadAdmins();
+        } catch (error) {
+            alert('Error deactivating admin: ' + error.message);
+        }
+    }
+
     renderCreatorCharts(analytics) {
         if (!analytics) return;
 
         // Donations last 7 days chart
         const donationsCtx = document.getElementById('donationsChart');
-        if (donationsCtx && analytics.donations_last_7_days && window.Chart) {
+        if (donationsCtx && analytics.donations_last_7_days) {
             new Chart(donationsCtx, {
                 type: 'line',
                 data: {
@@ -307,85 +1579,665 @@ class App {
                             }
                         }
                     },
-                    plugins: { legend: { display: false } }
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
                 }
             });
         }
 
         // Donations by amount chart
         const amountCtx = document.getElementById('amountChart');
-        if (amountCtx && analytics.donations_by_amount && window.Chart) {
+        if (amountCtx && analytics.donations_by_amount) {
             new Chart(amountCtx, {
                 type: 'doughnut',
                 data: {
                     labels: analytics.donations_by_amount.map(d => d.range),
                     datasets: [{
                         data: analytics.donations_by_amount.map(d => d.count),
-                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF'
+                        ]
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
                 }
             });
         }
     }
 
-    // ------------------------------------------------------------------------
-    // EXPORTED DELEGATES FOR INLINE HTML (onclick="app.function()")
-    // ------------------------------------------------------------------------
-    searchPublicCreators() { return searchPublicCreators(this); }
-    viewPublicCreatorProfile(userId) { return viewPublicCreatorProfile(this, userId); }
-    viewPublicCreatorProfileLink(userId) { return viewPublicCreatorProfileLink(this, userId); }
-    viewOtherProfile(userId) { return viewOtherProfile(this, userId); }
-    
-    // Creator Goals
-    showGoalForm() { return showGoalForm(); }
-    hideGoalForm() { return hideGoalForm(); }
-    saveGoal() { return saveGoal(this); }
-    deleteGoal(goalId) { return deleteGoal(this, goalId); }
-    
-    // Wallet
-    calculateWithdrawalCommission() { return calculateWithdrawalCommission(); }
-    
-    // Admin features
-    searchUsers() { return searchUsers(this); }
-    toggleUserBan(userId, ban) { return toggleUserBan(this, userId, ban); }
-    adjustUserBalance(userId, name) { return adjustUserBalance(this, userId, name); }
-    loadAuditLogs() { return loadAuditLogs(this); }
-    loadBots() { return loadBots(this); }
-    addBot() { return addBot(this); }
-    toggleBot(botId, active) { return toggleBot(this, botId, active); }
-    loadAdmins() { return loadAdmins(this); }
-    addAdmin() { return addAdmin(this); }
-    deactivateAdmin(adminId) { return deactivateAdmin(this, adminId); }
-    loadPendingPayments() { return loadPendingPayments(this); }
-    approvePayment(paymentId, type) { return approvePayment(this, paymentId, type); }
-    rejectPayment(paymentId, type) { return rejectPayment(this, paymentId, type); }
-    viewPaymentProof(id) { return viewPaymentProof(this, id); }
-    closeProofModal() { 
-        const modal = document.getElementById('proofModal');
-        if(modal) modal.style.display = 'none';
-        const img = document.getElementById('proofImage');
-        if(img) img.src = '';
+    async apiCall(endpoint, data = {}) {
+        const response = await fetch(`api/${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...data,
+                botId: this.botId,
+                userId: this.userData?.id || this.telegram.getUserId(),
+                initData: this.telegram.getInitData()
+            })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.message || 'API call failed');
+        }
+        return result.data;
     }
-    loadContentQueue() { return loadContentQueue(this); }
-    approveContent(contentId) { return approveContent(this, contentId); }
-    rejectContent(contentId) { return rejectContent(this, contentId); }
-    postContentToChannel(contentId) { return postContentToChannel(this, contentId); }
-    viewContent(contentId) { return viewContent(this, contentId); }
-    loadCreators() { return loadCreators(this); }
-    verifyCreator(creatorId) { return verifyCreator(this, creatorId); }
-    viewCreatorProfile(creatorId) { return viewCreatorProfile(this, creatorId); }
-    loadSettings() { return loadSettings(this); }
-    updateSetting(key) { return updateSetting(this, key); }
-    
-    // Pagination for contents
-    loadContentsList(page) { this.loadPage('contents', page); }
+
+    async loadPendingPayments() {
+        try {
+            const payments = await this.apiCall('admin.php', { action: 'get_pending_payments' });
+            this.displayPendingPayments(payments);
+        } catch (error) {
+            alert('Error loading pending payments: ' + error.message);
+        }
+    }
+
+    displayPendingPayments(payments) {
+        const container = document.getElementById('paymentContainer');
+
+        if (!payments || payments.length === 0) {
+            container.innerHTML = '<p>Tidak ada pembayaran pending</p>';
+            return;
+        }
+
+        let html = '<div style="max-height: 500px; overflow-y: auto;">';
+        payments.forEach(payment => {
+            const typeText = payment.type === 'topup' ? 'Topup' : 'Penarikan';
+            const typeColor = payment.type === 'topup' ? '#28a745' : '#007bff';
+
+            html += `
+                <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <span style="background: ${typeColor}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${typeText}</span>
+                            <strong>ID: ${payment.id}</strong>
+                        </div>
+                        <div style="font-weight: bold; font-size: 18px; color: #28a745;">
+                            Rp ${this.formatNumber(payment.amount)}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 10px;">
+                        <div><strong>User:</strong> ${payment.user_name} (@${payment.username})</div>
+                        <div><strong>Dibuat:</strong> ${new Date(payment.created_at).toLocaleString('id-ID')}</div>
+                        ${payment.type === 'withdraw' ? `<div><strong>E-Wallet:</strong> ${payment.bank_name} - ${payment.account_name} (${payment.bank_account})</div>` : ''}
+                        ${payment.type === 'withdraw' && payment.commission_amount ? `
+                            <div style="background: #fff3cd; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 12px;">
+                                <strong>≡ƒÆ░ Detail Komisi:</strong><br>
+                                Jumlah asli: Rp ${this.formatNumber(payment.original_amount)}<br>
+                                Komisi (${payment.commission_rate}%): Rp ${this.formatNumber(payment.commission_amount)}<br>
+                                <strong>Diterima user: Rp ${this.formatNumber(payment.amount)}</strong>
+                            </div>
+                        ` : ''}
+                        ${payment.notes ? `<div><strong>Catatan:</strong> ${payment.notes}</div>` : ''}
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success btn-sm" onclick="app.approvePayment(${payment.id}, '${payment.type}')">Γ£à Setujui</button>
+                        <button class="btn btn-danger btn-sm" onclick="app.rejectPayment(${payment.id}, '${payment.type}')">Γ¥î Tolak</button>
+                        ${payment.type === 'topup' ? `<button class="btn btn-info btn-sm" onclick="app.viewPaymentProof(${payment.id})">≡ƒæü∩╕Å Lihat Bukti</button>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    async approvePayment(paymentId, type) {
+        if (!confirm('Apakah Anda yakin ingin menyetujui pembayaran ini?')) return;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'approve_payment',
+                payment_id: paymentId,
+                payment_type: type
+            });
+            alert(result.message);
+            await this.updateHeaderStats();
+            this.loadPendingPayments(); // Refresh list
+        } catch (error) {
+            alert('Error approving payment: ' + error.message);
+        }
+    }
+
+    async rejectPayment(paymentId, type) {
+        const reason = prompt('Alasan penolakan (opsional):');
+        if (reason === null) return; // Cancelled
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'reject_payment',
+                payment_id: paymentId,
+                payment_type: type,
+                reason: reason
+            });
+            alert(result.message);
+            this.loadPendingPayments(); // Refresh list
+        } catch (error) {
+            alert('Error rejecting payment: ' + error.message);
+        }
+    }
+
+    async viewPaymentProof(id) {
+        const modal = document.getElementById('proofModal');
+        const img = document.getElementById('proofImage');
+        const loader = document.getElementById('proofImageLoader');
+        
+        // Show modal and loader
+        modal.style.display = 'flex';
+        img.style.display = 'none';
+        loader.style.display = 'flex';
+        
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'get_payment_proof_url',
+                proof_id: id
+            });
+
+            if (result.url) {
+                img.src = result.url;
+                img.onload = () => {
+                    loader.style.display = 'none';
+                    img.style.display = 'block';
+                };
+                img.onerror = () => {
+                    alert('Gagal memuat gambar bukti dari server Telegram.');
+                    this.closeProofModal();
+                };
+            } else {
+                throw new Error('URL bukti tidak ditemukan');
+            }
+        } catch (error) {
+            alert('Error fetching proof: ' + error.message);
+            this.closeProofModal();
+        }
+    }
+
+    closeProofModal() {
+        const modal = document.getElementById('proofModal');
+        modal.style.display = 'none';
+        document.getElementById('proofImage').src = '';
+    }
+
+    async loadContentQueue() {
+        try {
+            const pendingContent = await this.apiCall('admin.php', { action: 'get_pending_content' });
+            const approvedContent = await this.apiCall('admin.php', { action: 'get_approved_content' });
+            this.displayContentQueue(pendingContent, approvedContent);
+        } catch (error) {
+            alert('Error loading content queue: ' + error.message);
+        }
+    }
+
+    displayContentQueue(pendingContent, approvedContent) {
+        const container = document.getElementById('contentContainer');
+
+        let allContent = [];
+
+        // Add pending content
+        if (pendingContent && pendingContent.length > 0) {
+            allContent = allContent.concat(pendingContent.map(item => ({ ...item, queue_type: 'pending' })));
+        }
+
+        // Add approved content
+        if (approvedContent && approvedContent.length > 0) {
+            allContent = allContent.concat(approvedContent.map(item => ({ ...item, queue_type: 'approved' })));
+        }
+
+        if (allContent.length === 0) {
+            container.innerHTML = '<p>Tidak ada konten dalam queue</p>';
+            return;
+        }
+
+        let html = '<div style="max-height: 500px; overflow-y: auto;">';
+
+        // Group by status
+        const pendingItems = allContent.filter(item => item.queue_type === 'pending');
+        const approvedItems = allContent.filter(item => item.queue_type === 'approved');
+
+        if (pendingItems.length > 0) {
+            html += '<h4 style="margin-bottom: 15px; color: #856404;">ΓÅ│ Konten Pending Moderasi</h4>';
+            pendingItems.forEach(item => {
+                html += this.renderContentItem(item, 'pending');
+            });
+        }
+
+        if (approvedItems.length > 0) {
+            html += '<h4 style="margin-bottom: 15px; margin-top: 20px; color: #155724;">Γ£à Konten Disetujui - Siap Post</h4>';
+            approvedItems.forEach(item => {
+                html += this.renderContentItem(item, 'approved');
+            });
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    renderContentItem(item, status) {
+        const statusBadge = status === 'pending'
+            ? '<span style="background: #ffc107; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 12px;">Pending</span>'
+            : '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px;">Approved</span>';
+
+        const actions = status === 'pending'
+            ? `
+                <button class="btn btn-success btn-sm" onclick="app.approveContent(${item.id})">Γ£à Setujui</button>
+                <button class="btn btn-danger btn-sm" onclick="app.rejectContent(${item.id})">Γ¥î Tolak</button>
+                <button class="btn btn-info btn-sm" onclick="app.viewContent(${item.id})">≡ƒæü∩╕Å Lihat</button>
+            `
+            : `
+                <button class="btn btn-primary btn-sm" onclick="app.postContentToChannel(${item.id})">≡ƒôó Post ke Channel</button>
+                <button class="btn btn-info btn-sm" onclick="app.viewContent(${item.id})">≡ƒæü∩╕Å Lihat</button>
+            `;
+
+        return `
+            <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <strong>Media #${item.id}</strong>
+                        ${statusBadge}
+                    </div>
+                    <div style="font-size: 14px; color: #666;">
+                        ${new Date(item.created_at).toLocaleDateString('id-ID')}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <div><strong>Creator:</strong> ${item.creator_name} (@${item.creator_username})</div>
+                    <div><strong>Type:</strong> ${item.file_type}</div>
+                    <div><strong>Size:</strong> ${this.formatFileSize(item.file_size)}</div>
+                    ${item.caption ? `<div><strong>Caption:</strong> ${item.caption}</div>` : ''}
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    ${actions}
+                </div>
+            </div>
+        `;
+    }
+
+    async approveContent(contentId) {
+        if (!confirm('Apakah Anda yakin ingin menyetujui konten ini?')) return;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'approve_content',
+                content_id: contentId
+            });
+            alert(result.message);
+            this.loadContentQueue(); // Refresh list
+        } catch (error) {
+            alert('Error approving content: ' + error.message);
+        }
+    }
+
+    async rejectContent(contentId) {
+        const reason = prompt('Alasan penolakan (opsional):');
+        if (reason === null) return; // Cancelled
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'reject_content',
+                content_id: contentId,
+                reason: reason
+            });
+            alert(result.message);
+            this.loadContentQueue(); // Refresh list
+        } catch (error) {
+            alert('Error rejecting content: ' + error.message);
+        }
+    }
+
+    async postContentToChannel(contentId) {
+        if (!confirm('Apakah Anda yakin ingin mem-post konten ini ke channel?')) return;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'post_content_to_channel',
+                content_id: contentId
+            });
+            alert(result.message);
+            this.loadContentQueue(); // Refresh list
+        } catch (error) {
+            alert('Error posting content to channel: ' + error.message);
+        }
+    }
+
+    async viewContent(contentId) {
+        try {
+            const content = await this.apiCall('admin.php', {
+                action: 'get_content_details',
+                content_id: contentId
+            });
+
+            // Open content in new window or modal
+            if (content.file_url) {
+                window.open(content.file_url, '_blank');
+            } else {
+                alert('Konten tidak tersedia untuk preview');
+            }
+        } catch (error) {
+            alert('Error viewing content: ' + error.message);
+        }
+    }
+
+    async loadCreators() {
+        try {
+            const creators = await this.apiCall('admin.php', { action: 'get_creators' });
+            this.displayCreators(creators);
+        } catch (error) {
+            alert('Error loading creators: ' + error.message);
+        }
+    }
+
+    displayCreators(creators) {
+        const container = document.getElementById('creatorsContainer');
+
+        if (!creators || creators.length === 0) {
+            container.innerHTML = '<p>Tidak ada creator</p>';
+            return;
+        }
+
+        let html = '<div style="max-height: 400px; overflow-y: auto;">';
+        html += '<table style="width: 100%; border-collapse: collapse;">';
+        html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 8px; border: 1px solid #ddd;">Name</th><th>Status</th><th>Content</th><th>Earnings</th><th>Actions</th></tr></thead><tbody>';
+
+        creators.forEach(creator => {
+            const verifiedIcon = creator.is_verified ? 'Γ£ô' : 'ΓÜá∩╕Å';
+            const verifiedColor = creator.is_verified ? '#28a745' : '#ffc107';
+
+            html += `<tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">
+                    ${creator.display_name || creator.user_name}<br>
+                    <small>@${creator.username}</small>
+                </td>
+                <td style="padding: 8px; border: 1px solid #ddd;">
+                    <span style="color: ${verifiedColor};">${verifiedIcon}</span> ${creator.is_verified ? 'Verified' : 'Pending'}
+                </td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${creator.total_content || 0}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">Rp ${this.formatNumber(creator.total_earnings || 0)}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">
+                    ${!creator.is_verified ? `<button class="btn btn-success btn-sm" onclick="app.verifyCreator(${creator.id})">Verify</button>` : ''}
+                    <button class="btn btn-info btn-sm" onclick="app.viewCreatorProfile(${creator.id})">View</button>
+                </td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    async verifyCreator(creatorId) {
+        if (!confirm('Apakah Anda yakin ingin memverifikasi creator ini?')) return;
+
+        try {
+            const result = await this.apiCall('admin.php', {
+                action: 'verify_creator',
+                creator_id: creatorId
+            });
+            alert(result.message);
+            this.loadCreators(); // Refresh list
+        } catch (error) {
+            alert('Error verifying creator: ' + error.message);
+        }
+    }
+
+    async viewCreatorProfile(creatorId) {
+        try {
+            const profile = await this.apiCall('admin.php', {
+                action: 'get_creator_profile',
+                creator_id: creatorId
+            });
+
+            // Display profile in a modal or alert for now
+            alert(`Creator Profile:\nName: ${profile.display_name}\nBio: ${profile.bio || 'N/A'}\nE-Wallet: ${profile.bank_account || 'N/A'}\nContent: ${profile.total_content}\nEarnings: Rp ${this.formatNumber(profile.total_earnings)}`);
+        } catch (error) {
+            alert('Error viewing creator profile: ' + error.message);
+        }
+    }
+
+    formatFileSize(bytes) {
+        if (!bytes) return '0 B';
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    setupFormHandlers() {
+        // Balance adjustment form
+        const adjustForm = document.getElementById('adjustBalanceForm');
+        if (adjustForm) {
+            adjustForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(adjustForm);
+                const data = {
+                    action: 'adjust_balance',
+                    targetUserId: parseInt(formData.get('adjustUserId')),
+                    amount: parseInt(formData.get('adjustAmount')),
+                    description: formData.get('adjustDescription')
+                };
+
+                try {
+                    const result = await this.apiCall('admin.php', data);
+                    document.getElementById('adjustResult').innerHTML =
+                        '<div style="color: green;">Γ£à ' + result.message + '</div>';
+                    await this.updateHeaderStats();
+                    adjustForm.reset();
+                } catch (error) {
+                    document.getElementById('adjustResult').innerHTML =
+                        '<div style="color: red;">Γ¥î ' + error.message + '</div>';
+                }
+            });
+        }
+    }
+
+    setupWithdrawalForm() {
+        const withdrawForm = document.getElementById('withdrawForm');
+        const withdrawAmount = document.getElementById('withdrawAmount');
+
+        if (withdrawAmount) {
+            // Calculate commission in real-time
+            withdrawAmount.addEventListener('input', () => {
+                this.calculateWithdrawalCommission();
+            });
+        }
+
+        if (withdrawForm) {
+            withdrawForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const amount = parseInt(document.getElementById('withdrawAmount').value);
+                const bankName = document.getElementById('bankName').value;
+                const bankAccount = document.getElementById('bankAccount').value;
+                const accountName = document.getElementById('accountName').value;
+                const confirmed = document.getElementById('withdrawConfirmation').checked;
+
+                if (!confirmed) {
+                    alert('Silakan setujui persyaratan penarikan terlebih dahulu.');
+                    return;
+                }
+
+                const resultDiv = document.getElementById('withdrawResult');
+
+                try {
+                    const result = await this.apiCall('wallet.php', {
+                        action: 'withdraw',
+                        amount: amount,
+                        bankName: bankName,
+                        bankAccount: bankAccount,
+                        accountName: accountName
+                    });
+
+                    resultDiv.innerHTML = '<div style="color: green;">Γ£à ' + result.message + '</div>';
+                    withdrawForm.reset();
+                    document.getElementById('commissionBreakdown').style.display = 'none';
+                    await this.updateHeaderStats();
+
+                    // Refresh wallet data
+                    if (this.currentPage === 'wallet') {
+                        this.loadPage('wallet');
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = '<div style="color: red;">Γ¥î ' + error.message + '</div>';
+                }
+            });
+        }
+    }
+
+    calculateWithdrawalCommission() {
+        const amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
+        const breakdown = document.getElementById('commissionBreakdown');
+        const details = document.getElementById('commissionDetails');
+        const finalAmount = document.getElementById('finalAmount');
+
+        if (amount >= 50000) {
+            const commissionRate = 10.00; // 10%
+            const commissionAmount = (amount * commissionRate) / 100;
+            const receiveAmount = amount - commissionAmount;
+
+            details.innerHTML = 'Jumlah penarikan: Rp ' + this.formatNumber(amount) + '<br>Komisi platform (10%): Rp ' + this.formatNumber(commissionAmount);
+            finalAmount.innerHTML = '≡ƒÆ░ Anda akan menerima: Rp ' + this.formatNumber(receiveAmount);
+            breakdown.style.display = 'block';
+        } else {
+            breakdown.style.display = 'none';
+        }
+    }
+
+    setupCreatorProfileForm() {
+        const profileForm = document.getElementById('creatorProfileForm');
+        if (profileForm) {
+            profileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const displayName = document.getElementById('creatorDisplayName').value;
+                const bio = document.getElementById('creatorBio').value;
+                const bankAccount = document.getElementById('creatorBankAccount').value;
+
+                const resultDiv = document.getElementById('profileResult');
+
+                try {
+                    const result = await this.apiCall('creator.php', {
+                        action: 'update_profile',
+                        displayName: displayName,
+                        bio: bio,
+                        bankAccount: bankAccount
+                    });
+
+                    resultDiv.innerHTML = '<div style="color: green;">Γ£à ' + result.message + '</div>';
+                } catch (error) {
+                    resultDiv.innerHTML = '<div style="color: red;">Γ¥î ' + error.message + '</div>';
+                }
+            });
+        }
+    }
+
+
+
+    showGoalForm() {
+        document.querySelector('.goal-empty-state').style.display = 'none';
+        document.getElementById('goalFormContainer').style.display = 'block';
+    }
+
+    hideGoalForm() {
+        document.querySelector('.goal-empty-state').style.display = 'block';
+        document.getElementById('goalFormContainer').style.display = 'none';
+    }
+
+    async saveGoal() {
+        const title = document.getElementById('goalTitle').value.trim();
+        const amount = document.getElementById('goalAmount').value;
+
+        if (!title || !amount) {
+            this.telegram.showAlert('Mohon isi semua bidang');
+            return;
+        }
+
+        try {
+            await this.apiCall('creator.php', {
+                action: 'save_goal',
+                title: title,
+                targetAmount: amount
+            });
+            this.telegram.showAlert('Target donasi berhasil disimpan!');
+            this.loadPage('creator');
+        } catch (error) {
+            this.telegram.showAlert('Gagal menyimpan target: ' + error.message);
+        }
+    }
+
+    async deleteGoal(goalId) {
+        if (!confirm('Apakah Anda yakin ingin membatalkan target donasi ini?')) return;
+
+        try {
+            await this.apiCall('creator.php', {
+                action: 'delete_goal',
+                goalId: goalId
+            });
+            this.telegram.showAlert('Target donasi berhasil dibatalkan');
+            this.loadPage('creator');
+        } catch (error) {
+            this.telegram.showAlert('Gagal membatalkan target: ' + error.message);
+        }
+    }
+
+    setupTopupForm() {
+        const topupForm = document.getElementById('topupForm');
+        if (topupForm) {
+            topupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const amount = parseInt(document.getElementById('topupAmount').value);
+                try {
+                    const result = await this.apiCall('wallet.php', {
+                        action: 'topup',
+                        amount: amount
+                    });
+                    this.telegram.showAlert(result.message);
+                    topupForm.reset();
+                    await this.updateHeaderStats();
+                    if (this.currentPage === 'wallet') this.loadPage('wallet');
+                } catch (error) {
+                    this.telegram.showAlert('Error: ' + error.message);
+                }
+            });
+        }
+    }
+
+    formatNumber(num) {
+        return new Intl.NumberFormat('id-ID').format(num);
+    }
+
+    getRelativeTime(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+
+        if (diffInSeconds < 60) return 'Baru saja';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m lalu`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}j lalu`;
+        if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}h lalu`;
+
+        return date.toLocaleDateString('id-ID');
+    }
 }
 
-// Initialize app when DOM is loaded and attach to window
+// Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new App();
 });

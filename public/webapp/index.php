@@ -155,6 +155,6 @@ $version = time();
     <script src="js/chart.min.js?v=<?php echo $version; ?>"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="js/telegram-web-app.js?v=<?php echo $version; ?>"></script>
-    <script type="module" src="js/app.js?v=<?php echo $version; ?>"></script>
+    <script src="js/app.js?v=<?php echo $version; ?>"></script>
 </body>
 </html>
