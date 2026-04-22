@@ -30,38 +30,26 @@ BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kre
 
 ## 🤖 Bot System Architecture
 
-BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
+BotSawer menggunakan **Standalone Multi Bot System** untuk menghindari rate limit Telegram dan menangani beban pengguna secara masif.
 
-### 🤖 **User Bot** (Bot Interaksi)
-- **Function**: Interaksi dengan user biasa dan kreator
-- **Webhook**: `https://domain.com/public/webhook.php?secret=user_secret`
-- **Commands**: `/start`, `/register`, `/saldo`, `/topup`
-- **Features**: Upload media, cek saldo, topup via QR
-- **Access**: Semua user
+### 🤖 **Arsitektur Multi Bot Anti Rate Limit**
+- **Semua bot identik dan berdiri sendiri** (tidak ada perbedaan user/moderator bot)
+- Setiap bot memiliki token dan rate limit API Telegram sendiri
+- Semua bot berbagi database, channel, dan pengaturan sistem yang SAMA
+- Pengguna bebas memilih bot mana yang ingin digunakan
+- Setiap bot menangani permintaan penggunanya masing-masing
 
-### 👑 **Moderator Bot** (Bot Admin)
-- **Function**: Mengelola content posting dan admin controls
-- **Webhook**: `https://domain.com/public/moderator.php?secret=moderator_YYYY-MM-DD`
-- **Commands**: `/mod_start`, `/mod_stats`, `/mod_queue`, `/mod_post`, `/admin *`
-- **Features**: Manual posting, queue management, statistics, admin management
-- **Access**: **Database-verified admins only**
-
-### 👥 **Admin System (Database-based)**
-- **Multi-Admin**: Support multiple admins dengan role berbeda
-- **Roles**: Super Admin, Moderator, Finance Admin
-- **Permissions**: Role-based access control
-- **Management**: Add/remove admins via web panel atau bot
-
-#### **Admin Roles:**
-- **👑 Super Admin**: Full access, manage other admins
-- **🔧 Moderator**: Content management, posting controls
-- **💰 Finance Admin**: Payment confirmations, financial operations
+### ✅ Fitur Setiap Bot
+- **Semua command tersedia di SEMUA bot**: `/start`, `/register`, `/saldo`, `/topup`, `/admin`
+- **Admin access**: Semua bot dapat menerima command admin, diverifikasi via database
+- **Role-based permissions**: Tetap berjalan normal di semua bot
+- **Webhook**: Setiap bot memiliki endpoint webhook sendiri
 
 ### 🔐 **Security Concept**
-- User bot: Tidak ada admin commands (redirect ke moderator bot)
-- Moderator bot: Only accepts messages from verified admins in database
-- Role-based permissions untuk granular access control
-- Pemisahan fungsi untuk keamanan maksimal dan rate limit management
+- Semua bot memiliki tingkat keamanan yang sama
+- Admin commands hanya dapat diakses oleh user yang terverifikasi sebagai admin di database
+- Tidak ada pemisahan fungsi bot - keamanan berbasis role, bukan berbasis bot
+- Semua request selalu divalidasi sebelum dieksekusi
 
 ## 🚀 Quick Start
 
@@ -118,14 +106,15 @@ BotSawer menggunakan **dual bot system** untuk keamanan dan pemisahan fungsi:
 
 5. **Setup bot webhooks**
    ```bash
-   # User Bot Webhook
-   curl -X POST "https://api.telegram.org/bot<USER_BOT_TOKEN>/setWebhook" \
-        -d "url=https://yourdomain.com/public/webhook.php?secret=user_secret"
-
-   # Moderator Bot Webhook (Admin Only)
-   curl -X POST "https://api.telegram.org/bot<MODERATOR_BOT_TOKEN>/setWebhook" \
-        -d "url=https://yourdomain.com/public/moderator.php?secret=moderator_$(date +%Y-%m-%d)"
+   # Setup webhook untuk SETIAP bot yang Anda tambahkan
+   curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
+        -d "url=https://yourdomain.com/public/webhook.php?bot_id=<BOT_ID>"
    ```
+
+   Catatan:
+   - Ganti `<BOT_TOKEN>` dengan token bot dari @BotFather
+   - Ganti `<BOT_ID>` dengan ID bot yang terdaftar di sistem
+   - Lakukan ini untuk SETIAP bot yang Anda tambahkan
 
 6. **Setup cron job**
    ```bash

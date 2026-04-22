@@ -54,26 +54,18 @@ try {
     //     'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
     // ]);
 
-    // Route based on webhook type
-    $webhookSecret = $_GET['secret'] ?? '';
-
-    if (strpos($webhookSecret, 'moderator_') === 0) {
-        // This is moderator bot - redirect to moderator handler
-        Logger::info('Redirecting to moderator bot handler');
-        require_once __DIR__ . '/moderator.php';
-        exit;
-    }
-
-    // Regular user bot
-    $botId = 1; // Default bot
-    if ($webhookSecret) {
+    // Route based on bot ID
+    $botId = $_GET['bot_id'] ?? null;
+    
+    if ($botId) {
+        $botId = (int)$botId;
+    } else {
+        // Fallback ke bot aktif pertama jika tidak ada bot_id
         $botData = DB::table('bots')
-            ->where('webhook_secret', $webhookSecret)
             ->where('is_active', 1)
+            ->orderBy('id', 'asc')
             ->first();
-        if ($botData) {
-            $botId = (int)$botData->id;
-        }
+        $botId = $botData ? (int)$botData->id : 1;
     }
 
     // Ensure botId is integer

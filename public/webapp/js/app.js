@@ -21,12 +21,55 @@ class App {
     constructor() {
         this.telegram = window.Telegram.WebApp;
         this.telegram.expand();
-        this.botId = this.telegram.initDataUnsafe?.start_param || null;
         this.userData = null;
         this.currentPage = 'dashboard';
-        this._creatorAnalytics = null; // Store for post-render chart init
+        this._creatorAnalytics = null; // Store for post-render chart init - SET EXTERNALLY BY loadCreator() IN creator.js
+        
+        // Parse ALL start params ONCE - Single Source of Truth
+        this.parseStartParams();
 
         this.init();
+    }
+    
+    // ------------------------------------------------------------------------
+    // START PARAM PARSER - SINGLE SOURCE OF TRUTH
+    // ------------------------------------------------------------------------
+    parseStartParams() {
+        this.botId = null;
+        this.startAction = null;
+        this.startPayload = null;
+        
+        const startParam = this.telegram.initDataUnsafe?.start_param;
+        
+        if (startParam) {
+            if (startParam.startsWith('creator_')) {
+                // Creator profile deep link
+                this.startAction = 'view_creator';
+                this.startPayload = startParam.replace('creator_', '');
+            }
+            
+            // BOT ID SELALU DIAMBIL DARI START_PARAM TERLEBIH DAHULU
+            // Jika start_param adalah deep link (creator_xxx), maka botId ditentukan oleh bot mana yang dipanggil
+            // Telegram akan selalu mengirim bot ID di tgWebAppBotId di initDataUnsafe
+            const botIdFromTg = this.telegram.initDataUnsafe?.bot_id;
+            if (botIdFromTg) {
+                this.botId = botIdFromTg;
+            } else {
+                // Fallback: jika bot_id tidak tersedia, start_param dianggap sebagai botId
+                if (!startParam.startsWith('creator_')) {
+                    this.botId = startParam;
+                }
+            }
+        }
+        
+        // Override botId from URL param - DEVELOPMENT/TESTING ONLY
+        // Di lingkungan produksi Telegram, botId SELALU berasal dari start_param
+        // Fallback ini hanya berguna untuk testing webapp secara langsung di browser
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('bot_id')) {
+            this.botId = urlParams.get('bot_id');
+            console.warn('[DEV] Bot ID diambil dari URL param - ini hanya untuk testing');
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -44,14 +87,16 @@ class App {
 
     async init() {
         if (!this.botId) {
-            // Check if URL has bot_id param (for local testing/direct webapp access without start_param)
-            const urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.has('bot_id')) {
-                this.botId = urlParams.get('bot_id');
-            } else {
-                document.getElementById('app').innerHTML = '<div class="card" style="margin: 20px;"><h3>Error</h3><p>Bot ID tidak ditemukan.</p></div>';
-                return;
-            }
+            document.getElementById('app').innerHTML = `
+                <div class="card" style="margin: 20px; text-align: center;">
+                    <h3>🚫 Akses Tidak Valid</h3>
+                    <p style="color: var(--hint-color); margin-top: 10px;">
+                        Aplikasi ini hanya dapat diakses melalui bot Telegram.<br>
+                        Silakan buka bot Telegram resmi untuk mengakses aplikasi ini.
+                    </p>
+                </div>
+            `;
+            return;
         }
 
         try {
@@ -64,19 +109,15 @@ class App {
             // Render main shell
             this.renderShell();
             
+            // Handle deep link actions first
+            if (this.startAction === 'view_creator') {
+                this.viewPublicCreatorProfile(this.startPayload);
+                return;
+            }
+            
             // Set initial page from URL param
             const urlParams = new URLSearchParams(window.location.search);
             const startPage = urlParams.get('page');
-            
-            // Handle Telegram deep links via start_param
-            const startParam = this.telegram.initDataUnsafe?.start_param;
-            if (startParam) {
-                if (startParam.startsWith('creator_')) {
-                    const creatorId = startParam.replace('creator_', '');
-                    this.viewPublicCreatorProfile(creatorId);
-                    return;
-                }
-            }
 
             if (startPage) {
                 this.loadPage(startPage);
@@ -115,9 +156,19 @@ class App {
 
     renderShell() {
         const adminTab = this.userData.is_admin ? 
-            `<button class="nav-btn admin-only" data-page="admin">
+            `<button class="nav-btn" data-page="admin">
                 <i data-lucide="shield-check"></i>
                 Admin
+            </button>` : '';
+        
+        const creatorTabs = this.userData.is_creator ? 
+            `<button class="nav-btn" data-page="contents">
+                <i data-lucide="layers"></i>
+                Konten
+            </button>
+            <button class="nav-btn" data-page="creator">
+                <i data-lucide="bar-chart-3"></i>
+                Statistik
             </button>` : '';
 
         const shellHtml = `
@@ -199,17 +250,10 @@ class App {
                     <i data-lucide="search"></i>
                     Cari
                 </button>
-                <button class="nav-btn creator-only" data-page="contents" style="display: none;">
-                    <i data-lucide="layers"></i>
-                    Konten
-                </button>
+                ${creatorTabs}
                 <button class="nav-btn" data-page="wallet">
                     <i data-lucide="wallet"></i>
                     Dompet
-                </button>
-                <button class="nav-btn creator-only" data-page="creator" style="display: none;">
-                    <i data-lucide="bar-chart-3"></i>
-                    Statistik
                 </button>
                 <button class="nav-btn" data-page="profile">
                     <i data-lucide="user"></i>
@@ -222,24 +266,6 @@ class App {
             <main class="app-content" id="pageContent">
                 <!-- Content injected here -->
             </main>
-                <div class="tab-item active" onclick="app.loadPage('dashboard')" id="tab-dashboard">
-                    <i data-lucide="layout-dashboard"></i>
-                    <span>Home</span>
-                </div>
-                <div class="tab-item" onclick="app.loadPage('explore')" id="tab-explore">
-                    <i data-lucide="compass"></i>
-                    <span>Explore</span>
-                </div>
-                <div class="tab-item" onclick="app.loadPage('wallet')" id="tab-wallet">
-                    <i data-lucide="wallet"></i>
-                    <span>Dompet</span>
-                </div>
-                <div class="tab-item" onclick="app.loadPage('creator')" id="tab-creator">
-                    <i data-lucide="award"></i>
-                    <span>Kreator</span>
-                </div>
-                ${adminTab}
-            </nav>
 
             <!-- Modals -->
             <div id="proofModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px;">
@@ -296,16 +322,6 @@ class App {
             }
         }
 
-        // Show admin buttons if admin
-        if (this.userData.is_admin) {
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
-        }
-
-        // Show creator buttons if creator
-        if (this.userData.is_creator) {
-            document.querySelectorAll('.creator-only').forEach(el => el.style.display = 'flex');
-        }
-
         // Initialize Lucide icons
         if (window.lucide) {
             window.lucide.createIcons();
@@ -338,6 +354,11 @@ class App {
     async loadPage(page, ...args) {
         this.currentPage = page;
         this.updateActiveTab(page);
+        
+        // Reset creator analytics state when navigating away from creator page
+        if (page !== 'creator') {
+            this._creatorAnalytics = null;
+        }
 
         const contentDiv = document.getElementById('pageContent');
         contentDiv.innerHTML = '<div style="text-align: center; margin-top: 40px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 15px; color: var(--hint-color);">Memuat halaman...</p></div>';
