@@ -23,21 +23,43 @@ class WebAppAuth
      */
     public static function authenticate(array $input): int
     {
-        if (!isset($input['initData'])) {
+        if (!isset($input['initData']) || !isset($input['botId'])) {
             throw new Exception('Authentication required');
         }
 
         $initData = $input['initData'];
+        $botId = (int)$input['botId'];
 
-        if (empty($initData)) {
-            throw new Exception('Authentication required');
+        // Get bot token for hash verification
+        $bot = DB::table('bots')->where('id', $botId)->first();
+        if (!$bot) {
+            throw new Exception('Bot tidak ditemukan.');
         }
 
-        // Parse init data to extract user
+        // Parse init data to extract user and hash
         parse_str($initData, $data);
-
-        if (!isset($data['user']) || !isset($data['auth_date'])) {
+        
+        if (!isset($data['hash']) || !isset($data['user']) || !isset($data['auth_date'])) {
             throw new Exception('Invalid authentication data');
+        }
+
+        // Verify Hash (Security)
+        $receivedHash = $data['hash'];
+        unset($data['hash']);
+        
+        $dataCheckArr = [];
+        foreach ($data as $key => $value) {
+            $dataCheckArr[] = "$key=$value";
+        }
+        sort($dataCheckArr);
+        $dataCheckString = implode("\n", $dataCheckArr);
+
+        $secretKey = hash_hmac('sha256', $bot->token, 'WebAppData', true);
+        $calculatedHash = hash_hmac('sha256', $dataCheckString, $secretKey);
+
+        if (!hash_equals($receivedHash, $calculatedHash)) {
+            // Logger::warning('WebApp Auth: Hash mismatch', ['received' => $receivedHash, 'calculated' => $calculatedHash]);
+            throw new Exception('Authentication failed: Data integrity check failed');
         }
 
         $telegramUser = json_decode($data['user'], true);

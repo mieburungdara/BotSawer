@@ -158,6 +158,11 @@ try {
         ->where('user_id', $userId)
         ->count();
 
+    // Get platform commission rate (default 10%)
+    $commissionRate = (float) DB::table('settings')
+        ->where('key', 'platform_commission')
+        ->value('value') ?: 10.00;
+
     echo json_encode([
         'success' => true,
         'data' => [
@@ -165,7 +170,8 @@ try {
             'total_deposit' => $wallet ? (int)$wallet->total_deposit : 0,
             'total_withdraw' => $wallet ? (int)$wallet->total_withdraw : 0,
             'total_donations' => $totalDonations,
-            'total_media' => $totalMedia
+            'total_media' => $totalMedia,
+            'commission_rate' => $commissionRate
         ]
     ]);
 

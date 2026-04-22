@@ -17,6 +17,10 @@ CREATE TABLE `users` (
   `first_name` VARCHAR(255) NULL,
   `last_name` VARCHAR(255) NULL,
   `username` VARCHAR(255) NULL UNIQUE KEY,
+  `display_name` VARCHAR(255) NULL,
+  `bio` TEXT NULL,
+  `bank_account` VARCHAR(255) NULL,
+  `is_verified` TINYINT(1) DEFAULT 0,
   `language_code` VARCHAR(10) DEFAULT 'id',
   `is_creator` TINYINT(1) DEFAULT 0,
   `is_banned` TINYINT(1) DEFAULT 0,
@@ -31,16 +35,7 @@ CREATE TABLE `users` (
 -- ✅ REDUNDANT FIELD DIHAPUS: total_earnings
 -- Hitung otomatis dari tabel transactions
 -- -----------------------------------------------------
-CREATE TABLE `creators` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `user_id` BIGINT UNSIGNED NOT NULL UNIQUE KEY,
-  `display_name` VARCHAR(255) NOT NULL,
-  `bio` TEXT NULL,
-  `bank_account` VARCHAR(255) NULL,
-  `is_verified` TINYINT(1) DEFAULT 0,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- creators table removed (unified into users)
 
 -- -----------------------------------------------------
 -- TABEL 3: media_files
@@ -53,7 +48,6 @@ CREATE TABLE `creators` (
 CREATE TABLE `media_files` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `bot_id` BIGINT UNSIGNED NULL,
-  `creator_id` BIGINT UNSIGNED NOT NULL,
   `user_id` BIGINT UNSIGNED NOT NULL,
   `telegram_file_id` VARCHAR(255) NOT NULL,
   `file_unique_id` VARCHAR(255) NOT NULL UNIQUE KEY,
@@ -66,9 +60,7 @@ CREATE TABLE `media_files` (
   `status` ENUM('queued','scheduled','posted','cancelled') DEFAULT 'queued',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`bot_id`) REFERENCES `bots`(`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`creator_id`) REFERENCES `creators`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  INDEX `idx_creator_active` (`creator_id`, `is_active`),
   INDEX `idx_status_scheduled` (`status`, `scheduled_at`),
   INDEX `idx_user_created` (`user_id`, `created_at`),
   INDEX `idx_media_group` (`media_group_id`),
@@ -141,7 +133,7 @@ CREATE TABLE `transactions` (
 -- -----------------------------------------------------
 CREATE TABLE `withdrawals` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `creator_id` BIGINT UNSIGNED NOT NULL,
+  `user_id` BIGINT UNSIGNED NOT NULL,
   `amount` DECIMAL(15,2) NOT NULL,
   `original_amount` DECIMAL(15,2) NOT NULL,
   `commission_rate` DECIMAL(5,2) DEFAULT 10.00,
@@ -152,9 +144,9 @@ CREATE TABLE `withdrawals` (
   `admin_note` TEXT NULL,
   `processed_at` TIMESTAMP NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`creator_id`) REFERENCES `creators`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`transaction_id`) REFERENCES `transactions`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  INDEX `idx_creator_status` (`creator_id`, `status`)
+  INDEX `idx_user_status` (`user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------

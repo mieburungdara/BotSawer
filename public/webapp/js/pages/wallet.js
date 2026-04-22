@@ -6,6 +6,9 @@ import { formatNumber } from '../utils.js';
 export async function loadWallet(app) {
     const walletData = await app.apiCall('wallet.php');
     const transactions = await app.apiCall('transactions.php');
+    
+    // Store commission rate in app for use in forms
+    app.platformCommission = walletData.commission_rate || 10;
 
     let tableRows = '';
     if (transactions && transactions.length > 0) {
@@ -71,7 +74,7 @@ export async function loadWallet(app) {
                 <div style="background: rgba(99, 102, 241, 0.05); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px dashed var(--primary);">
                     <div style="display: flex; gap: 10px; color: var(--primary);">
                         <i data-lucide="info" style="flex-shrink: 0;"></i>
-                        <p style="font-size: 13px; font-weight: 500;">Biaya komisi: <strong>10%</strong>.</p>
+                        <p style="font-size: 13px; font-weight: 500;">Biaya komisi: <strong>${app.platformCommission}%</strong>.</p>
                     </div>
                 </div>
                 <form id="withdrawForm">
@@ -140,7 +143,7 @@ export function setupWithdrawalForm(app) {
     if (withdrawAmount) {
         // Calculate commission in real-time
         withdrawAmount.addEventListener('input', () => {
-            calculateWithdrawalCommission();
+            calculateWithdrawalCommission(app);
         });
     }
 
@@ -186,18 +189,18 @@ export function setupWithdrawalForm(app) {
     }
 }
 
-export function calculateWithdrawalCommission() {
+export function calculateWithdrawalCommission(app) {
     const amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
     const breakdown = document.getElementById('commissionBreakdown');
     const details = document.getElementById('commissionDetails');
     const finalAmount = document.getElementById('finalAmount');
 
     if (amount >= 50000) {
-        const commissionRate = 10.00; // 10%
+        const commissionRate = app.platformCommission || 10.00;
         const commissionAmount = (amount * commissionRate) / 100;
         const receiveAmount = amount - commissionAmount;
 
-        details.innerHTML = 'Jumlah penarikan: Rp ' + formatNumber(amount) + '<br>Komisi platform (10%): Rp ' + formatNumber(commissionAmount);
+        details.innerHTML = `Jumlah penarikan: Rp ${formatNumber(amount)}<br>Komisi platform (${commissionRate}%): Rp ${formatNumber(commissionAmount)}`;
         finalAmount.innerHTML = '💰 Anda akan menerima: Rp ' + formatNumber(receiveAmount);
         breakdown.style.display = 'block';
     } else {

@@ -397,65 +397,7 @@ class Bot
         }
     }
 
-    private function handleRegisterCommand(int $chatId, int $userId, string $text): void
-    {
-        try {
-            // Check if already a creator
-            $existingCreator = Creator::getProfile($userId);
-            if ($existingCreator && $existingCreator->is_verified) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '✅ Anda sudah terdaftar sebagai kreator.'
-                ]);
-                return;
-            }
-
-            // Parse command: /register display_name
-            $parts = explode(' ', $text, 2);
-            if (count($parts) < 2 || empty(trim($parts[1]))) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '❌ Format: /register [nama tampilan Anda]'
-                ]);
-                return;
-            }
-
-            $displayName = trim($parts[1]);
-
-            if (strlen($displayName) < 3 || strlen($displayName) > 50) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '❌ Nama tampilan harus 3-50 karakter.'
-                ]);
-                return;
-            }
-
-            // Register creator
-            $success = Creator::register($userId, $displayName);
-
-            if ($success) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => "✅ Pendaftaran kreator berhasil!\n\n📝 Nama: {$displayName}\n⏳ Status: Menunggu verifikasi admin\n\nKirim foto/video untuk mulai upload konten."
-                ]);
-            } else {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '❌ Gagal mendaftar sebagai kreator.'
-                ]);
-            }
-        } catch (Exception $e) {
-            Logger::error('Creator registration command failed', [
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Terjadi kesalahan saat pendaftaran.'
-            ]);
-        }
-    }
+    // Removed handleRegisterCommand (using auto-registration)
 
 
 
@@ -888,172 +830,99 @@ class Bot
     {
         $parts = explode('_', $data);
         if (count($parts) < 3) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Callback data tidak valid.'
-            ]);
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => '❌ Callback data tidak valid.']);
             return;
         }
         $amount = (int)$parts[1];
         $mediaId = (int)$parts[2];
 
-        if ($amount <= 0) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Jumlah donasi tidak valid.'
-            ]);
-            return;
-        }
-
-        try {
-            $balance = Wallet::getBalance($userId);
-            if ($balance < $amount) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => "⚠️ Saldo tidak cukup. Saldo Anda: Rp " . number_format($balance, 0, ',', '.')
-                ]);
-                return;
-            }
-
-            // Process donation transaction
-            $media = DB::table('media_files')
-                ->where('id', $mediaId)
-                ->first();
-
-            if ($media) {
-                Database::transaction(function () use ($userId, $media, $amount, $mediaId) {
-                    // Use Wallet methods for consistent balance management and logging
-                    Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
-                    Wallet::addBalance($media->user_id, $amount, 'Donasi dari sawer');
-
-                    // Additional transaction record for media-specific tracking
-                    DB::table('transactions')->insert([
-                        'user_id' => $media->user_id,
-                        'media_id' => $mediaId,
-                        'from_user_id' => $userId,
-                        'type' => 'donation',
-                        'amount' => $amount,
-                        'status' => 'success',
-                        'description' => 'Donasi dari sawer'
-                    ]);
-                });
-
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => "✅ Terima kasih atas donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\nDonasi telah diteruskan ke kreator."
-                ]);
-
-                // Fetch donor info for notification
-                $donor = DB::table('users')->where('id', $userId)->first();
-                $donorName = ($donor && !$donor->is_private) ? trim(($donor->first_name ?? '') . ' ' . ($donor->last_name ?? '')) : 'Anonymous';
-
-                // Send push notifications
-                NotificationManager::notifyDonor($userId, (int)$amount);
-                NotificationManager::notifyCreatorDonation((int)$media->user_id, (int)$amount, (int)$mediaId, $donorName, 'Donasi dari sawer');
-            } else {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '❌ Media tidak ditemukan.'
-                ]);
-            }
-        } catch (Exception $e) {
-            Logger::error('Error processing sawer', [
-                'user_id' => $userId,
-                'amount' => $amount,
-                'media_id' => $mediaId,
-                'error' => $e->getMessage()
-            ]);
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => 'Terjadi kesalahan saat memproses donasi.'
-            ]);
-        }
+        $this->processDonation($chatId, $userId, $amount, $mediaId);
     }
 
     private function handleSawerAlbumCallback(string $data, int $chatId, int $userId): void
     {
         $parts = explode('_', $data);
         if (count($parts) < 4) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Callback data tidak valid.'
-            ]);
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => '❌ Callback data tidak valid.']);
             return;
         }
         $amount = (int)$parts[2];
         $groupId = $parts[3];
 
+        $media = DB::table('media_files')->where('media_group_id', $groupId)->first();
+        if (!$media) {
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => '❌ Album tidak ditemukan.']);
+            return;
+        }
+
+        $this->processDonation($chatId, $userId, $amount, (int)$media->id, 'album');
+    }
+
+    private function processDonation(int $chatId, int $userId, int $amount, int $mediaId, string $context = 'media'): void
+    {
         if ($amount <= 0) {
-            $this->telegram->sendMessage([
-                'chat_id' => $chatId,
-                'text' => '❌ Jumlah donasi tidak valid.'
-            ]);
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => '❌ Jumlah donasi tidak valid.']);
             return;
         }
 
         try {
-            $balance = Wallet::getBalance($userId);
-            if ($balance < $amount) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => "⚠️ Saldo tidak cukup. Saldo Anda: Rp " . number_format($balance, 0, ',', '.')
-                ]);
+            if (!$this->checkBalanceAndNotify($userId, $amount, $chatId)) {
                 return;
             }
 
-            // Get first media in album for creator info
-            $media = DB::table('media_files')
-                ->where('media_group_id', $groupId)
-                ->first();
-
-            if ($media) {
-                Database::transaction(function () use ($userId, $media, $amount, $groupId) {
-                    // Use Wallet methods for consistent balance management and logging
-                    Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
-                    Wallet::addBalance($media->user_id, $amount, 'Donasi dari sawer');
-
-                    // Additional transaction record for album-specific tracking
-                    DB::table('transactions')->insert([
-                        'user_id' => $media->user_id,
-                        'media_id' => $media->id, // Use first media ID
-                        'from_user_id' => $userId,
-                        'type' => 'donation',
-                        'amount' => $amount,
-                        'status' => 'success',
-                        'description' => 'Donasi dari sawer album'
-                    ]);
-                });
-
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => "✅ Terima kasih atas donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\nDonasi telah diteruskan ke kreator."
-                ]);
-
-                // Fetch donor info for notification
-                $donor = DB::table('users')->where('id', $userId)->first();
-                $donorName = ($donor && !$donor->is_private) ? trim(($donor->first_name ?? '') . ' ' . ($donor->last_name ?? '')) : 'Anonymous';
-
-                // Send push notifications
-                NotificationManager::notifyDonor($userId, (int)$amount);
-                NotificationManager::notifyCreatorDonation((int)$media->user_id, (int)$amount, (int)$media->id, $donorName, 'Donasi dari sawer album');
-            } else {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '❌ Album tidak ditemukan.'
-                ]);
+            $media = DB::table('media_files')->where('id', $mediaId)->first();
+            if (!$media) {
+                $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => '❌ Media tidak ditemukan.']);
+                return;
             }
-        } catch (Exception $e) {
-            Logger::error('Error processing album sawer', [
-                'user_id' => $userId,
-                'amount' => $amount,
-                'group_id' => $groupId,
-                'error' => $e->getMessage()
-            ]);
+
+            Database::transaction(function () use ($userId, $media, $amount) {
+                Wallet::deductBalance($userId, $amount, 'Donasi ke kreator');
+                Wallet::addBalance($media->user_id, $amount, 'Donasi dari sawer');
+
+                DB::table('transactions')->insert([
+                    'user_id' => $media->user_id,
+                    'media_id' => $media->id,
+                    'from_user_id' => $userId,
+                    'type' => 'donation',
+                    'amount' => $amount,
+                    'status' => 'success',
+                    'description' => 'Donasi dari sawer' . ($context === 'album' ? ' album' : '')
+                ]);
+            });
+
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => 'Terjadi kesalahan saat memproses donasi.'
+                'text' => "✅ Terima kasih atas donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\nDonasi telah diteruskan ke kreator."
             ]);
+
+            $donor = DB::table('users')->where('id', $userId)->first();
+            $donorName = ($donor && !$donor->is_private) ? trim(($donor->first_name ?? '') . ' ' . ($donor->last_name ?? '')) : 'Anonymous';
+
+            NotificationManager::notifyDonor($userId, $amount);
+            NotificationManager::notifyCreatorDonation((int)$media->user_id, $amount, $media->id, $donorName, 'Donasi dari sawer' . ($context === 'album' ? ' album' : ''));
+
+        } catch (Exception $e) {
+            Logger::error('Error processing donation', ['user_id' => $userId, 'amount' => $amount, 'media_id' => $mediaId, 'error' => $e->getMessage()]);
+            $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => 'Terjadi kesalahan saat memproses donasi.']);
         }
+    }
+
+    private function checkBalanceAndNotify(int $userId, int $amount, int $chatId): bool
+    {
+        $balance = Wallet::getBalance($userId);
+        if ($balance < $amount) {
+            $text = ($balance <= 0) 
+                ? "⚠️ Saldo anda saat ini adalah Rp 0\n💡 Untuk melakukan sawer silahkan lakukan topup terlebih dahulu\n👉 Kirim perintah /topup untuk mengisi saldo"
+                : "⚠️ Saldo tidak cukup. Saldo Anda: Rp " . number_format($balance, 0, ',', '.');
+            
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => $text
+            ]);
+            return false;
+        }
+        return true;
     }
 
     public function postApprovedContentToChannel(int $mediaId, string $channelId): void

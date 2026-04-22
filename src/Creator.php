@@ -9,6 +9,9 @@ use Exception;
 
 class Creator
 {
+    /**
+     * Register a new creator (Set is_creator flag and update profile)
+     */
     public static function register(int $userId, string $displayName, ?string $bio = null, ?string $bankAccount = null): bool
     {
         try {
@@ -18,11 +21,11 @@ class Creator
                 throw new Exception('User not found');
             }
 
-            // Since creators table is merged, we just update the user profile
             DB::table('users')->where('id', $userId)->update([
                 'display_name' => $displayName,
                 'bio' => $bio,
                 'bank_account' => $bankAccount,
+                'is_creator' => 1,
                 'is_verified' => 0
             ]);
 
@@ -81,11 +84,6 @@ class Creator
     public static function getProfile(int $userId): ?object
     {
         return DB::table('users')->where('id', $userId)->first();
-    }
-
-    public static function getById(int $creatorId): ?object
-    {
-        return DB::table('users')->where('id', $creatorId)->first();
     }
 
     public static function verifyCreator(int $creatorId, bool $verified = true): bool
@@ -369,24 +367,6 @@ class Creator
         $progress = min(($currentStreak / $nextMilestone) * 100, 100);
         $progressText = "{$currentStreak}/{$nextMilestone} hari";
 
-        // Generate HTML progress bar
-        $milestoneText = $nextMilestone === 7 ? '7 Hari' : ($nextMilestone === 14 ? '14 Hari' : '30 Hari');
-        $progressBarHtml = '
-        <div class="streak-progress">
-            <div class="streak-label">Progress ke ' . $milestoneText . ' Streak</div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ' . round($progress, 1) . '%"></div>
-            </div>
-            <div class="progress-text">' . $progressText . ' (' . round($progress, 1) . '%)</div>
-        </div>
-        <style>
-        .streak-progress { margin: 15px 0; }
-        .streak-label { font-weight: bold; margin-bottom: 5px; color: #333; }
-        .progress-bar { background: #eee; height: 20px; border-radius: 10px; overflow: hidden; }
-        .progress-fill { background: linear-gradient(90deg, #ff6b6b, #4ecdc4); height: 100%; transition: width 0.3s ease; }
-        .progress-text { margin-top: 5px; font-size: 14px; color: #666; }
-        </style>';
-
         return [
             'current_streak' => $currentStreak,
             'max_streak' => $maxStreak,
@@ -396,8 +376,7 @@ class Creator
                 'current' => $currentStreak,
                 'target' => $nextMilestone,
                 'percentage' => round($progress, 1),
-                'text' => $progressText,
-                'html' => $progressBarHtml
+                'text' => $progressText
             ]
         ];
     }
