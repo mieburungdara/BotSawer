@@ -256,12 +256,8 @@ class App {
             </div>
         `;
 
+        // ✅ MASUKKAN HTML KE DOM TERLEBIH DAHULU SEBELUM MODIFIKASI APAPUN
         document.getElementById('app').innerHTML = shellHtml;
-        
-        // Initialize Lucide icons for static elements (nav)
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
 
         // Dynamic greeting based on time of day
         const hour = new Date().getHours();
@@ -271,27 +267,33 @@ class App {
         else if (hour >= 12 && hour < 15) { greetText = 'Selamat siang'; greetEmoji = '🌤️'; }
         else if (hour >= 15 && hour < 18) { greetText = 'Selamat sore'; greetEmoji = '🌅'; }
         else if (hour >= 18 || hour < 5) { greetText = 'Selamat malam'; greetEmoji = '🌙'; }
-        document.getElementById('greetingText').textContent = `${greetText} ${greetEmoji}`;
+        
+        const greetingEl = document.getElementById('greetingText');
+        if (greetingEl) {
+            greetingEl.textContent = `${greetText} ${greetEmoji}`;
+        }
 
         // Generate Avatar Initials or Photo
         const avatarEl = document.getElementById('userAvatar');
-        if (this.userData.photo_url) {
+        if (avatarEl && this.userData.photo_url) {
             avatarEl.innerHTML = `<img src="${this.userData.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
             avatarEl.style.fontSize = '0';
         }
 
         // Render Badges
         const badgeContainer = document.getElementById('userBadge');
-        badgeContainer.innerHTML = ''; // Clear
+        if (badgeContainer) {
+            badgeContainer.innerHTML = ''; // Clear
 
-        if (this.userData.has_posted) {
-            badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>';
-        }
-        if (this.userData.has_donated) {
-            badgeContainer.innerHTML += '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>';
-        }
-        if (this.userData.is_admin) {
-            badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
+            if (this.userData.has_posted) {
+                badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>';
+            }
+            if (this.userData.has_donated) {
+                badgeContainer.innerHTML += '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>';
+            }
+            if (this.userData.is_admin) {
+                badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
+            }
         }
 
         // Show admin buttons if admin
@@ -314,7 +316,10 @@ class App {
         try {
             const data = await this.apiCall('profile.php');
             this.userData = data;
-            document.getElementById('headerBalance').textContent = this.formatCompactNumber(data.balance);
+            const balanceEl = document.getElementById('h-balance');
+            if (balanceEl) {
+                balanceEl.textContent = 'Rp ' + this.formatCompactNumber(data.balance);
+            }
         } catch (e) {
             console.error('Failed to update stats:', e);
         }
