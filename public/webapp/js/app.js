@@ -115,38 +115,113 @@ class App {
 
     renderShell() {
         const adminTab = this.userData.is_admin ? 
-            `<div class="tab-item" onclick="app.loadPage('admin')" id="tab-admin">
-                <i data-lucide="shield"></i>
-                <span>Admin</span>
-            </div>` : '';
+            `<button class="nav-btn admin-only" data-page="admin">
+                <i data-lucide="shield-check"></i>
+                Admin
+            </button>` : '';
 
         const shellHtml = `
             <!-- Header -->
-            <header class="header">
-                <div class="user-info">
-                    <div class="avatar ${this.userData.is_verified ? 'verified' : ''}" onclick="app.loadPage('profile')" ${this.userData.photo_url ? 'style="font-size: 0;"' : ''}>
-                        ${this.userData.photo_url 
-                            ? `<img src="${this.userData.photo_url}" alt="Avatar">` 
-                            : (this.userData.name || 'U').charAt(0).toUpperCase()}
-                        ${this.userData.is_verified ? '<div class="verified-tick"><i data-lucide="check" style="width:8px;height:8px;color:white"></i></div>' : ''}
+            <header class="app-header">
+                <!-- Animated mesh background -->
+                <div class="header-mesh"></div>
+                <div class="header-particles">
+                    <div class="particle"></div>
+                    <div class="particle"></div>
+                    <div class="particle"></div>
+                    <div class="particle"></div>
+                    <div class="particle"></div>
+                </div>
+
+                <div class="header-top-bar">
+                    <div class="brand">
+                        <div class="brand-icon">
+                            <i data-lucide="zap"></i>
+                        </div>
+                        <h1>Bot Sawer</h1>
                     </div>
-                    <div>
-                        <div style="font-weight: 600;">${this.userData.name}</div>
-                        <div style="font-size: 12px; color: var(--hint-color);">@${this.userData.username || 'user'}</div>
+                    <div class="header-actions">
+                        <button class="header-icon-btn" onclick="app.loadPage('profile')" title="Profil">
+                            <i data-lucide="settings"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="balance-badge" onclick="app.loadPage('wallet')">
-                    Rp <span id="headerBalance">${this.formatCompactNumber(this.userData.balance)}</span>
+
+                <div class="header-profile-section">
+                    <div class="header-avatar-ring">
+                        <div class="avatar-circle ${this.userData.is_verified ? 'verified' : ''}" onclick="app.loadPage('profile')" ${this.userData.photo_url ? 'style="font-size: 0;"' : ''}>
+                            ${this.userData.photo_url 
+                                ? `<img src="${this.userData.photo_url}" alt="Avatar">` 
+                                : (this.userData.name || 'U').charAt(0).toUpperCase()}
+                            ${this.userData.is_verified ? '<div class="verified-tick"><i data-lucide="check" style="width:8px;height:8px;color:white"></i></div>' : ''}
+                        </div>
+                        <div class="avatar-status-dot"></div>
+                    </div>
+                    <div class="header-greeting">
+                        <span class="greeting-label" id="greetingText">Selamat datang 👋</span>
+                        <span id="userName" class="name-display">${this.userData.name}</span>
+                        <div id="userBadge" class="badge-container"></div>
+                    </div>
+                </div>
+
+                <div class="header-balance-card">
+                    <div class="balance-card-bg"></div>
+                    <div class="balance-card-content">
+                        <div class="balance-left">
+                            <div class="balance-icon-wrap">
+                                <i data-lucide="wallet"></i>
+                            </div>
+                            <div class="balance-info">
+                                <span class="balance-label">Saldo Tersedia</span>
+                                <span id="h-balance" class="balance-value">Rp ${this.formatCompactNumber(this.userData.balance)}</span>
+                            </div>
+                        </div>
+                        <button class="balance-topup-btn" onclick="app.loadPage('wallet')">
+                            <i data-lucide="plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Wave cut bottom -->
+                <div class="header-wave">
+                    <svg viewBox="0 0 1440 60" preserveAspectRatio="none">
+                        <path d="M0,0 C360,60 1080,0 1440,50 L1440,60 L0,60 Z" fill="var(--secondary-bg-color)"/>
+                    </svg>
                 </div>
             </header>
 
+            <nav class="app-nav">
+                <button class="nav-btn active" data-page="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    Dashboard
+                </button>
+                <button class="nav-btn" data-page="explore">
+                    <i data-lucide="search"></i>
+                    Cari
+                </button>
+                <button class="nav-btn creator-only" data-page="contents" style="display: none;">
+                    <i data-lucide="layers"></i>
+                    Konten
+                </button>
+                <button class="nav-btn" data-page="wallet">
+                    <i data-lucide="wallet"></i>
+                    Dompet
+                </button>
+                <button class="nav-btn creator-only" data-page="creator" style="display: none;">
+                    <i data-lucide="bar-chart-3"></i>
+                    Statistik
+                </button>
+                <button class="nav-btn" data-page="profile">
+                    <i data-lucide="user"></i>
+                    Profil
+                </button>
+                ${adminTab}
+            </nav>
+
             <!-- Main Content Area -->
-            <main class="content-area" id="pageContent">
+            <main class="app-content" id="pageContent">
                 <!-- Content injected here -->
             </main>
-
-            <!-- Bottom Navigation Tab Bar -->
-            <nav class="tab-bar">
                 <div class="tab-item active" onclick="app.loadPage('dashboard')" id="tab-dashboard">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Home</span>
@@ -182,7 +257,57 @@ class App {
         `;
 
         document.getElementById('app').innerHTML = shellHtml;
-        if (window.lucide) window.lucide.createIcons();
+        
+        // Initialize Lucide icons for static elements (nav)
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
+        // Dynamic greeting based on time of day
+        const hour = new Date().getHours();
+        let greetEmoji = '👋';
+        let greetText = 'Selamat datang';
+        if (hour >= 5 && hour < 12) { greetText = 'Selamat pagi'; greetEmoji = '☀️'; }
+        else if (hour >= 12 && hour < 15) { greetText = 'Selamat siang'; greetEmoji = '🌤️'; }
+        else if (hour >= 15 && hour < 18) { greetText = 'Selamat sore'; greetEmoji = '🌅'; }
+        else if (hour >= 18 || hour < 5) { greetText = 'Selamat malam'; greetEmoji = '🌙'; }
+        document.getElementById('greetingText').textContent = `${greetText} ${greetEmoji}`;
+
+        // Generate Avatar Initials or Photo
+        const avatarEl = document.getElementById('userAvatar');
+        if (this.userData.photo_url) {
+            avatarEl.innerHTML = `<img src="${this.userData.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            avatarEl.style.fontSize = '0';
+        }
+
+        // Render Badges
+        const badgeContainer = document.getElementById('userBadge');
+        badgeContainer.innerHTML = ''; // Clear
+
+        if (this.userData.has_posted) {
+            badgeContainer.innerHTML += '<span class="status-badge creator"><i data-lucide="award"></i> Kreator</span>';
+        }
+        if (this.userData.has_donated) {
+            badgeContainer.innerHTML += '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>';
+        }
+        if (this.userData.is_admin) {
+            badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
+        }
+
+        // Show admin buttons if admin
+        if (this.userData.is_admin) {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
+        }
+
+        // Show creator buttons if creator
+        if (this.userData.is_creator) {
+            document.querySelectorAll('.creator-only').forEach(el => el.style.display = 'flex');
+        }
+
+        // Initialize Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
     }
 
     async updateHeaderStats() {
@@ -196,9 +321,9 @@ class App {
     }
 
     updateActiveTab(page) {
-        document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-        const activeTab = document.getElementById(`tab-${page}`);
-        if (activeTab) activeTab.classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.page === page);
+        });
     }
 
     // ------------------------------------------------------------------------
@@ -256,6 +381,14 @@ class App {
     }
 
     setupPageHandlers(page) {
+        // Setup navigation click handlers
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                this.loadPage(page);
+            });
+        });
+
         if (page === 'wallet') {
             setupTopupForm(this);
             setupWithdrawalForm(this);
