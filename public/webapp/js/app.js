@@ -215,7 +215,7 @@ class App {
                             </div>
                             <div class="balance-info">
                                 <span class="balance-label">Saldo Tersedia</span>
-                                <span id="h-balance" class="balance-value">Rp ${this.formatCompactNumber(this.userData.balance)}</span>
+                                <span id="h-balance" class="balance-value">Rp ${formatCompactNumber(this.userData.balance)}</span>
                             </div>
                         </div>
                         <button class="balance-topup-btn" onclick="app.loadPage('wallet')">
@@ -327,7 +327,7 @@ class App {
             this.userData = data;
             const balanceEl = document.getElementById('h-balance');
             if (balanceEl) {
-                balanceEl.textContent = 'Rp ' + this.formatCompactNumber(data.balance);
+                balanceEl.textContent = 'Rp ' + formatCompactNumber(data.balance);
             }
         } catch (e) {
             console.error('Failed to update stats:', e);
