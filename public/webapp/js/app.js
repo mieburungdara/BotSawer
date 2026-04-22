@@ -184,7 +184,7 @@ class App {
                     </div>
                     <div class="header-actions">
                         <button class="header-icon-btn" onclick="app.loadPage('profile')" title="Profil">
-                            <i data-lucide="settings"></i>
+                            <i data-lucide="user"></i>
                         </button>
                     </div>
                 </div>
@@ -245,10 +245,6 @@ class App {
                 <button class="nav-btn" data-page="wallet">
                     <i data-lucide="wallet"></i>
                     Dompet
-                </button>
-                <button class="nav-btn" data-page="profile">
-                    <i data-lucide="user"></i>
-                    Profil
                 </button>
                 ${adminTab}
             </nav>
