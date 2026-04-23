@@ -625,7 +625,7 @@ class Bot
         return null;
     }
 
-    private function saveMediaToDatabase(int $botId, int $userId, array $mediaInfo): array
+    private function saveMediaToDatabase($botId, $userId, array $mediaInfo): array
     {
         $shortId = $this->generateUniqueShortId();
         $id = DB::table('media_files')->insertGetId([
