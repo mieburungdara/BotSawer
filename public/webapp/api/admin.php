@@ -70,8 +70,8 @@ try {
                 'total_balance' => DB::table('wallets')->sum('balance'),
                 'pending_topups' => DB::table('transactions')->where('type', 'topup')->where('status', 'pending')->count(),
                 'pending_withdrawals' => DB::table('withdrawals')->where('status', 'pending')->count(),
-                'pending_content' => DB::table('media_files')->where('status', 'pending')->count(),
-                'approved_today' => DB::table('media_files')->where('status', 'approved')->whereDate('updated_at', date('Y-m-d'))->count()
+                'pending_content' => DB::table('media_files')->where('status', 'queued')->count(),
+                'approved_today' => DB::table('media_files')->whereIn('status', ['scheduled', 'posted'])->whereDate('created_at', date('Y-m-d'))->count()
             ];
             
             $response = $stats;
@@ -108,7 +108,7 @@ try {
                     'setting_description' => $oldSetting ? $oldSetting->description : 'Unknown',
                     'admin_role' => $admin->role,
                     'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
-                ], $user->telegram_id);
+                ], $userId);
 
             $response = ['message' => 'Setting updated successfully'];
             break;
@@ -275,8 +275,8 @@ try {
                         ->where('id', $input['payment_id'])
                         ->update([
                             'status' => 'approved',
-                            'approved_by' => $userId,
-                            
+                            'admin_id' => $userId,
+                            'processed_at' => \Carbon\Carbon::now()
                         ]);
 
                     // Add balance to user
@@ -313,9 +313,8 @@ try {
                     DB::table('withdrawals')
                         ->where('id', $input['payment_id'])
                         ->update([
-                            'status' => 'approved',
-                            'approved_by' => $userId,
-
+                            'status' => 'completed',
+                            'processed_at' => \Carbon\Carbon::now()
                         ]);
 
                     // Update transaction status
@@ -364,9 +363,9 @@ try {
                         ->where('id', $input['payment_id'])
                         ->update([
                             'status' => 'rejected',
-                            'notes' => $reason,
-                            'approved_by' => $userId,
-
+                            'admin_note' => $reason,
+                            'admin_id' => $userId,
+                            'processed_at' => \Carbon\Carbon::now()
                         ]);
 
                     \BotSawer\AuditLogger::logAdminAction('reject_topup', [
@@ -389,9 +388,8 @@ try {
                         ->where('id', $input['payment_id'])
                         ->update([
                             'status' => 'rejected',
-                            'notes' => $reason,
-                            'approved_by' => $userId,
-                            
+                            'admin_note' => $reason,
+                            'processed_at' => \Carbon\Carbon::now()
                         ]);
 
                     \BotSawer\AuditLogger::logAdminAction('reject_withdrawal', [
@@ -484,7 +482,7 @@ try {
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'scheduled',
-                    'approved_by' => $userId
+                    'scheduled_at' => \Carbon\Carbon::now()
                 ]);
 
             \BotSawer\AuditLogger::logAdminAction('approve_content', [
@@ -519,9 +517,7 @@ try {
                 ->where('id', $input['content_id'])
                 ->update([
                     'status' => 'rejected',
-                    'notes' => $reason,
-                    'approved_by' => $userId,
-                    
+                    'notes' => $reason
                 ]);
 
             \BotSawer\AuditLogger::logAdminAction('reject_content', [
@@ -900,6 +896,6 @@ try {
     Logger::error('Admin API error', ['error' => $e->getMessage()]);
     echo json_encode([
         'success' => false,
-        'message' => 'Admin operation failed'
+        'message' => $e->getMessage()
     ]);
 }
