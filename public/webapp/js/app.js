@@ -14,6 +14,9 @@ import { loadInfo } from './pages/info.js';
 import { loadHelp } from './pages/help.js';
 import { loadBlog } from './pages/blog.js';
 import { loadFaq } from './pages/faq.js';
+import { loadBotsPage } from './pages/bots.js';
+import { loadChannelsPage } from './pages/channels.js';
+import { loadGroupsPage } from './pages/groups.js';
 import { 
     loadAdmin, searchUsers, toggleUserBan, adjustUserBalance, loadAuditLogs, loadBots, addBot, toggleBot,
     loadAdmins, addAdmin, deactivateAdmin, loadPendingPayments, approvePayment, rejectPayment, viewPaymentProof,
@@ -334,6 +337,17 @@ class App {
                             <i data-lucide="book-open"></i> Blog & Berita
                         </a>
 
+                        <div class="menu-section">EKOSISTEM</div>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('bots'); app.toggleSidebar();">
+                            <i data-lucide="bot"></i> Daftar Bot
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('channels'); app.toggleSidebar();">
+                            <i data-lucide="megaphone"></i> Channel Pilihan
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('groups'); app.toggleSidebar();">
+                            <i data-lucide="users"></i> Grup Komunitas
+                        </a>
+
                         ${this.userData.is_admin ? `
                         <div class="menu-section admin-section">ADMINISTRATOR</div>
                         <a href="javascript:void(0)" class="menu-item admin-item" onclick="app.loadPage('admin'); app.toggleSidebar();">
@@ -489,6 +503,15 @@ class App {
                     break;
                 case 'faq':
                     html = await loadFaq(this);
+                    break;
+                case 'bots':
+                    html = await loadBotsPage(this);
+                    break;
+                case 'channels':
+                    html = await loadChannelsPage(this);
+                    break;
+                case 'groups':
+                    html = await loadGroupsPage(this);
                     break;
                 default:
                     html = `<div class="card"><h3>Halaman tidak ditemukan</h3></div>`;
