@@ -13,6 +13,7 @@ class Bot
 {
     private Api $telegram;
     private int $botId;
+    private $botData;
 
     public function __construct(int $botId = 1)
     {
@@ -33,6 +34,7 @@ class Bot
                 throw new Exception("Bot with ID {$this->botId} not found or inactive");
             }
 
+            $this->botData = $bot;
             $this->telegram = new Api($bot->token);
             Logger::info('Bot initialized successfully', ['bot_id' => $this->botId, 'username' => $bot->username]);
         } catch (Exception $e) {
@@ -474,8 +476,10 @@ class Bot
                 return;
             }
 
-            // Save to database
-            $mediaId = $this->saveMediaToDatabase($this->botId, $userId, $mediaInfo);
+            // Save to database as DRAFT
+            $mediaData = $this->saveMediaToDatabase($this->botId, $userId, $mediaInfo);
+            $mediaId = $mediaData['id'];
+            $shortId = $mediaData['short_id'];
 
             // Check and notify streak milestones
             $streakData = Creator::getStreakData((int)$userId);
@@ -485,8 +489,8 @@ class Bot
             // Forward to backup channel with metadata
             $this->forwardToBackupChannel($mediaId, $userId, $mediaInfo);
 
-            // Add to posting queue
-            $this->addToPostingQueue($mediaId);
+            // Do NOT add to posting queue yet - user needs to confirm in webapp
+            // $this->addToPostingQueue($mediaId);
 
             // Get queue information
             $queueInfo = $this->getQueueInfo($mediaId);
@@ -495,20 +499,19 @@ class Bot
             $keyboard = [
                 'inline_keyboard' => [
                     [
-                        ['text' => '❌ Batal Upload', 'callback_data' => 'cancel_media_' . $mediaId]
+                        ['text' => '⚙️ Lengkapi & Konfirmasi', 'url' => "https://t.me/{$this->botData->username}/webapp?startapp=content_{$shortId}"]
                     ]
                 ]
             ];
 
-            $message = "✅ Media diterima dan masuk antrian posting!\n\n";
-            $message .= "🆔 ID Media: #{$mediaId}\n";
+            $message = "📸 Media Berhasil Diunggah!\n\n";
+            $message .= "🆔 Content ID: #{$shortId}\n";
             $message .= "📎 Jenis: {$mediaInfo['type']}\n";
             if ($mediaInfo['media_group_id']) {
                 $message .= "📚 Album: Ya\n";
             }
-            $message .= "📊 Antrian: #{$queueInfo['position']}\n";
-            $message .= "⏰ Estimasi Post: {$queueInfo['estimated_time']}\n\n";
-            $message .= "💡 Gunakan tombol di bawah untuk membatalkan jika berubah pikiran.";
+            $message .= "\n⚠️ *Status: Draft*\n";
+            $message .= "Silakan klik tombol di bawah untuk melengkapi caption dan mengonfirmasi agar konten masuk ke antrean posting.";
 
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
@@ -578,18 +581,46 @@ class Bot
         return null;
     }
 
-    private function saveMediaToDatabase(int $botId, int $userId, array $mediaInfo): int
+    private function saveMediaToDatabase(int $botId, int $userId, array $mediaInfo): array
     {
-        return DB::table('media_files')->insertGetId([
+        $shortId = $this->generateUniqueShortId();
+        $id = DB::table('media_files')->insertGetId([
             'bot_id' => $botId,
             'user_id' => $userId,
+            'short_id' => $shortId,
             'telegram_file_id' => $mediaInfo['file_id'],
             'file_unique_id' => $mediaInfo['file_unique_id'],
             'file_type' => $mediaInfo['type'],
             'caption' => $mediaInfo['caption'],
             'media_group_id' => $mediaInfo['media_group_id'],
-            'status' => 'queued'
+            'status' => 'draft'
         ]);
+
+        return ['id' => $id, 'short_id' => $shortId];
+    }
+
+    private function generateUniqueShortId(int $length = 5): string
+    {
+        $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $maxAttempts = 100;
+        
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+            $id = '';
+            for ($i = 0; $i < $length; $i++) {
+                $id .= $chars[rand(0, strlen($chars) - 1)];
+            }
+            
+            $exists = DB::table('media_files')->where('short_id', $id)->exists();
+            if (!$exists) {
+                return $id;
+            }
+            
+            if ($attempt > 20) {
+                $length++;
+            }
+        }
+        
+        return uniqid();
     }
 
     private function forwardToBackupChannel(int $mediaId, int $userId, array $mediaInfo): void

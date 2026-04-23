@@ -3,7 +3,7 @@ import { formatNumber } from '../utils.js';
 /**
  * Contents Page Module
  */
-export async function loadContents(app, page = 1) {
+export async function loadContents(app, page = 1, highlightId = null) {
     if (!app.userData.is_creator) {
         return '<div class="card"><h3>Akses Ditolak</h3></div>';
     }
@@ -14,12 +14,14 @@ export async function loadContents(app, page = 1) {
 
     let tableRows = '';
     if (contents.length > 0) {
-        contents.forEach(item => {
+            const isHighlighted = highlightId && item.short_id == highlightId;
             tableRows += `
-                <tr>
+                <tr ${isHighlighted ? 'class="highlight-row" id="media-' + item.short_id + '"' : ''} 
+                    data-status="${item.status}" data-caption="${item.caption || ''}">
                     <td>
-                        <div style="font-weight: 600;">Media #${item.id}</div>
+                        <div style="font-weight: 600;">Media #${item.short_id}</div>
                         <div style="font-size: 11px; color: var(--hint-color);">${new Date(item.created_at).toLocaleDateString('id-ID')}</div>
+                        ${item.status === 'draft' ? '<span class="status-badge" style="background:rgba(244,63,94,0.1);color:var(--accent);padding:2px 6px;font-size:10px;">DRAFT</span>' : ''}
                     </td>
                     <td>${item.file_type}</td>
                     <td style="text-align: right;">
@@ -82,6 +84,14 @@ export async function loadContents(app, page = 1) {
     if (app.currentPage === 'contents') {
         document.getElementById('pageContent').innerHTML = html;
         if (window.lucide) window.lucide.createIcons();
+        
+        // Scroll to highlighted row if exists
+        if (highlightId) {
+            const el = document.getElementById(`media-${highlightId}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     }
     return html;
 }

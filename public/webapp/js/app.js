@@ -56,6 +56,10 @@ class App {
                 // Creator profile deep link
                 this.startAction = 'view_creator';
                 this.startPayload = startParam.replace('creator_', '');
+            } else if (startParam.startsWith('content_')) {
+                // Content detail/manage deep link
+                this.startAction = 'view_content';
+                this.startPayload = startParam.replace('content_', '');
             }
             
             // BOT ID SELALU DIAMBIL DARI START_PARAM TERLEBIH DAHULU
@@ -123,6 +127,12 @@ class App {
                 this.currentPage = 'profile';
                 this.updateActiveTab('profile');
                 this.viewPublicCreatorProfile(this.startPayload);
+                return;
+            } else if (this.startAction === 'view_content') {
+                // Navigate to content management or detail
+                // For now, let's load 'contents' page with specific media if supported, 
+                // or just go to contents page.
+                this.loadPage('contents', 1, this.startPayload);
                 return;
             }
             
@@ -561,11 +571,11 @@ class App {
         if (this.currentPage === page && html) {
             contentDiv.innerHTML = html;
             if (window.lucide) window.lucide.createIcons();
-            this.setupPageHandlers(page);
+            this.setupPageHandlers(page, args[2] || null); // Pass highlightId
         }
     }
 
-    setupPageHandlers(page) {
+    setupPageHandlers(page, highlightId = null) {
         if (page === 'wallet') {
             setupTopupForm(this);
             setupWithdrawalForm(this);
@@ -580,6 +590,37 @@ class App {
             }
         } else if (page === 'admin') {
             setupAdminFormHandlers(this);
+        } else if (page === 'contents') {
+            if (highlightId) {
+                this.handleDraftConfirmation(highlightId);
+            }
+        }
+    }
+
+    async handleDraftConfirmation(shortId) {
+        // Try to find the row
+        const row = document.getElementById(`media-${shortId}`);
+        if (!row) return;
+
+        // Check if it's a draft
+        if (row.dataset.status === 'draft') {
+            this.telegram.showConfirm(`Konfirmasi Konten #${shortId}?\n\nKonten ini masih berstatus DRAFT. Klik OK untuk memasukkan ke antrean posting.`, async (ok) => {
+                if (ok) {
+                    try {
+                        const res = await this.apiCall('creator.php', {
+                            action: 'confirm_content',
+                            contentId: shortId
+                        });
+                        
+                        if (res.success) {
+                            this.telegram.showAlert('Konten berhasil dikonfirmasi!');
+                            this.loadPage('contents'); 
+                        }
+                    } catch (e) {
+                        this.telegram.showAlert('Gagal konfirmasi: ' + e.message);
+                    }
+                }
+            });
         }
     }
 

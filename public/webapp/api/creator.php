@@ -142,6 +142,49 @@ try {
         exit;
     }
 
+    if ($action === 'confirm_content') {
+        $contentId = $input['contentId'] ?? '';
+        $caption = trim($input['caption'] ?? '');
+
+        if (empty($contentId)) {
+            throw new Exception('Content ID required');
+        }
+
+        $content = DB::table('media_files')
+            ->where('short_id', $contentId)
+            ->where('user_id', $creator->id)
+            ->first();
+
+        if (!$content) {
+            throw new Exception('Content not found');
+        }
+
+        if ($content->status !== 'draft') {
+            throw new Exception('Content is already confirmed or processed');
+        }
+
+        DB::table('media_files')
+            ->where('id', $content->id)
+            ->update([
+                'caption' => $caption ?: $content->caption,
+                'status' => 'queued',
+                'updated_at' => \Carbon\Carbon::now()
+            ]);
+
+        // Audit log
+        \BotSawer\AuditLogger::logCreatorAction('confirm_content', $creator->id, [
+            'content_id' => $content->id,
+            'short_id' => $content->short_id,
+            'caption' => $caption
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Konten berhasil dikonfirmasi dan masuk antrean posting'
+        ]);
+        exit;
+    }
+
     // Default: Get creator dashboard data
     $stats = Creator::getStats($creator->id);
 
