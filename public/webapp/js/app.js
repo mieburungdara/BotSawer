@@ -69,8 +69,9 @@ class App {
             if (botIdFromTg) {
                 this.botId = botIdFromTg;
             } else {
-                // Fallback: jika bot_id tidak tersedia, start_param dianggap sebagai botId
-                if (!startParam.startsWith('creator_')) {
+                // Fallback: jika bot_id tidak tersedia, start_param dianggap sebagai botId 
+                // KECUALI start_param sudah dikenali sebagai action (creator_ / content_)
+                if (!this.startAction) {
                     this.botId = startParam;
                 }
             }
