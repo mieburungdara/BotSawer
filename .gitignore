@@ -107,3 +107,4 @@ composer.lock
 /uploads/
 /storage/
 /cache/
+check_bots.php

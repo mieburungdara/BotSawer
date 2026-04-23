@@ -85,7 +85,18 @@ class App {
 
     async init() {
         if (!this.botId) {
-            console.warn('Bot ID not found in start_param or URL. App will attempt to continue using backend fallback.');
+            document.getElementById('app').innerHTML = `
+                <div class="card" style="margin: 20px; text-align: center;">
+                    <i data-lucide="shield-alert" style="width: 48px; height: 48px; color: var(--danger); margin-bottom: 15px;"></i>
+                    <h3>🚫 Akses Tidak Valid</h3>
+                    <p style="color: var(--hint-color); margin-top: 10px;">
+                        Aplikasi ini memerlukan identifikasi bot yang valid.<br>
+                        Silakan buka melalui bot resmi.
+                    </p>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+            return;
         }
 
         try {
@@ -117,7 +128,17 @@ class App {
             }
         } catch (error) {
             console.error("Init Error:", error);
-            document.getElementById('app').innerHTML = `<div class="card" style="margin: 20px;"><h3>Error</h3><p>${error.message}</p></div>`;
+            document.getElementById('app').innerHTML = `
+                <div class="card" style="margin: 20px; text-align: center;">
+                    <i data-lucide="alert-circle" style="width: 48px; height: 48px; color: var(--danger); margin-bottom: 15px;"></i>
+                    <h3>Gagal Memuat</h3>
+                    <p style="color: var(--hint-color); margin-top: 10px;">${error.message}</p>
+                    <button class="btn btn-secondary mt-4" onclick="window.location.reload()">
+                        <i data-lucide="refresh-cw"></i> Coba Lagi
+                    </button>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
         }
     }
 
