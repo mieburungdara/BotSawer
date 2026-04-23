@@ -485,7 +485,7 @@ class Bot
             $keyboard = [
                 'inline_keyboard' => [
                     [
-                        ['text' => '⚙️ Lengkapi & Konfirmasi', 'url' => "https://t.me/{$this->botData->username}/webapp?startapp=content_{$shortId}"]
+                        ['text' => '⚙️ Lengkapi & Konfirmasi', 'web_app' => ['url' => "https://boxanon.my.id/botsawer/public/webapp/?bot_id={$this->botData->bot_id}&start_param=content_{$shortId}"]]
                     ]
                 ]
             ];

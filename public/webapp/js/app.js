@@ -49,44 +49,40 @@ class App {
         this.startAction = null;
         this.startPayload = null;
         
-        const startParam = this.telegram.initDataUnsafe ? this.telegram.initDataUnsafe.start_param : null;
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // 1. Resolve start_param (from Telegram hash OR URL query)
+        let startParam = this.telegram.initDataUnsafe ? this.telegram.initDataUnsafe.start_param : null;
+        if (!startParam && urlParams.has('start_param')) {
+            startParam = urlParams.get('start_param');
+        }
+        if (!startParam && urlParams.has('tgWebAppStartParam')) {
+            startParam = urlParams.get('tgWebAppStartParam');
+        }
         
         if (startParam) {
             if (startParam.startsWith('creator_')) {
-                // Creator profile deep link
                 this.startAction = 'view_creator';
                 this.startPayload = startParam.replace('creator_', '');
             } else if (startParam.startsWith('content_')) {
-                // Content detail/manage deep link
                 this.startAction = 'view_content';
                 this.startPayload = startParam.replace('content_', '');
             }
-            
-            // BOT ID SELALU DIAMBIL DARI START_PARAM TERLEBIH DAHULU
-            // Jika start_param adalah deep link (creator_xxx), maka botId ditentukan oleh bot mana yang dipanggil
-            // Telegram akan selalu mengirim bot ID di tgWebAppBotId di initDataUnsafe
-            const botIdFromTg = this.telegram.initDataUnsafe ? this.telegram.initDataUnsafe.bot_id : null;
-            if (botIdFromTg) {
-                this.botId = botIdFromTg;
-            } else {
-                // Fallback: jika bot_id tidak tersedia, start_param dianggap sebagai botId 
-                // KECUALI start_param sudah dikenali sebagai action (creator_ / content_)
-                if (!this.startAction) {
-                    this.botId = startParam;
-                }
-            }
         }
         
-        // Override botId from URL param - DEVELOPMENT/TESTING ONLY
-        // Di lingkungan produksi Telegram, botId SELALU berasal dari start_param
-        // Fallback ini hanya berguna untuk testing webapp secara langsung di browser
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('bot_id')) {
+        // 2. Resolve botId (from Telegram hash OR URL query OR fallback to startParam)
+        const botIdFromTg = this.telegram.initDataUnsafe ? this.telegram.initDataUnsafe.bot_id : null;
+        if (botIdFromTg) {
+            this.botId = botIdFromTg;
+        } else if (urlParams.has('bot_id')) {
             this.botId = urlParams.get('bot_id');
-            console.warn('[DEV] Bot ID diambil dari URL param - ini hanya untuk testing');
+        } else if (startParam && !this.startAction) {
+            // Fallback: only if it's not a deep link action
+            this.botId = startParam;
         }
         
         console.log('App: Bot ID resolved as:', this.botId);
+        console.log('App: Start Action:', this.startAction, 'Payload:', this.startPayload);
     }
 
     // ------------------------------------------------------------------------
