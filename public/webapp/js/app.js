@@ -204,8 +204,8 @@ class App {
                         <h1>Bot Sawer</h1>
                     </div>
                     <div class="header-actions">
-                        <button class="header-icon-btn" onclick="app.loadPage('profile')" title="Profil">
-                            <i data-lucide="user"></i>
+                        <button class="header-icon-btn" onclick="app.toggleSidebar()" title="Menu">
+                            <i data-lucide="menu"></i>
                         </button>
                     </div>
                 </div>
@@ -262,13 +262,81 @@ class App {
                     <i data-lucide="search"></i>
                     Cari
                 </button>
-                ${creatorTabs}
                 <button class="nav-btn" data-page="wallet">
                     <i data-lucide="wallet"></i>
                     Dompet
                 </button>
-                ${adminTab}
+                <button class="nav-btn" onclick="app.toggleSidebar()">
+                    <i data-lucide="more-horizontal"></i>
+                    Menu
+                </button>
             </nav>
+
+            <!-- Sidebar / Side Drawer -->
+            <div id="sideDrawer" class="side-drawer">
+                <div class="drawer-overlay" onclick="app.toggleSidebar()"></div>
+                <div class="drawer-content">
+                    <div class="drawer-header">
+                        <div class="drawer-user">
+                            <div class="drawer-avatar">
+                                ${this.userData.photo_url 
+                                    ? `<img src="${this.userData.photo_url}" alt="Avatar">` 
+                                    : (this.userData.name || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div class="drawer-info">
+                                <span class="drawer-name">${this.userData.name}</span>
+                                <span class="drawer-status">${this.userData.is_verified ? 'Kreator Terverifikasi' : 'Donatur'}</span>
+                            </div>
+                        </div>
+                        <button class="drawer-close" onclick="app.toggleSidebar()">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+
+                    <div class="drawer-menu">
+                        <div class="menu-section">UTAMA</div>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('dashboard'); app.toggleSidebar();">
+                            <i data-lucide="layout-dashboard"></i> Dashboard
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('explore'); app.toggleSidebar();">
+                            <i data-lucide="search"></i> Cari Kreator
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('wallet'); app.toggleSidebar();">
+                            <i data-lucide="wallet"></i> Dompet Saya
+                        </a>
+
+                        <div class="menu-section">KREATOR</div>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('contents'); app.toggleSidebar();">
+                            <i data-lucide="layers"></i> Kelola Konten
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('creator'); app.toggleSidebar();">
+                            <i data-lucide="bar-chart-3"></i> Statistik & Goal
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('profile'); app.toggleSidebar();">
+                            <i data-lucide="user"></i> Profil Publik
+                        </a>
+
+                        <div class="menu-section">LAINNYA</div>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('achievements'); app.toggleSidebar();">
+                            <i data-lucide="award"></i> Pencapaian
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('settings'); app.toggleSidebar();">
+                            <i data-lucide="settings"></i> Pengaturan
+                        </a>
+
+                        ${this.userData.is_admin ? `
+                        <div class="menu-section admin-section">ADMINISTRATOR</div>
+                        <a href="javascript:void(0)" class="menu-item admin-item" onclick="app.loadPage('admin'); app.toggleSidebar();">
+                            <i data-lucide="shield-check"></i> Admin Panel
+                        </a>
+                        ` : ''}
+                    </div>
+
+                    <div class="drawer-footer">
+                        <span>Bot Sawer v1.0.0</span>
+                    </div>
+                </div>
+            </div>
 
             <!-- Main Content Area -->
             <main class="app-content" id="pageContent">
@@ -554,6 +622,15 @@ class App {
     viewContent(contentId) { return viewContent(this, contentId); }
     loadSettings() { return loadSettings(this); }
     updateSetting(key) { return updateSetting(this, key); }
+    
+    toggleSidebar() {
+        const drawer = document.getElementById('sideDrawer');
+        if (drawer) {
+            drawer.classList.toggle('active');
+            // Prevent scrolling when sidebar is open
+            document.body.style.overflow = drawer.classList.contains('active') ? 'hidden' : '';
+        }
+    }
 }
 
 // Initialize app when DOM is loaded and attach to window
