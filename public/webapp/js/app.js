@@ -7,6 +7,7 @@ import { loadExplore, searchPublicCreators } from './pages/explore.js';
 import { loadWallet, setupWithdrawalForm, setupTopupForm, calculateWithdrawalCommission } from './pages/wallet.js';
 import { loadCreator, setupCreatorProfileForm, showGoalForm, hideGoalForm, saveGoal, deleteGoal } from './pages/creator.js';
 import { loadContents } from './pages/contents.js';
+import { loadContentDetail, confirmContent } from './pages/content_detail.js';
 import { loadAchievements } from './pages/achievements.js';
 import { loadProfile, viewPublicCreatorProfile, viewOtherProfile, viewPublicCreatorProfileLink } from './pages/profile.js';
 import { loadSettings, updateSetting } from './pages/settings.js';
@@ -126,10 +127,7 @@ class App {
                 this.viewPublicCreatorProfile(this.startPayload);
                 return;
             } else if (this.startAction === 'view_content') {
-                // Navigate to content management or detail
-                // For now, let's load 'contents' page with specific media if supported, 
-                // or just go to contents page.
-                this.loadPage('contents', 1, this.startPayload);
+                this.loadPage('content_detail', this.startPayload);
                 return;
             }
             
@@ -535,6 +533,12 @@ class App {
                 case 'achievements':
                     html = await loadAchievements(this);
                     break;
+                case 'content_detail':
+                    html = await loadContentDetail(this, args[0]);
+                    break;
+                case 'settings':
+                    html = await loadSettings(this);
+                    break;
                 case 'info':
                     html = await loadInfo(this);
                     break;
@@ -704,7 +708,11 @@ class App {
     // Creator Goals
     showGoalForm() { return showGoalForm(); }
     hideGoalForm() { return hideGoalForm(); }
-    saveGoal() { return saveGoal(this); }
+    async confirmContent(contentId) {
+        return confirmContent(this, contentId);
+    }
+
+    async saveGoal() { return saveGoal(this); }
     deleteGoal(goalId) { return deleteGoal(this, goalId); }
     
     // Wallet

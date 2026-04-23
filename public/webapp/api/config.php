@@ -14,11 +14,22 @@ Database::init();
 
 try {
     $settings = DB::table('settings')->get()->pluck('value', 'key')->toArray();
-    
+    $input = json_decode(file_get_contents('php://input'), true);
+    $botId = $input['botId'] ?? null;
+    $botUsername = 'linkzipbot'; // Default fallback
+
+    if ($botId) {
+        $bot = DB::table('bots')->where('bot_id', $botId)->first();
+        if ($bot) {
+            $botUsername = $bot->username;
+        }
+    }
+
     // Only return public settings
     $publicSettings = [
         'app_name' => $settings['app_name'] ?? 'Vesper',
         'app_version' => $settings['app_version'] ?? '1.0.0',
+        'bot_username' => $botUsername,
         'min_withdraw' => (int)($settings['min_withdraw'] ?? 50000),
         'platform_commission' => (int)($settings['platform_commission'] ?? 10)
     ];
