@@ -545,7 +545,8 @@ class Bot
         ];
 
         if ($message->has('photo')) {
-            $photo = end($message->getPhoto()); // Get highest resolution
+            $photos = $message->getPhoto();
+            $photo = end($photos); // Get highest resolution
             return array_merge($baseInfo, [
                 'file_id' => $photo->getFileId(),
                 'file_unique_id' => $photo->getFileUniqueId(),
