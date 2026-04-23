@@ -28,15 +28,16 @@ class WebAppAuth
         }
 
         $initData = $input['initData'];
-        $botId = isset($input['botId']) ? (int)$input['botId'] : 0;
+        $botId = isset($input['botId']) ? (string)$input['botId'] : '0';
         
-        if ($botId <= 0) {
+        if (empty($botId) || $botId === '0') {
             throw new Exception('Bot ID tidak valid.');
         }
 
         $bot = DB::table('bots')->where('bot_id', $botId)->first();
         if (!$bot) {
-            throw new Exception('Bot tidak terdaftar di sistem.');
+            // Logger::debug('Bot lookup failed', ['bot_id_queried' => $botId]);
+            throw new Exception('Bot dengan ID ' . $botId . ' tidak terdaftar di sistem.');
         }
 
         // Parse init data to extract user and hash

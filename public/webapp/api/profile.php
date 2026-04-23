@@ -10,7 +10,7 @@ use Illuminate\Database\Capsule\Manager as DB;
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
-header('Cache-Control: public, max-age=60'); // Cache 1 menit untuk mengurangi request berulang
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 require_once __DIR__ . '/../../../vendor/autoload.php';
 Database::init();
