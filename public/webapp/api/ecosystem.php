@@ -1,13 +1,33 @@
 <?php
-require_once __DIR__ . '/../../../vendor/autoload.php';
-require_once __DIR__ . '/../../../src/config.php';
+
+declare(strict_types=1);
+
+namespace BotSawer;
+
+use Exception;
+use Illuminate\Database\Capsule\Manager as DB;
 
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+
+require_once __DIR__ . '/../../../vendor/autoload.php';
+Database::init();
 
 try {
-    $bots = $pdo->query("SELECT * FROM bots WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
-    $channels = $pdo->query("SELECT * FROM channels WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
-    $groups = $pdo->query("SELECT * FROM groups WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!$input) throw new Exception('Invalid request');
+
+    // Optional authentication, list can be public
+    try {
+        WebAppAuth::authenticate($input);
+    } catch (Exception $e) {
+        // Continue anyway if public list
+    }
+
+    $bots = DB::table('bots')->where('is_active', 1)->get();
+    $channels = DB::table('channels')->where('is_active', 1)->get();
+    $groups = DB::table('groups')->where('is_active', 1)->get();
 
     echo json_encode([
         'success' => true,
