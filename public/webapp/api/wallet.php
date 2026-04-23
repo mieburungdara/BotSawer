@@ -56,8 +56,13 @@ try {
         $bankAccount = trim($input['bankAccount'] ?? '');
         $accountName = trim($input['accountName'] ?? '');
 
-        if ($amount < 50000) {
-            throw new Exception('Minimum penarikan Rp 50.000');
+        // Get min withdrawal from settings
+        $minWithdraw = (float) DB::table('settings')
+            ->where('key', 'min_withdraw')
+            ->value('value') ?: 50000.00;
+
+        if ($amount < $minWithdraw) {
+            throw new Exception('Minimum penarikan Rp ' . number_format($minWithdraw, 0, ',', '.'));
         }
 
         if (empty($bankName) || empty($bankAccount) || empty($accountName)) {
@@ -163,6 +168,22 @@ try {
         ->where('key', 'platform_commission')
         ->value('value') ?: 10.00;
 
+    // Get last withdrawal data for auto-fill
+    $lastWithdrawal = DB::table('withdrawals')
+        ->where('user_id', $userId)
+        ->orderBy('created_at', 'desc')
+        ->first();
+    
+    $lastWithdrawalData = null;
+    if ($lastWithdrawal && !empty($lastWithdrawal->bank_details)) {
+        $lastWithdrawalData = json_decode($lastWithdrawal->bank_details, true);
+    }
+
+    // Get min withdrawal for UI
+    $minWithdraw = (float) DB::table('settings')
+        ->where('key', 'min_withdraw')
+        ->value('value') ?: 50000.00;
+
     echo json_encode([
         'success' => true,
         'data' => [
@@ -171,7 +192,9 @@ try {
             'total_withdraw' => $wallet ? (int)$wallet->total_withdraw : 0,
             'total_donations' => $totalDonations,
             'total_media' => $totalMedia,
-            'commission_rate' => $commissionRate
+            'commission_rate' => $commissionRate,
+            'min_withdraw' => $minWithdraw,
+            'last_withdrawal' => $lastWithdrawalData
         ]
     ]);
 

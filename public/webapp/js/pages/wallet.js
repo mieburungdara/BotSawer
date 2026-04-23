@@ -7,8 +7,10 @@ export async function loadWallet(app) {
     const walletData = await app.apiCall('wallet.php');
     const transactions = await app.apiCall('transactions.php');
     
-    // Store commission rate in app for use in forms
+    // Store settings in app for use in forms
     app.platformCommission = walletData.commission_rate || 10;
+    app.minWithdraw = walletData.min_withdraw || 50000;
+    app.currentBalance = walletData.balance || 0;
 
     let tableRows = '';
     if (transactions && transactions.length > 0) {
@@ -73,7 +75,7 @@ export async function loadWallet(app) {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3 style="margin-bottom: 0;"><i data-lucide="arrow-up-right"></i> Tarik Saldo</h3>
                     <div style="font-size: 12px; padding: 4px 8px; background: rgba(99, 102, 241, 0.1); color: var(--primary); border-radius: 20px; font-weight: 600;">
-                        Min. Rp 50.000
+                        Min. Rp ${formatNumber(app.minWithdraw)}
                     </div>
                 </div>
 
@@ -92,52 +94,52 @@ export async function loadWallet(app) {
                         <label>Nominal Penarikan</label>
                         <div style="position: relative;">
                             <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--hint-color);">Rp</span>
-                            <input type="number" id="withdrawAmount" min="50000" step="1000" placeholder="0" style="padding-left: 45px; font-size: 18px; font-weight: 700;" required>
+                            <input type="number" id="withdrawAmount" min="${app.minWithdraw}" max="${app.currentBalance}" step="1000" placeholder="0" style="padding-left: 45px; font-size: 18px; font-weight: 700;" required>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Metode Penarikan</label>
-                        <div class="wallet-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 8px;">
-                            <label class="wallet-item">
-                                <input type="radio" name="bankName" value="DANA" checked required style="display: none;">
-                                <div class="wallet-card">
-                                    <div class="wallet-icon" style="background: #008ced;">D</div>
-                                    <span>DANA</span>
-                                </div>
-                            </label>
-                            <label class="wallet-item">
-                                <input type="radio" name="bankName" value="GoPay" style="display: none;">
-                                <div class="wallet-card">
-                                    <div class="wallet-icon" style="background: #00aa13;">G</div>
-                                    <span>GoPay</span>
-                                </div>
-                            </label>
-                            <label class="wallet-item">
-                                <input type="radio" name="bankName" value="ShopeePay" style="display: none;">
-                                <div class="wallet-card">
-                                    <div class="wallet-icon" style="background: #ee4d2d;">S</div>
-                                    <span>ShopeePay</span>
-                                </div>
-                            </label>
-                            <label class="wallet-item">
-                                <input type="radio" name="bankName" value="OVO" style="display: none;">
-                                <div class="wallet-card">
-                                    <div class="wallet-icon" style="background: #4c2a86;">O</div>
-                                    <span>OVO</span>
-                                </div>
-                            </label>
+                    <div id="withdrawalDetailsToggle" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding: 12px; background: var(--secondary-bg-color); border-radius: var(--radius-md); cursor: pointer; border: 1px solid var(--glass-border);">
+                        <div style="display: flex; align-items: center; gap: 10px; color: var(--primary); font-size: 13px; font-weight: 600;">
+                            <i data-lucide="settings-2" style="width: 16px; height: 16px;"></i>
+                            <span>Tujuan Penarikan</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 5px; color: var(--hint-color); font-size: 12px;">
+                            <span id="withdrawalSummaryText">${walletData.last_withdrawal ? walletData.last_withdrawal.bank_name : 'Belum diatur'}</span>
+                            <i data-lucide="chevron-down" id="withdrawalDetailsChevron" style="width: 16px; height: 16px; transition: transform 0.3s;"></i>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Nomor Tujuan (HP)</label>
-                        <input type="text" id="bankAccount" placeholder="Contoh: 0812..." required>
-                    </div>
+                    <div id="withdrawalDetailsContent" style="display: none; padding: 5px 0 15px 0;">
+                        <div class="form-group">
+                            <label>Metode Penarikan</label>
+                            <div class="wallet-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 8px;">
+                                ${['DANA', 'GoPay', 'ShopeePay', 'OVO'].map(method => {
+                                    const lastBank = (walletData.last_withdrawal && walletData.last_withdrawal.bank_name) ? walletData.last_withdrawal.bank_name.toUpperCase() : 'DANA';
+                                    const isChecked = lastBank === method.toUpperCase() ? 'checked' : '';
+                                    const iconMap = { 'DANA': 'D', 'GoPay': 'G', 'ShopeePay': 'S', 'OVO': 'O' };
+                                    const colorMap = { 'DANA': '#008ced', 'GoPay': '#00aa13', 'ShopeePay': '#ee4d2d', 'OVO': '#4c2a86' };
+                                    return `
+                                        <label class="wallet-item">
+                                            <input type="radio" name="bankName" value="${method}" ${isChecked} required style="display: none;">
+                                            <div class="wallet-card">
+                                                <div class="wallet-icon" style="background: ${colorMap[method]}">${iconMap[method]}</div>
+                                                <span>${method}</span>
+                                            </div>
+                                        </label>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
 
-                    <div class="form-group">
-                        <label>Nama Penerima</label>
-                        <input type="text" id="accountName" placeholder="Sesuai nama di aplikasi e-wallet" required>
+                        <div class="form-group">
+                            <label>Nomor Tujuan (HP)</label>
+                            <input type="text" id="bankAccount" value="${walletData.last_withdrawal ? walletData.last_withdrawal.account_number : ''}" placeholder="Contoh: 0812..." required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nama Penerima</label>
+                            <input type="text" id="accountName" value="${walletData.last_withdrawal ? walletData.last_withdrawal.account_name : ''}" placeholder="Sesuai nama di aplikasi e-wallet" required>
+                        </div>
                     </div>
 
                     <div id="commissionBreakdown" style="display: none; margin-bottom: 20px;">
@@ -188,6 +190,17 @@ export async function loadWallet(app) {
 export function setupWithdrawalForm(app) {
     const withdrawForm = document.getElementById('withdrawForm');
     const withdrawAmount = document.getElementById('withdrawAmount');
+    const detailsToggle = document.getElementById('withdrawalDetailsToggle');
+    const detailsContent = document.getElementById('withdrawalDetailsContent');
+    const detailsChevron = document.getElementById('withdrawalDetailsChevron');
+
+    if (detailsToggle) {
+        detailsToggle.addEventListener('click', () => {
+            const isHidden = detailsContent.style.display === 'none';
+            detailsContent.style.display = isHidden ? 'block' : 'none';
+            detailsChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+    }
 
     if (withdrawAmount) {
         // Calculate commission in real-time
@@ -200,20 +213,42 @@ export function setupWithdrawalForm(app) {
         withdrawForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const amount = parseInt(document.getElementById('withdrawAmount').value);
-            const bankName = document.querySelector('input[name="bankName"]:checked').value;
+            const amountInput = document.getElementById('withdrawAmount');
+            const amount = parseInt(amountInput.value);
+
+            if (amount > app.currentBalance) {
+                app.telegram.showAlert('Saldo Anda tidak mencukupi untuk penarikan sebesar Rp ' + formatNumber(amount));
+                return;
+            }
+
+            if (amount < app.minWithdraw) {
+                app.telegram.showAlert('Minimum penarikan adalah Rp ' + formatNumber(app.minWithdraw));
+                return;
+            }
+            const bankRadio = document.querySelector('input[name="bankName"]:checked');
+            
+            if (!bankRadio) {
+                app.telegram.showAlert('Silakan pilih metode penarikan.');
+                return;
+            }
+
+            const bankName = bankRadio.value;
             const bankAccount = document.getElementById('bankAccount').value;
             const accountName = document.getElementById('accountName').value;
             const confirmed = document.getElementById('withdrawConfirmation').checked;
 
             if (!confirmed) {
-                app.telegram.showAlert('Silakan setujui persyaratan penarikan terlebih dahulu.');
+                app.telegram.showAlert('Silakan konfirmasi data penarikan terlebih dahulu.');
                 return;
             }
 
             const resultDiv = document.getElementById('withdrawResult');
+            const submitBtn = withdrawForm.querySelector('button[type="submit"]');
 
             try {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="spinner-sm"></div> Memproses...';
+
                 const result = await app.apiCall('wallet.php', {
                     action: 'withdraw',
                     amount: amount,
@@ -222,17 +257,28 @@ export function setupWithdrawalForm(app) {
                     accountName: accountName
                 });
 
-                resultDiv.innerHTML = '<div style="color: green;">✅ ' + result.message + '</div>';
-                withdrawForm.reset();
-                document.getElementById('commissionBreakdown').style.display = 'none';
-                await app.updateHeaderStats();
+                resultDiv.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 12px; border-radius: 8px; font-size: 13px; text-align: center;">
+                        <i data-lucide="check-circle" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;"></i>
+                        ${result.message}
+                    </div>
+                `;
+                if (window.lucide) window.lucide.createIcons();
+                
+                setTimeout(() => {
+                    if (app.currentPage === 'wallet') app.loadPage('wallet');
+                }, 2000);
 
-                // Refresh wallet data
-                if (app.currentPage === 'wallet') {
-                    app.loadPage('wallet');
-                }
             } catch (error) {
-                resultDiv.innerHTML = '<div style="color: red;">❌ ' + error.message + '</div>';
+                resultDiv.innerHTML = `
+                    <div style="background: rgba(239, 68, 68, 0.1); color: var(--danger); padding: 12px; border-radius: 8px; font-size: 13px; text-align: center;">
+                        <i data-lucide="alert-circle" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;"></i>
+                        ${error.message}
+                    </div>
+                `;
+                if (window.lucide) window.lucide.createIcons();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i data-lucide="check-circle"></i> Konfirmasi Penarikan';
             }
         });
     }
