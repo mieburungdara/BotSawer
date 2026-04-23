@@ -472,16 +472,16 @@ class Bot
             $mediaData = $this->saveMediaToDatabase($this->botData->id, $userId, $mediaInfo);
             $mediaId = $mediaData['id'];
             $shortId = $mediaData['short_id'];
+            $isDuplicate = $mediaData['is_duplicate'];
 
-            // Check and notify streak milestones
-            $streakData = Creator::getStreakData((int)$userId);
-            $currentStreak = $streakData['current_streak'];
-            $this->notifyStreakMilestone($userId, $currentStreak);
+            if (!$isDuplicate) {
+                // Only run these for new uploads
+                $streakData = Creator::getStreakData((int)$userId);
+                $this->notifyStreakMilestone($userId, $streakData['current_streak']);
+                $this->forwardToBackupChannel($mediaId, $userId, $mediaInfo);
+            }
 
-            // Forward to backup channel with metadata
-            $this->forwardToBackupChannel($mediaId, $userId, $mediaInfo);
-
-            // Create cancel button
+            // Create webapp button
             $keyboard = [
                 'inline_keyboard' => [
                     [
@@ -490,14 +490,21 @@ class Bot
                 ]
             ];
 
-            $message = "📸 Media Berhasil Diunggah!\n\n";
-            $message .= "🆔 Content ID: #{$shortId}\n";
-            $message .= "📎 Jenis: {$mediaInfo['type']}\n";
-            if ($mediaInfo['media_group_id']) {
-                $message .= "📚 Album: Ya\n";
+            if ($isDuplicate) {
+                $message = "♻️ Media ini sudah pernah diunggah sebelumnya.\n\n";
+                $message .= "🆔 Content ID: #{$shortId}\n";
+                $message .= "📎 Jenis: {$mediaInfo['type']}\n";
+                $message .= "\nSilakan klik tombol di bawah untuk mengelola konten tersebut.";
+            } else {
+                $message = "📸 Media Berhasil Diunggah!\n\n";
+                $message .= "🆔 Content ID: #{$shortId}\n";
+                $message .= "📎 Jenis: {$mediaInfo['type']}\n";
+                if ($mediaInfo['media_group_id']) {
+                    $message .= "📚 Album: Ya\n";
+                }
+                $message .= "\n⚠️ *Status: Draft*\n";
+                $message .= "Silakan klik tombol di bawah untuk melengkapi caption dan mengonfirmasi agar konten masuk ke antrean posting.";
             }
-            $message .= "\n⚠️ *Status: Draft*\n";
-            $message .= "Silakan klik tombol di bawah untuk melengkapi caption dan mengonfirmasi agar konten masuk ke antrean posting.";
 
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
@@ -505,10 +512,11 @@ class Bot
                 'reply_markup' => json_encode($keyboard)
             ]);
 
-            Logger::info('Media uploaded successfully', [
+            Logger::info('Media processed successfully', [
                 'user_id' => $userId,
                 'media_id' => $mediaId,
-                'type' => $mediaInfo['type']
+                'type' => $mediaInfo['type'],
+                'is_duplicate' => $isDuplicate
             ]);
 
         } catch (Exception $e) {
@@ -613,6 +621,22 @@ class Bot
 
     private function saveMediaToDatabase($botId, $userId, array $mediaInfo): array
     {
+        // Check if this exact file was already uploaded (same file_unique_id)
+        $existing = DB::table('media_files')
+            ->where('file_unique_id', $mediaInfo['file_unique_id'])
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($existing) {
+            Logger::info('Duplicate media detected, returning existing record', [
+                'file_unique_id' => $mediaInfo['file_unique_id'],
+                'existing_id' => $existing->id,
+                'existing_short_id' => $existing->short_id,
+                'status' => $existing->status
+            ]);
+            return ['id' => $existing->id, 'short_id' => $existing->short_id, 'is_duplicate' => true];
+        }
+
         $shortId = $this->generateUniqueShortId();
         $id = DB::table('media_files')->insertGetId([
             'bot_id' => $botId,
@@ -627,7 +651,7 @@ class Bot
             'status' => 'draft'
         ]);
 
-        return ['id' => $id, 'short_id' => $shortId];
+        return ['id' => $id, 'short_id' => $shortId, 'is_duplicate' => false];
     }
 
     private function generateUniqueShortId(int $length = 5): string
