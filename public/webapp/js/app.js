@@ -451,9 +451,6 @@ class App {
             if (this.userData.has_donated) {
                 badgeContainer.innerHTML += '<span class="status-badge" style="color: var(--primary); border-color: var(--primary);"><i data-lucide="heart"></i> Donatur</span>';
             }
-            if (this.userData.is_admin) {
-                badgeContainer.innerHTML += '<span class="status-badge admin"><i data-lucide="shield"></i> Admin</span>';
-            }
         
         // Initialize Lucide icons
         if (window.lucide) {
