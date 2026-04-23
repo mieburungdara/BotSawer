@@ -7,7 +7,7 @@ import { loadExplore, searchPublicCreators } from './pages/explore.js';
 import { loadWallet, setupWithdrawalForm, setupTopupForm, calculateWithdrawalCommission } from './pages/wallet.js';
 import { loadCreator, setupCreatorProfileForm, showGoalForm, hideGoalForm, saveGoal, deleteGoal } from './pages/creator.js';
 import { loadContents } from './pages/contents.js';
-import { loadContentDetail, confirmContent } from './pages/content_detail.js';
+import { loadContentDetail, confirmContent, cancelQueue, deleteContent, donateContent } from './pages/content_detail.js';
 import { loadAchievements } from './pages/achievements.js';
 import { loadProfile, viewPublicCreatorProfile, viewOtherProfile, viewPublicCreatorProfileLink } from './pages/profile.js';
 import { loadSettings, updateSetting } from './pages/settings.js';
@@ -710,6 +710,18 @@ class App {
     hideGoalForm() { return hideGoalForm(); }
     async confirmContent(contentId) {
         return confirmContent(this, contentId);
+    }
+
+    async cancelQueue(contentId) {
+        return cancelQueue(this, contentId);
+    }
+
+    async deleteContent(contentId) {
+        return deleteContent(this, contentId);
+    }
+
+    async donateContent(contentId) {
+        return donateContent(this, contentId);
     }
 
     async saveGoal() { return saveGoal(this); }

@@ -5,7 +5,7 @@ import { formatNumber, getRelativeTime } from '../utils.js';
  */
 export async function loadContentDetail(app, shortId) {
     try {
-        const result = await app.apiCall('content.php', { short_id: shortId });
+        const result = await app.apiCall('content.php', { short_id: shortId, action: 'get' });
         const content = result.data;
 
         if (content.is_owner) {
@@ -29,6 +29,7 @@ export async function loadContentDetail(app, shortId) {
 
 function renderOwnerView(app, content) {
     const isDraft = content.status === 'draft';
+    const isQueued = content.status === 'queued';
     
     return `
         <div class="grid-layout fade-in">
@@ -48,49 +49,52 @@ function renderOwnerView(app, content) {
                     <div style="font-weight: 600; padding: 10px; background: var(--secondary-bg); border-radius: var(--radius-md);">
                         <i data-lucide="${content.file_type === 'video' ? 'video' : 'camera'}" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;"></i>
                         ${content.file_type.toUpperCase()}
-                        ${content.media_group_id ? ' (Album)' : ''}
                     </div>
                 </div>
 
-                ${isDraft ? `
-                    <div class="form-group">
-                        <label>Caption / Pesan Konten</label>
-                        <textarea id="editCaption" rows="4" placeholder="Tulis caption untuk konten ini..." style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; background: var(--bg-color); color: var(--text-color);">${content.caption || ''}</textarea>
-                    </div>
-                    <div class="alert alert-info" style="margin-bottom: 20px;">
-                        <i data-lucide="info"></i> Konten ini masih berstatus <b>Draft</b>. Klik publikasikan agar user lain dapat memberikan donasi.
-                    </div>
-                    <button class="btn btn-primary" style="width: 100%;" onclick="app.confirmContent('${content.short_id}')">
-                        <i data-lucide="send"></i> Konfirmasi & Publikasikan
-                    </button>
-                ` : `
-                    <div class="form-group">
-                        <label>Caption</label>
+                <div class="form-group">
+                    <label>Caption / Pesan Konten</label>
+                    ${isDraft ? `
+                        <textarea id="editCaption" rows="4" placeholder="Tulis caption..." style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; background: var(--bg-color); color: var(--text-color);">${content.caption || ''}</textarea>
+                    ` : `
                         <div style="padding: 10px; background: var(--secondary-bg); border-radius: var(--radius-md); font-size: 14px;">
                             ${content.caption || '<i style="color: var(--hint-color);">Tidak ada caption</i>'}
                         </div>
-                    </div>
-                    <div class="alert alert-success">
-                        <i data-lucide="check-circle"></i> Konten sudah aktif dan dapat menerima donasi.
-                    </div>
-                `}
+                    `}
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                    ${isDraft ? `
+                        <button class="btn btn-primary" onclick="app.confirmContent('${content.short_id}')">
+                            <i data-lucide="send"></i> Konfirmasi & Publikasikan
+                        </button>
+                    ` : ''}
+
+                    ${isQueued ? `
+                        <button class="btn btn-secondary" onclick="app.cancelQueue('${content.short_id}')">
+                            <i data-lucide="rotate-ccw"></i> Batalkan Antrean (Jadi Draft)
+                        </button>
+                    ` : ''}
+
+                    <button class="btn btn-outline-danger" onclick="app.deleteContent('${content.short_id}')">
+                        <i data-lucide="trash-2"></i> Hapus Konten
+                    </button>
+                </div>
             </div>
 
-            ${!isDraft ? `
-                <div class="card col-full">
-                    <h3><i data-lucide="bar-chart-3"></i> Statistik Konten</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
-                        <div style="padding: 15px; background: var(--secondary-bg); border-radius: var(--radius-md); text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: var(--success);">Rp ${formatNumber(content.total_donations || 0)}</div>
-                            <div style="font-size: 11px; color: var(--hint-color); text-transform: uppercase;">Total Donasi</div>
-                        </div>
-                        <div style="padding: 15px; background: var(--secondary-bg); border-radius: var(--radius-md); text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: var(--primary);">${content.donation_count || 0}</div>
-                            <div style="font-size: 11px; color: var(--hint-color); text-transform: uppercase;">Jumlah Donatur</div>
-                        </div>
+            <div class="card col-full">
+                <h3><i data-lucide="bar-chart-3"></i> Statistik Konten</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                    <div style="padding: 15px; background: var(--secondary-bg); border-radius: var(--radius-md); text-align: center;">
+                        <div style="font-size: 20px; font-weight: 700; color: var(--success);">Rp ${formatNumber(content.total_donations || 0)}</div>
+                        <div style="font-size: 11px; color: var(--hint-color); text-transform: uppercase;">Total Donasi</div>
+                    </div>
+                    <div style="padding: 15px; background: var(--secondary-bg); border-radius: var(--radius-md); text-align: center;">
+                        <div style="font-size: 20px; font-weight: 700; color: var(--primary);">${content.donation_count || 0}</div>
+                        <div style="font-size: 11px; color: var(--hint-color); text-transform: uppercase;">Jumlah Donatur</div>
                     </div>
                 </div>
-            ` : ''}
+            </div>
         </div>
     `;
 }
@@ -103,29 +107,36 @@ function renderPublicView(app, content) {
                     <i data-lucide="image" style="width: 32px; height: 32px;"></i>
                 </div>
                 <h3>Konten Premium #${content.short_id}</h3>
-                <p style="color: var(--hint-color); margin-bottom: 20px;">Berikan donasi untuk mendukung kreator ini</p>
+                <p style="color: var(--hint-color); margin-bottom: 20px;">Dukung karya kreator ini melalui WebApp</p>
                 
-                <div style="padding: 20px; background: var(--secondary-bg); border-radius: var(--radius-md); margin-bottom: 20px;">
-                    <div style="font-size: 12px; color: var(--hint-color); margin-bottom: 5px;">KREATOR</div>
-                    <div style="font-size: 18px; font-weight: 700; color: var(--primary); cursor: pointer;" onclick="app.viewPublicCreatorProfile('${content.creator.uuid}')">
-                        ${content.creator.display_name} ${content.creator.is_verified ? ' <i data-lucide="check-circle" style="width: 14px; height: 14px; color: var(--primary); vertical-align: middle;"></i>' : ''}
+                <div style="padding: 20px; background: var(--secondary-bg); border-radius: var(--radius-md); margin-bottom: 25px;">
+                    <div style="font-size: 11px; color: var(--hint-color); margin-bottom: 5px; font-weight: 600; text-transform: uppercase;">Kreator</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--primary);">
+                        ${content.creator_id}
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-                    <div>
-                        <div style="font-size: 11px; color: var(--hint-color);">TERKUMPUL</div>
-                        <div style="font-size: 16px; font-weight: 600; color: var(--success);">Rp ${formatNumber(content.stats.total_amount)}</div>
+                <div class="donation-box" style="text-align: left; padding: 20px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-color);">
+                    <h4 style="margin-bottom: 15px;"><i data-lucide="heart" style="color: var(--accent);"></i> Kirim Donasi</h4>
+                    
+                    <div class="form-group">
+                        <label>Nominal Donasi (Rp)</label>
+                        <input type="number" id="donateAmount" placeholder="Minimal 1.000" min="1000" step="1000" style="font-size: 18px; font-weight: 700;">
                     </div>
-                    <div>
-                        <div style="font-size: 11px; color: var(--hint-color);">DONATUR</div>
-                        <div style="font-size: 16px; font-weight: 600;">${content.stats.donation_count} Orang</div>
+                    
+                    <div class="form-group">
+                        <label>Pesan (Opsional)</label>
+                        <input type="text" id="donateMessage" placeholder="Tulis pesan penyemangat...">
                     </div>
-                </div>
 
-                <button class="btn btn-primary" style="width: 100%;" onclick="window.open('https://t.me/${app.settings.bot_username}?start=sawer_${content.short_id}', '_blank')">
-                    <i data-lucide="heart"></i> Kirim Donasi Sekarang
-                </button>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="app.donateContent('${content.short_id}')">
+                        <i data-lucide="credit-card"></i> Kirim Sekarang
+                    </button>
+                    
+                    <p style="font-size: 11px; color: var(--hint-color); margin-top: 15px; text-align: center;">
+                        <i data-lucide="shield-check" style="width: 12px; height: 12px; vertical-align: middle;"></i> Pembayaran aman menggunakan saldo WebApp Anda.
+                    </p>
+                </div>
             </div>
         </div>
     `;
@@ -133,17 +144,64 @@ function renderPublicView(app, content) {
 
 export async function confirmContent(app, contentId) {
     const caption = document.getElementById('editCaption').value;
-
     try {
-        await app.apiCall('creator.php', {
-            action: 'confirm_content',
-            contentId: contentId,
-            caption: caption
-        });
-        
+        await app.apiCall('creator.php', { action: 'confirm_content', contentId: contentId, caption: caption });
         app.telegram.showAlert('✅ Konten berhasil dipublikasikan!');
         app.loadPage('contents');
     } catch (error) {
         app.telegram.showAlert('❌ Gagal mempublikasikan: ' + error.message);
+    }
+}
+
+export async function cancelQueue(app, contentId) {
+    if (!confirm('Batalkan dari antrean dan kembalikan ke Draft?')) return;
+    try {
+        await app.apiCall('content.php', { action: 'cancel_queue', short_id: contentId });
+        app.telegram.showAlert('✅ Konten dikembalikan ke Draft');
+        app.loadPage('content_detail', contentId);
+    } catch (error) {
+        app.telegram.showAlert('❌ Gagal: ' + error.message);
+    }
+}
+
+export async function deleteContent(app, contentId) {
+    if (!confirm('Hapus konten ini secara permanen dari daftar Anda?')) return;
+    try {
+        await app.apiCall('content.php', { action: 'delete_content', short_id: contentId });
+        app.telegram.showAlert('✅ Konten berhasil dihapus');
+        app.loadPage('contents');
+    } catch (error) {
+        app.telegram.showAlert('❌ Gagal menghapus: ' + error.message);
+    }
+}
+
+export async function donateContent(app, contentId) {
+    const amount = document.getElementById('donateAmount').value;
+    const message = document.getElementById('donateMessage').value;
+
+    if (!amount || amount < 1000) {
+        app.telegram.showAlert('Minimal donasi adalah Rp 1.000');
+        return;
+    }
+
+    try {
+        const result = await app.apiCall('content.php', {
+            action: 'donate',
+            short_id: contentId,
+            amount: amount,
+            message: message
+        });
+        
+        app.telegram.showAlert('💖 ' + result.message);
+        app.updateHeaderStats();
+        app.loadPage('content_detail', contentId);
+    } catch (error) {
+        if (error.message.includes('Saldo')) {
+            if (confirm('Saldo tidak mencukupi. Topup sekarang?')) {
+                app.loadPage('wallet');
+            }
+        } else {
+            app.telegram.showAlert('❌ Gagal: ' + error.message);
+        }
     }
 }
