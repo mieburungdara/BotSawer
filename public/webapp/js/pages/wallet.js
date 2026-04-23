@@ -9,7 +9,7 @@ export async function loadWallet(app) {
     
     // Store settings in app for use in forms
     app.platformCommission = walletData.commission_rate || 10;
-    app.adminFee = walletData.admin_fee || 0;
+    app.adminFeesMap = walletData.admin_fees_map || {};
     app.minWithdraw = walletData.min_withdraw || 50000;
     app.currentBalance = walletData.balance || 0;
 
@@ -203,6 +203,15 @@ export function setupWithdrawalForm(app) {
         });
     }
 
+    const bankRadios = document.querySelectorAll('input[name="bankName"]');
+    bankRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            calculateWithdrawalCommission(app);
+            const summaryText = document.getElementById('withdrawalSummaryText');
+            if (summaryText) summaryText.innerText = radio.value;
+        });
+    });
+
     if (withdrawAmount) {
         // Calculate commission in real-time
         withdrawAmount.addEventListener('input', () => {
@@ -290,10 +299,13 @@ export function calculateWithdrawalCommission(app) {
     const breakdown = document.getElementById('commissionBreakdown');
     const details = document.getElementById('commissionDetails');
     const finalAmount = document.getElementById('finalAmount');
+    
+    const bankRadio = document.querySelector('input[name="bankName"]:checked');
+    const bankName = bankRadio ? bankRadio.value.toUpperCase() : 'DEFAULT';
+    const adminFee = app.adminFeesMap ? (app.adminFeesMap[bankName] || app.adminFeesMap['DEFAULT'] || 2500) : 0;
 
     if (amount >= app.minWithdraw) {
         const commissionRate = app.platformCommission || 10.00;
-        const adminFee = app.adminFee || 0;
         const commissionAmount = (amount * commissionRate) / 100;
         const totalFees = commissionAmount + adminFee;
         const receiveAmount = amount - totalFees;
@@ -308,7 +320,7 @@ export function calculateWithdrawalCommission(app) {
                 <span style="color: var(--danger); font-weight: 600;">- Rp ${formatNumber(commissionAmount)}</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-                <span>Biaya Admin (E-Wallet)</span>
+                <span>Biaya Admin (${bankRadio ? bankRadio.value : 'Sistem'})</span>
                 <span style="color: var(--danger); font-weight: 600;">- Rp ${formatNumber(adminFee)}</span>
             </div>
         `;

@@ -74,10 +74,14 @@ try {
             ->where('key', 'platform_commission')
             ->value('value') ?: 10.00;
 
-        // Get flat admin fee (e.g. 2500)
-        $adminFee = (float) DB::table('settings')
-            ->where('key', 'withdrawal_admin_fee')
-            ->value('value') ?: 0;
+        // Get admin fees config map
+        $feesConfigJson = DB::table('settings')
+            ->where('key', 'withdrawal_fees_config')
+            ->value('value');
+        $feesMap = $feesConfigJson ? json_decode($feesConfigJson, true) : [];
+        
+        $bankUpper = strtoupper($bankName);
+        $adminFee = (float) ($feesMap[$bankUpper] ?? ($feesMap['DEFAULT'] ?? 2500));
 
         // Calculate commission amount
         $commissionAmount = ($amount * $commissionRate) / 100;
@@ -195,10 +199,11 @@ try {
         ->where('key', 'min_withdraw')
         ->value('value') ?: 50000.00;
 
-    // Get admin fee for UI
-    $adminFee = (float) DB::table('settings')
-        ->where('key', 'withdrawal_admin_fee')
-        ->value('value') ?: 0;
+    // Get admin fees map for UI
+    $feesConfigJson = DB::table('settings')
+        ->where('key', 'withdrawal_fees_config')
+        ->value('value');
+    $feesMap = $feesConfigJson ? json_decode($feesConfigJson, true) : [];
 
     echo json_encode([
         'success' => true,
@@ -209,7 +214,7 @@ try {
             'total_donations' => $totalDonations,
             'total_media' => $totalMedia,
             'commission_rate' => $commissionRate,
-            'admin_fee' => $adminFee,
+            'admin_fees_map' => $feesMap,
             'min_withdraw' => $minWithdraw,
             'last_withdrawal' => $lastWithdrawalData
         ]
