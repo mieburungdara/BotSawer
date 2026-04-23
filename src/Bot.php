@@ -62,7 +62,7 @@ class Bot
 
             // Update last request timestamp (optional - comment out if column not exists)
             // DB::table('bots')
-            //     ->where('id', $this->botId)
+            //     ->where('id', $this->botData->id)
             //     ->update(['last_request_at' => \Carbon\Carbon::now()]);
         } catch (Exception $e) {
             Logger::error('Error handling update', [
@@ -456,15 +456,7 @@ class Bot
                 return;
             }
 
-            // All users are auto-registered as verified creators
-            $creator = Creator::getProfile($userId);
-            if (!$creator) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => '❌ Terjadi kesalahan saat memuat profil creator. Silakan coba lagi.'
-                ]);
-                return;
-            }
+
 
             // Get media info
             $mediaInfo = $this->extractMediaInfo($message);
@@ -488,12 +480,6 @@ class Bot
 
             // Forward to backup channel with metadata
             $this->forwardToBackupChannel($mediaId, $userId, $mediaInfo);
-
-            // Do NOT add to posting queue yet - user needs to confirm in webapp
-            // $this->addToPostingQueue($mediaId);
-
-            // Get queue information
-            $queueInfo = $this->getQueueInfo($mediaId);
 
             // Create cancel button
             $keyboard = [
@@ -683,14 +669,12 @@ class Bot
 
             // Get user and creator info
             $user = DB::table('users')->where('id', $userId)->first();
-            // In unified table, creator info is in the user table
-            $creator = $user;
 
             // Create detailed caption for admin
             $adminCaption = "📁 **MEDIA BACKUP**\n\n";
             $adminCaption .= "🆔 Media ID: #{$mediaId}\n";
             $adminCaption .= "👤 User: {$user->first_name} {$user->last_name} (@{$user->username})\n";
-            $adminCaption .= "🎨 Creator: {$creator->display_name}\n";
+            $adminCaption .= "🎨 Creator: {$user->display_name}\n";
             $adminCaption .= "📅 Uploaded: " . \Carbon\Carbon::now()->format('Y-m-d H:i:s') . "\n";
             $adminCaption .= "📎 Type: {$mediaInfo['type']}\n";
 
@@ -730,7 +714,7 @@ class Bot
         }
     }
 
-    private function addToPostingQueue(int $mediaId): void
+    private function addToPostingQueue($mediaId): void
     {
         $media = DB::table('media_files')->where('id', $mediaId)->first();
         if (!$media) return;
@@ -835,15 +819,7 @@ class Bot
                 return;
             }
 
-            $photos = $message->getPhoto();
-            if (is_array($photos)) {
-                $fileId = end($photos)->getFileId();
-            } elseif (is_object($photos) && method_exists($photos, 'last')) {
-                $fileId = $photos->last()->getFileId();
-            } else {
-                $photoArr = (array)$photos;
-                $fileId = end($photoArr)->getFileId();
-            }
+            $fileId = is_array($photo) ? end($photo)->getFileId() : (is_object($photo) && method_exists($photo, 'last') ? $photo->last()->getFileId() : end($photo)->getFileId());
 
             // Save payment proof to database
             $proofId = DB::table('payment_proofs')->insertGetId([
@@ -897,10 +873,10 @@ class Bot
         $chatId = $callbackQuery->getMessage()->getChat()->getId();
         $userId = $callbackQuery->getFrom()->getId();
 
-        if (strpos($data, 'sawer_') === 0) {
-            $this->handleSawerCallback($data, $chatId, $userId);
-        } elseif (strpos($data, 'sawer_album_') === 0) {
+        if (strpos($data, 'sawer_album_') === 0) {
             $this->handleSawerAlbumCallback($data, $chatId, $userId);
+        } elseif (strpos($data, 'sawer_') === 0) {
+            $this->handleSawerCallback($data, $chatId, $userId);
         } elseif (strpos($data, 'cancel_media_') === 0) {
             $this->handleCancelMediaCallback($data, $chatId, $userId);
         }
@@ -1145,32 +1121,7 @@ class Bot
         }
     }
 
-    private function notifyCreator(int $creatorId, int $amount, int $mediaId): void
-    {
-        try {
-            $creatorChat = DB::table('users')
-                ->where('id', $creatorId)
-                ->value('telegram_id');
 
-            if ($creatorChat) {
-                $this->telegram->sendMessage([
-                    'chat_id' => $creatorChat,
-                    'text' => "✅ Anda menerima donasi sebesar Rp " . number_format($amount, 0, ',', '.') . "\nDari media: #" . $mediaId
-                ]);
-            }
-        } catch (Exception $e) {
-            Logger::error('Error notifying creator', [
-                'creator_id' => $creatorId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
-    }
-
-    private function handleInlineQuery($inlineQuery): void
-    {
-        // Implementation for inline queries if needed
-    }
 
     private function ensureUserExists($user): int
     {
@@ -1206,59 +1157,23 @@ class Bot
             ->first();
 
         if (!$existing) {
-            // Logger::debug('Creating new user', ['telegram_id' => $telegramId]);
-
             $uuid = $this->generateUniqueId();
+            $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
+            
             $userData = [
                 'uuid' => $uuid,
-                'telegram_id' => (string)$telegramId,  // Force string for BIGINT binding
+                'telegram_id' => (string)$telegramId,
                 'first_name' => $user->getFirstName(),
                 'last_name' => $user->getLastName(),
                 'username' => $user->getUsername(),
                 'language_code' => $user->getLanguageCode() ?? 'id',
-                'is_creator' => 1  // Auto-register as creator
+                'display_name' => $displayName ?: 'Creator',
+                'is_creator' => 1,
+                'is_verified' => 1
             ];
 
-            // Logger::debug('User data to insert', ['data' => $userData]);
-
             $userId = DB::table('users')->insertGetId($userData);
-
-            // Logger::debug('User insert result', [
-            //     'telegram_id' => $telegramId,
-            //     'userId_returned' => $userId,
-            //     'userId_type' => gettype($userId)
-            // ]);
-
-            if (!$userId) {
-                Logger::error('CRITICAL: insertGetId returned falsy value', [
-                    'telegram_id' => $telegramId,
-                    'uuid' => $uuid,
-                    'userData' => $userData,
-                    'returned_value' => $userId
-                ]);
-                throw new Exception('Failed to create user account');
-            }
-
-            // Auto-create creator profile info in user table
-            $displayName = trim($user->getFirstName() . ' ' . ($user->getLastName() ?? ''));
-            if (empty($displayName)) {
-                $displayName = 'Creator ' . $userId; // Fallback if no name
-            }
-
-            try {
-                DB::table('users')->where('id', $userId)->update([
-                    'display_name' => $displayName,
-                    'is_verified' => 1,
-                    'is_creator' => 1
-                ]);
-                Logger::info('Auto-registered as creator', ['user_id' => $userId, 'display_name' => $displayName]);
-            } catch (Exception $e) {
-                Logger::error('Failed to auto-update creator flags for user', [
-                    'user_id' => $userId,
-                    'error' => $e->getMessage()
-                ]);
-            }
-
+            
             Logger::info('New user registered successfully', ['telegram_id' => $telegramId, 'uuid' => $uuid, 'user_id' => $userId]);
             return (int)$userId;
         } elseif (!$existing->uuid) {
@@ -1394,7 +1309,7 @@ class Bot
         return $message->has('photo') && strpos(strtolower($message->getCaption() ?? ''), 'topup') !== false;
     }
 
-    private function sendWelcomeMessage(int $chatId, int $userId): void
+    private function sendWelcomeMessage($chatId, $userId): void
     {
         $message = "👋 Selamat datang di Bot Sawer!\n\n";
         $message .= "💡 Bot untuk donasi sukarela ke kreator konten\n";
@@ -1420,7 +1335,7 @@ class Bot
         ]);
     }
 
-    private function handlePrivacyCommand(int $chatId, int $userId): void
+    private function handlePrivacyCommand($chatId, $userId): void
     {
         try {
             $user = DB::table('users')->where('id', $userId)->first();
@@ -1505,7 +1420,7 @@ class Bot
         }
     }
 
-    private function handleUnknownCommand(int $chatId): void
+    private function handleUnknownCommand($chatId): void
     {
         $this->telegram->sendMessage([
             'chat_id' => $chatId,
