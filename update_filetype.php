@@ -10,9 +10,10 @@ try {
     $dsn = "mysql:host={$config['DB_HOST']};dbname={$config['DB_NAME']};charset=utf8mb4";
     $pdo = new PDO($dsn, $config['DB_USER'], $config['DB_PASSWORD']);
     
-    $stmt = $pdo->query("DESCRIBE media_files");
-    print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
+    // Update file_type ENUM to include 'audio'
+    $pdo->exec("ALTER TABLE media_files MODIFY COLUMN file_type ENUM('photo', 'video', 'document', 'audio') NOT NULL");
 
+    echo "file_type ENUM updated successfully.\n";
 } catch (Exception $e) {
     echo $e->getMessage();
 }

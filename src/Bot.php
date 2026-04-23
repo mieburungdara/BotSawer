@@ -112,7 +112,7 @@ class Bot
                 'chat_id' => $chatId,
                 'text' => '❌ Admin commands tidak tersedia di bot ini. Gunakan bot moderator.'
             ]);
-        } elseif ($message->has('photo') || $message->has('video') || $message->has('document')) {
+        } elseif ($message->has('photo') || $message->has('video') || $message->has('document') || $message->has('audio')) {
             $this->handleMediaUpload($message);
         } elseif ($this->isPaymentProof($message)) {
             $this->handlePaymentProof($message);
@@ -541,37 +541,80 @@ class Bot
     private function extractMediaInfo($message): ?array
     {
         $baseInfo = [
-            'media_group_id' => $message->getMediaGroupId()
+            'media_group_id' => $message->getMediaGroupId(),
+            'thumb_file_id' => null
         ];
 
         if ($message->has('photo')) {
             $photos = $message->getPhoto();
-            $photo = end($photos); // Get highest resolution
-            return array_merge($baseInfo, [
-                'file_id' => $photo->getFileId(),
-                'file_unique_id' => $photo->getFileUniqueId(),
-                'type' => 'photo',
-                'file_size' => $photo->getFileSize(),
-                'caption' => $message->getCaption()
-            ]);
+            
+            // Safely get the last element (highest resolution photo) whether it's an array or a Collection
+            if (is_array($photos)) {
+                $photo = end($photos);
+            } elseif (is_object($photos) && method_exists($photos, 'last')) {
+                $photo = $photos->last();
+            } else {
+                // Fallback
+                $photoArray = (array)$photos;
+                $photo = end($photoArray);
+            }
+
+            if ($photo) {
+                return array_merge($baseInfo, [
+                    'file_id' => $photo->getFileId(),
+                    'file_unique_id' => $photo->getFileUniqueId(),
+                    'type' => 'photo',
+                    'file_size' => $photo->getFileSize(),
+                    'caption' => $message->getCaption()
+                ]);
+            }
         } elseif ($message->has('video')) {
             $video = $message->getVideo();
+            $thumb = $video->get('thumbnail') ?: $video->get('thumb');
+            if ($thumb && isset($thumb['file_id'])) {
+                $baseInfo['thumb_file_id'] = $thumb['file_id'];
+            }
             return array_merge($baseInfo, [
                 'file_id' => $video->getFileId(),
                 'file_unique_id' => $video->getFileUniqueId(),
                 'type' => 'video',
                 'file_size' => $video->getFileSize(),
-                'duration' => $video->getDuration(),
+                'duration' => $video->get('duration'),
+                'caption' => $message->getCaption()
+            ]);
+        } elseif ($message->has('audio')) {
+            $audio = $message->getAudio();
+            $thumb = $audio->get('thumbnail') ?: $audio->get('thumb');
+            if ($thumb && isset($thumb['file_id'])) {
+                $baseInfo['thumb_file_id'] = $thumb['file_id'];
+            }
+            return array_merge($baseInfo, [
+                'file_id' => $audio->getFileId(),
+                'file_unique_id' => $audio->getFileUniqueId(),
+                'type' => 'audio',
+                'file_size' => $audio->getFileSize(),
+                'duration' => $audio->get('duration'),
                 'caption' => $message->getCaption()
             ]);
         } elseif ($message->has('document')) {
             $document = $message->getDocument();
             $mimeType = $document->getMimeType();
-            if (strpos($mimeType, 'image/') === 0 || strpos($mimeType, 'video/') === 0) {
+            $thumb = $document->get('thumbnail') ?: $document->get('thumb');
+            if ($thumb && isset($thumb['file_id'])) {
+                $baseInfo['thumb_file_id'] = $thumb['file_id'];
+            }
+            
+            // Allow images, videos, and audio documents
+            if (strpos($mimeType, 'image/') === 0 || strpos($mimeType, 'video/') === 0 || strpos($mimeType, 'audio/') === 0) {
+                $type = 'document';
+                if (strpos($mimeType, 'image/') === 0) $type = 'photo';
+                elseif (strpos($mimeType, 'video/') === 0) $type = 'video';
+                elseif (strpos($mimeType, 'audio/') === 0) $type = 'audio';
+
                 return array_merge($baseInfo, [
                     'file_id' => $document->getFileId(),
                     'file_unique_id' => $document->getFileUniqueId(),
-                    'type' => strpos($mimeType, 'image/') === 0 ? 'photo' : 'video',
+                    'type' => $type,
                     'file_size' => $document->getFileSize(),
                     'mime_type' => $mimeType,
                     'caption' => $message->getCaption()
@@ -591,6 +634,7 @@ class Bot
             'short_id' => $shortId,
             'telegram_file_id' => $mediaInfo['file_id'],
             'file_unique_id' => $mediaInfo['file_unique_id'],
+            'thumb_file_id' => $mediaInfo['thumb_file_id'] ?? null,
             'file_type' => $mediaInfo['type'],
             'caption' => $mediaInfo['caption'],
             'media_group_id' => $mediaInfo['media_group_id'],
