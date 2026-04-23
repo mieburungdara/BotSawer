@@ -25,7 +25,7 @@ try {
         // Continue anyway if public list
     }
 
-    $bots = DB::table('bots')->where('is_active', 1)->get();
+    $bots = DB::table('bots')->where('is_active', 1)->where('type', 'public')->get();
     $channels = DB::table('channels')->where('is_active', 1)->get();
     $groups = DB::table('groups')->where('is_active', 1)->get();
 

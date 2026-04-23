@@ -86,6 +86,18 @@ class WebAppAuth
             throw new Exception('Akun tidak ditemukan. Silakan mulai bot terlebih dahulu dengan perintah /start');
         }
 
+        // Check if bot is admin-only
+        if ($bot->type === 'admin') {
+            $isAdmin = DB::table('admins')
+                ->where('telegram_id', $user->telegram_id)
+                ->where('is_active', 1)
+                ->exists();
+            
+            if (!$isAdmin) {
+                throw new Exception('Akses ditolak: Bot ini hanya dapat digunakan oleh Administrator.');
+            }
+        }
+
         return (int)$user->id;
     }
 }
