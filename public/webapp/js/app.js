@@ -29,12 +29,13 @@ class App {
         this.telegram = window.Telegram.WebApp;
         this.telegram.expand();
         this.userData = null;
+        this.settings = null;
         this.currentPage = 'dashboard';
-        this._creatorAnalytics = null; // Store for post-render chart init - SET EXTERNALLY BY loadCreator() IN creator.js
+        this._creatorAnalytics = null;
         this._donationsChart = null;
         this._amountChart = null;
         
-        // Parse ALL start params ONCE - Single Source of Truth
+        // Parse ALL start params ONCE
         this.parseStartParams();
 
         this.init();
@@ -110,7 +111,8 @@ class App {
             const loadingHtml = '<div style="text-align: center; margin-top: 50px;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 15px; color: var(--hint-color);">Memuat data...</p></div>';
             document.getElementById('app').innerHTML = loadingHtml;
 
-            // Load user profile & session first
+            // Load settings & user profile first
+            await this.loadAppSettings();
             await this.loadUserProfile();
             
             // Render main shell
@@ -146,6 +148,43 @@ class App {
                 </div>
             `;
             if (window.lucide) window.lucide.createIcons();
+        }
+    }
+
+    async loadAppSettings() {
+        const CACHE_KEY = 'vesper_app_settings';
+        const CACHE_EXPIRY = 3600000; // 1 hour
+
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < CACHE_EXPIRY) {
+                this.settings = data;
+                console.log('App: Settings loaded from cache');
+                return;
+            }
+        }
+
+        try {
+            // We use a simplified apiCall that doesn't need auth for config
+            const response = await fetch(`api/config.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ botId: this.botId })
+            });
+            const result = await response.json();
+            if (result.success) {
+                this.settings = result.data;
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    data: result.data,
+                    timestamp: Date.now()
+                }));
+                console.log('App: Settings loaded from API');
+            }
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+            // Fallback
+            this.settings = { app_name: 'Vesper', app_version: '1.0.0' };
         }
     }
 
@@ -208,7 +247,7 @@ class App {
                         <div class="brand-icon">
                             <i data-lucide="zap"></i>
                         </div>
-                        <h1>Bot Sawer</h1>
+                        <h1>${this.settings.app_name}</h1>
                     </div>
                     <div class="header-actions">
                         <button class="header-icon-btn" onclick="app.toggleSidebar()" title="Menu">
@@ -357,7 +396,7 @@ class App {
                     </div>
 
                     <div class="drawer-footer">
-                        <span>Bot Sawer v1.0.0</span>
+                        <span>${this.settings.app_name} v${this.settings.app_version}</span>
                     </div>
                 </div>
             </div>

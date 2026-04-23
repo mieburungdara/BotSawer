@@ -18,7 +18,7 @@ export async function loadAchievements(app) {
             <div class="grid-layout fade-in">
                 <div class="card col-full" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white; border: none; padding: 30px 20px;">
                     <h2 style="font-family: 'Outfit'; font-size: 28px; margin-bottom: 5px;">Hall of Fame</h2>
-                    <p style="opacity: 0.7; font-size: 14px;">Koleksi pencapaian dan perjalananmu di Bot Sawer.</p>
+                    <p style="opacity: 0.7; font-size: 14px;">Koleksi pencapaian dan perjalananmu di ${app.settings.app_name}.</p>
                     <div style="display: flex; gap: 15px; margin-top: 20px;">
                         <div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 12px; flex: 1; text-align: center;">
                             <div style="font-size: 20px; font-weight: 800; color: #facc15;">${unlockedTiersCount}</div>

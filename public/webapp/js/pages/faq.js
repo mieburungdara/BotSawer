@@ -4,8 +4,8 @@
 export async function loadFaq(app) {
     const faqs = [
         {
-            q: "Apa itu Bot Sawer?",
-            a: "Bot Sawer adalah platform yang membantu kreator Telegram untuk menerima donasi dan menjual konten digital secara aman."
+            q: `Apa itu ${app.settings.app_name}?`,
+            a: `${app.settings.app_name} adalah platform yang membantu kreator Telegram untuk menerima donasi dan menjual konten digital secara aman.`
         },
         {
             q: "Berapa potongan (komisi) platform?",

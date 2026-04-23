@@ -6,14 +6,14 @@ export async function loadHelp(app) {
         <div class="grid-layout fade-in">
             <div class="card col-full">
                 <h3><i data-lucide="help-circle"></i> Panduan Penggunaan</h3>
-                <p style="color: var(--hint-color); font-size: 14px; margin-bottom: 20px;">Ikuti langkah-langkah di bawah ini untuk mulai menghasilkan uang di Bot Sawer.</p>
+                <p style="color: var(--hint-color); font-size: 14px; margin-bottom: 20px;">Ikuti langkah-langkah di bawah ini untuk mulai menghasilkan uang di ${app.settings.app_name}.</p>
 
                 <div class="help-steps">
                     <div class="help-step">
                         <div class="step-num">1</div>
                         <div class="step-content">
                             <h4>Verifikasi Akun</h4>
-                            <p>Buka menu Profil dan pastikan akun Anda sudah terverifikasi sebagai kreator untuk mulai menerima donasi.</p>
+                            <p>Buka menu Profil dan pastikan akun Anda sudah terverifikasi sebagai kreator untuk mulai menerima donasi di ${app.settings.app_name}.</p>
                         </div>
                     </div>
 
