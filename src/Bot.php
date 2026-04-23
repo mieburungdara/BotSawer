@@ -77,7 +77,7 @@ class Bot
     {
         $chatId = $message->getChat()->getId();
         $text = $message->getText();
-        $telegramId = (int)$message->getFrom()->getId();
+        $telegramId = $message->getFrom()->getId(); // Keep as-is; (int) overflows on 32-bit for large Telegram IDs
 
         // Ensure user exists and get internal user ID
         $userId = $this->ensureUserExists($message->getFrom());
@@ -121,7 +121,7 @@ class Bot
         }
     }
 
-    private function handleStartCommand(int $chatId, int $userId, string $text): void
+    private function handleStartCommand($chatId, $userId, string $text): void
     {
         $startParam = $this->extractStartParameter($text);
 
@@ -144,7 +144,7 @@ class Bot
         return null;
     }
 
-    private function handleMediaAccess(int $chatId, int $userId, int $mediaId): void
+    private function handleMediaAccess($chatId, $userId, $mediaId): void
     {
         try {
             $media = DB::table('media_files')
@@ -186,7 +186,7 @@ class Bot
         }
     }
 
-    private function handleAlbumAccess(int $chatId, int $userId, string $groupId): void
+    private function handleAlbumAccess($chatId, $userId, string $groupId): void
     {
         try {
             $medias = DB::table('media_files')
@@ -229,7 +229,7 @@ class Bot
         }
     }
 
-    private function sendMediaWithSawerButton(int $chatId, $media): void
+    private function sendMediaWithSawerButton($chatId, $media): void
     {
         $caption = $media->caption ?? 'Media dari kreator';
 
@@ -268,7 +268,7 @@ class Bot
         }
     }
 
-    private function sendAlbumWithSawerButton(int $chatId, $medias, string $groupId): void
+    private function sendAlbumWithSawerButton($chatId, $medias, string $groupId): void
     {
         $mediaArray = [];
         $captions = [];
@@ -328,7 +328,7 @@ class Bot
         }
     }
 
-    private function handleSaldoCommand(int $chatId, int $userId): void
+    private function handleSaldoCommand($chatId, $userId): void
     {
         try {
             $balance = Wallet::getBalance($userId);
@@ -351,7 +351,7 @@ class Bot
         }
     }
 
-    private function handleTopupCommand(int $chatId): void
+    private function handleTopupCommand($chatId): void
     {
         // Get admin and finance usernames from database
         $admins = DB::table('admins')
@@ -405,7 +405,7 @@ class Bot
 
 
 
-    private function showAdminHelp(int $chatId): void
+    private function showAdminHelp($chatId): void
     {
         $message = "🔧 Admin Commands:\n\n";
         $message .= "/admin pending - Lihat pembayaran pending\n";
@@ -420,7 +420,7 @@ class Bot
         ]);
     }
 
-    private function handleHelpCommand(int $chatId): void
+    private function handleHelpCommand($chatId): void
     {
         $message = "🤖 Bantuan Bot Sawer\n\n";
         $message .= "📋 Perintah yang tersedia:\n";
@@ -443,7 +443,7 @@ class Bot
     {
         try {
             $chatId = $message->getChat()->getId();
-            $telegramId = (int)$message->getFrom()->getId();
+            $telegramId = $message->getFrom()->getId(); // Keep as string to avoid 32-bit overflow
 
             // Ensure user exists and get internal ID
             $userId = $this->ensureUserExists($message->getFrom());
@@ -476,8 +476,8 @@ class Bot
                 return;
             }
 
-            // Save to database as DRAFT
-            $mediaData = $this->saveMediaToDatabase($this->botId, $userId, $mediaInfo);
+            // Save to database as DRAFT — use $this->botData->id (DB PK), NOT $this->botId (Telegram Bot ID)
+            $mediaData = $this->saveMediaToDatabase($this->botData->id, $userId, $mediaInfo);
             $mediaId = $mediaData['id'];
             $shortId = $mediaData['short_id'];
 
@@ -668,7 +668,7 @@ class Bot
         return uniqid();
     }
 
-    private function forwardToBackupChannel(int $mediaId, int $userId, array $mediaInfo): void
+    private function forwardToBackupChannel($mediaId, $userId, array $mediaInfo): void
     {
         try {
             // Get backup channel from settings
@@ -835,7 +835,15 @@ class Bot
                 return;
             }
 
-            $fileId = end($photo)->getFileId();
+            $photos = $message->getPhoto();
+            if (is_array($photos)) {
+                $fileId = end($photos)->getFileId();
+            } elseif (is_object($photos) && method_exists($photos, 'last')) {
+                $fileId = $photos->last()->getFileId();
+            } else {
+                $photoArr = (array)$photos;
+                $fileId = end($photoArr)->getFileId();
+            }
 
             // Save payment proof to database
             $proofId = DB::table('payment_proofs')->insertGetId([
@@ -902,7 +910,7 @@ class Bot
         ]);
     }
 
-    private function handleSawerCallback(string $data, int $chatId, int $userId): void
+    private function handleSawerCallback(string $data, $chatId, $userId): void
     {
         $parts = explode('_', $data);
         if (count($parts) < 3) {
@@ -915,7 +923,7 @@ class Bot
         $this->processDonation($chatId, $userId, $amount, $mediaId);
     }
 
-    private function handleSawerAlbumCallback(string $data, int $chatId, int $userId): void
+    private function handleSawerAlbumCallback(string $data, $chatId, $userId): void
     {
         $parts = explode('_', $data);
         if (count($parts) < 4) {
@@ -934,7 +942,7 @@ class Bot
         $this->processDonation($chatId, $userId, $amount, (int)$media->id, 'album');
     }
 
-    private function processDonation(int $chatId, int $userId, int $amount, int $mediaId, string $context = 'media'): void
+    private function processDonation($chatId, $userId, int $amount, $mediaId, string $context = 'media'): void
     {
         if ($amount <= 0) {
             $this->telegram->sendMessage(['chat_id' => $chatId, 'text' => '❌ Jumlah donasi tidak valid.']);
@@ -984,7 +992,7 @@ class Bot
         }
     }
 
-    private function checkBalanceAndNotify(int $userId, int $amount, int $chatId): bool
+    private function checkBalanceAndNotify($userId, int $amount, $chatId): bool
     {
         $balance = Wallet::getBalance($userId);
         if ($balance < $amount) {
@@ -1015,12 +1023,8 @@ class Bot
                 throw new Exception('Media not found');
             }
 
-            // Create deeplink (use username if available, otherwise use bot ID)
-            $botData = DB::table('bots')
-                ->where('id', $this->botId)
-                ->first();
-
-            $botIdentifier = $botData->username ?: "bot{$botData->id}";
+            // Use already-loaded botData instead of querying again
+            $botIdentifier = $this->botData->username ?: "bot{$this->botData->id}";
             $deeplink = "https://t.me/{$botIdentifier}?start=media_{$mediaId}";
 
             // Create caption with deeplink and creator ID based on privacy setting
@@ -1073,7 +1077,7 @@ class Bot
         }
     }
 
-    private function handleCancelMediaCallback(string $data, int $chatId, int $userId): void
+    private function handleCancelMediaCallback(string $data, $chatId, $userId): void
     {
         $parts = explode('_', $data);
         if (count($parts) < 3) {
