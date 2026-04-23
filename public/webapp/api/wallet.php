@@ -74,9 +74,18 @@ try {
             ->where('key', 'platform_commission')
             ->value('value') ?: 10.00;
 
+        // Get flat admin fee (e.g. 2500)
+        $adminFee = (float) DB::table('settings')
+            ->where('key', 'withdrawal_admin_fee')
+            ->value('value') ?: 0;
+
         // Calculate commission amount
         $commissionAmount = ($amount * $commissionRate) / 100;
-        $finalAmount = $amount - $commissionAmount;
+        $finalAmount = $amount - $commissionAmount - $adminFee;
+
+        if ($finalAmount <= 0) {
+            throw new Exception('Nominal penarikan terlalu kecil untuk menutupi biaya.');
+        }
 
         // Check balance (must have enough for full amount including commission)
         $balance = Wallet::getBalance($userId);
@@ -94,7 +103,7 @@ try {
             throw new Exception('Hanya kreator yang bisa melakukan penarikan');
         }
 
-        Database::transaction(function () use ($userId, $amount, $bankName, $bankAccount, $accountName) {
+        Database::transaction(function () use ($userId, $amount, $bankName, $bankAccount, $accountName, $commissionRate, $commissionAmount, $adminFee, $finalAmount) {
             // Deduct balance
             DB::table('wallets')->where('user_id', $userId)->decrement('balance', $amount);
 
@@ -117,6 +126,7 @@ try {
                     'original_amount' => $amount,
                     'commission_rate' => $commissionRate,
                     'commission_amount' => $commissionAmount,
+                    'admin_fee' => $adminFee,
                     'transaction_id' => $transactionId,
                     'bank_details' => json_encode($formattedBankAccount),
                     'status' => 'pending'
@@ -127,6 +137,7 @@ try {
                     'original_amount' => $amount,
                     'commission_rate' => $commissionRate,
                     'commission_amount' => $commissionAmount,
+                    'admin_fee' => $adminFee,
                     'final_amount' => $finalAmount,
                     'bank_name' => $bankName,
                     'account_number' => '***MASKED***',
@@ -184,6 +195,11 @@ try {
         ->where('key', 'min_withdraw')
         ->value('value') ?: 50000.00;
 
+    // Get admin fee for UI
+    $adminFee = (float) DB::table('settings')
+        ->where('key', 'withdrawal_admin_fee')
+        ->value('value') ?: 0;
+
     echo json_encode([
         'success' => true,
         'data' => [
@@ -193,6 +209,7 @@ try {
             'total_donations' => $totalDonations,
             'total_media' => $totalMedia,
             'commission_rate' => $commissionRate,
+            'admin_fee' => $adminFee,
             'min_withdraw' => $minWithdraw,
             'last_withdrawal' => $lastWithdrawalData
         ]

@@ -9,6 +9,7 @@ export async function loadWallet(app) {
     
     // Store settings in app for use in forms
     app.platformCommission = walletData.commission_rate || 10;
+    app.adminFee = walletData.admin_fee || 0;
     app.minWithdraw = walletData.min_withdraw || 50000;
     app.currentBalance = walletData.balance || 0;
 
@@ -290,19 +291,25 @@ export function calculateWithdrawalCommission(app) {
     const details = document.getElementById('commissionDetails');
     const finalAmount = document.getElementById('finalAmount');
 
-    if (amount >= 50000) {
+    if (amount >= app.minWithdraw) {
         const commissionRate = app.platformCommission || 10.00;
+        const adminFee = app.adminFee || 0;
         const commissionAmount = (amount * commissionRate) / 100;
-        const receiveAmount = amount - commissionAmount;
+        const totalFees = commissionAmount + adminFee;
+        const receiveAmount = amount - totalFees;
 
         details.innerHTML = `
             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                 <span>Jumlah Penarikan</span>
                 <span style="color: var(--text-color); font-weight: 600;">Rp ${formatNumber(amount)}</span>
             </div>
-            <div style="display: flex; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                 <span>Komisi Platform (${commissionRate}%)</span>
                 <span style="color: var(--danger); font-weight: 600;">- Rp ${formatNumber(commissionAmount)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Biaya Admin (E-Wallet)</span>
+                <span style="color: var(--danger); font-weight: 600;">- Rp ${formatNumber(adminFee)}</span>
             </div>
         `;
         finalAmount.innerHTML = `
