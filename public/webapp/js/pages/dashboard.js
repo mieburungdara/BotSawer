@@ -1,8 +1,7 @@
 import { formatNumber } from '../utils.js';
 
 export async function loadDashboard(app) {
-    const response = await app.apiCall('dashboard.php');
-    const data = response.data;
+    const data = await app.apiCall('dashboard.php');
     const announcements = data.announcements || [];
     const stats = data.stats || {};
 
