@@ -70,46 +70,95 @@ export async function loadWallet(app) {
             </div>
 
             <div class="card">
-                <h3><i data-lucide="arrow-up-right"></i> Tarik Saldo</h3>
-                <div style="background: rgba(99, 102, 241, 0.05); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px dashed var(--primary);">
-                    <div style="display: flex; gap: 10px; color: var(--primary);">
-                        <i data-lucide="info" style="flex-shrink: 0;"></i>
-                        <p style="font-size: 13px; font-weight: 500;">Biaya komisi: <strong>${app.platformCommission}%</strong>.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 0;"><i data-lucide="arrow-up-right"></i> Tarik Saldo</h3>
+                    <div style="font-size: 12px; padding: 4px 8px; background: rgba(99, 102, 241, 0.1); color: var(--primary); border-radius: 20px; font-weight: 600;">
+                        Min. Rp 50.000
                     </div>
                 </div>
+
+                <div style="background: var(--secondary-bg-color); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px solid var(--glass-border);">
+                    <div style="display: flex; align-items: center; gap: 12px; color: var(--hint-color); margin-bottom: 5px;">
+                        <i data-lucide="wallet" style="width: 16px; height: 16px;"></i>
+                        <span style="font-size: 13px;">Saldo Tersedia</span>
+                    </div>
+                    <div style="font-size: 24px; font-weight: 800; color: var(--text-color);">
+                        Rp ${formatNumber(walletData.balance || 0)}
+                    </div>
+                </div>
+
                 <form id="withdrawForm">
                     <div class="form-group">
                         <label>Nominal Penarikan</label>
-                        <input type="number" id="withdrawAmount" min="50000" step="1000" placeholder="Min. Rp 50.000" required>
+                        <div style="position: relative;">
+                            <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--hint-color);">Rp</span>
+                            <input type="number" id="withdrawAmount" min="50000" step="1000" placeholder="0" style="padding-left: 45px; font-size: 18px; font-weight: 700;" required>
+                        </div>
                     </div>
+
                     <div class="form-group">
-                        <label>Pilih E-Wallet</label>
-                        <select id="bankName" required>
-                            <option value="">Pilih...</option>
-                            <option value="ShopeePay">ShopeePay</option>
-                            <option value="DANA">DANA</option>
-                            <option value="GoPay">GoPay</option>
-                        </select>
+                        <label>Metode Penarikan</label>
+                        <div class="wallet-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 8px;">
+                            <label class="wallet-item">
+                                <input type="radio" name="bankName" value="DANA" checked required style="display: none;">
+                                <div class="wallet-card">
+                                    <div class="wallet-icon" style="background: #008ced;">D</div>
+                                    <span>DANA</span>
+                                </div>
+                            </label>
+                            <label class="wallet-item">
+                                <input type="radio" name="bankName" value="GoPay" style="display: none;">
+                                <div class="wallet-card">
+                                    <div class="wallet-icon" style="background: #00aa13;">G</div>
+                                    <span>GoPay</span>
+                                </div>
+                            </label>
+                            <label class="wallet-item">
+                                <input type="radio" name="bankName" value="ShopeePay" style="display: none;">
+                                <div class="wallet-card">
+                                    <div class="wallet-icon" style="background: #ee4d2d;">S</div>
+                                    <span>ShopeePay</span>
+                                </div>
+                            </label>
+                            <label class="wallet-item">
+                                <input type="radio" name="bankName" value="OVO" style="display: none;">
+                                <div class="wallet-card">
+                                    <div class="wallet-icon" style="background: #4c2a86;">O</div>
+                                    <span>OVO</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
+
                     <div class="form-group">
-                        <label>Nomor Handphone</label>
+                        <label>Nomor Tujuan (HP)</label>
                         <input type="text" id="bankAccount" placeholder="Contoh: 0812..." required>
                     </div>
+
                     <div class="form-group">
-                        <label>Nama Akun</label>
-                        <input type="text" id="accountName" placeholder="Nama sesuai aplikasi" required>
+                        <label>Nama Penerima</label>
+                        <input type="text" id="accountName" placeholder="Sesuai nama di aplikasi e-wallet" required>
                     </div>
-                    <div class="form-group" style="display: flex; align-items: flex-start; gap: 8px;">
-                        <input type="checkbox" id="withdrawConfirmation" style="margin-top: 4px;">
-                        <label for="withdrawConfirmation" style="font-size: 12px; font-weight: normal; margin-bottom: 0;">Saya mengonfirmasi bahwa data rekening yang saya masukkan di atas sudah benar.</label>
+
+                    <div id="commissionBreakdown" style="display: none; margin-bottom: 20px;">
+                        <div style="background: var(--secondary-bg-color); padding: 15px; border-radius: var(--radius-md); border-left: 4px solid var(--primary);">
+                            <div id="commissionDetails" style="font-size: 13px; line-height: 1.6; color: var(--hint-color);"></div>
+                            <hr style="border: 0; border-top: 1px dashed var(--glass-border); margin: 10px 0;">
+                            <div id="finalAmount" style="font-size: 15px; font-weight: 700; color: var(--primary);"></div>
+                        </div>
                     </div>
-                    <div id="commissionBreakdown" style="display: none; font-size: 12px; color: var(--hint-color); margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.02); border-radius: 8px;">
-                        <div id="commissionDetails"></div>
-                        <div id="finalAmount" style="font-weight: 700; color: var(--primary); margin-top: 5px;"></div>
+
+                    <div class="form-group" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: rgba(99, 102, 241, 0.03); border-radius: 8px;">
+                        <input type="checkbox" id="withdrawConfirmation" style="width: 18px; height: 18px; margin-top: 2px;" required>
+                        <label for="withdrawConfirmation" style="font-size: 12px; font-weight: normal; margin-bottom: 0; color: var(--hint-color);">
+                            Saya mengonfirmasi bahwa data tujuan penarikan di atas sudah benar. Kesalahan data bukan tanggung jawab kami.
+                        </label>
                     </div>
-                    <div id="withdrawResult" style="margin-bottom: 15px; font-size: 13px;"></div>
-                    <button type="submit" class="btn btn-primary">
-                        <i data-lucide="arrow-up-right"></i> Tarik Sekarang
+
+                    <div id="withdrawResult" style="margin-bottom: 15px;"></div>
+
+                    <button type="submit" class="btn btn-primary btn-full" style="height: 50px; font-size: 16px;">
+                        <i data-lucide="check-circle"></i> Konfirmasi Penarikan
                     </button>
                 </form>
             </div>
@@ -152,7 +201,7 @@ export function setupWithdrawalForm(app) {
             e.preventDefault();
 
             const amount = parseInt(document.getElementById('withdrawAmount').value);
-            const bankName = document.getElementById('bankName').value;
+            const bankName = document.querySelector('input[name="bankName"]:checked').value;
             const bankAccount = document.getElementById('bankAccount').value;
             const accountName = document.getElementById('accountName').value;
             const confirmed = document.getElementById('withdrawConfirmation').checked;
@@ -200,8 +249,22 @@ export function calculateWithdrawalCommission(app) {
         const commissionAmount = (amount * commissionRate) / 100;
         const receiveAmount = amount - commissionAmount;
 
-        details.innerHTML = `Jumlah penarikan: Rp ${formatNumber(amount)}<br>Komisi platform (${commissionRate}%): Rp ${formatNumber(commissionAmount)}`;
-        finalAmount.innerHTML = '💰 Anda akan menerima: Rp ' + formatNumber(receiveAmount);
+        details.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>Jumlah Penarikan</span>
+                <span style="color: var(--text-color); font-weight: 600;">Rp ${formatNumber(amount)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Komisi Platform (${commissionRate}%)</span>
+                <span style="color: var(--danger); font-weight: 600;">- Rp ${formatNumber(commissionAmount)}</span>
+            </div>
+        `;
+        finalAmount.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Estimasi Diterima</span>
+                <span style="font-size: 18px;">Rp ${formatNumber(receiveAmount)}</span>
+            </div>
+        `;
         breakdown.style.display = 'block';
     } else {
         breakdown.style.display = 'none';
