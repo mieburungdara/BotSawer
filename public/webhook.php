@@ -65,7 +65,7 @@ try {
             ->where('is_active', 1)
             ->orderBy('id', 'asc')
             ->first();
-        $botId = $botData ? (int)$botData->id : 1;
+        $botId = $botData ? (int)$botData->bot_id : 0;
     }
 
     // Ensure botId is integer

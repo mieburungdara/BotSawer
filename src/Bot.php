@@ -25,7 +25,7 @@ class Bot
         try {
             // Get bot token from database
             $bot = DB::table('bots')
-                ->where('id', $this->botId)
+                ->where('bot_id', $this->botId)
                 ->where('is_active', 1)
                 ->first();
 
