@@ -87,7 +87,7 @@ try {
             'updated_at' => Carbon::now()
         ]);
 
-        echo json_encode(['success' => true, 'message' => 'Konten dikembalikan ke Draft']);
+        echo json_encode(['success' => true, 'data' => ['message' => 'Konten dikembalikan ke Draft']]);
         exit;
     }
 
@@ -109,7 +109,7 @@ try {
             'updated_at' => Carbon::now()
         ]);
 
-        echo json_encode(['success' => true, 'message' => 'Konten berhasil dihapus']);
+        echo json_encode(['success' => true, 'data' => ['message' => 'Konten berhasil dihapus']]);
         exit;
     }
 
@@ -176,7 +176,7 @@ try {
             ]);
         });
 
-        echo json_encode(['success' => true, 'message' => 'Terima kasih! Donasi berhasil dikirim.']);
+        echo json_encode(['success' => true, 'data' => ['message' => 'Terima kasih! Donasi berhasil dikirim.']]);
         exit;
     }
 

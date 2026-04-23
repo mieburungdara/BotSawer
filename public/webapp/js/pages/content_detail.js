@@ -5,8 +5,7 @@ import { formatNumber, getRelativeTime } from '../utils.js';
  */
 export async function loadContentDetail(app, shortId) {
     try {
-        const result = await app.apiCall('content.php', { short_id: shortId, action: 'get' });
-        const content = result.data;
+        const content = await app.apiCall('content.php', { short_id: shortId, action: 'get' });
 
         if (content.is_owner) {
             return renderOwnerView(app, content);
