@@ -12,10 +12,10 @@ use Illuminate\Database\Capsule\Manager as DB;
 class Bot
 {
     private Api $telegram;
-    private int $botId;
+    private $botId;
     private $botData;
 
-    public function __construct(int $botId = 1)
+    public function __construct($botId = 1)
     {
         $this->botId = $botId;
         $this->initializeBot();

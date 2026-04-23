@@ -58,18 +58,15 @@ try {
     $botId = $_GET['bot_id'] ?? null;
     
     if ($botId) {
-        $botId = (int)$botId;
+        // Keep as string to avoid overflow
     } else {
         // Fallback ke bot aktif pertama jika tidak ada bot_id
         $botData = DB::table('bots')
             ->where('is_active', 1)
             ->orderBy('id', 'asc')
             ->first();
-        $botId = $botData ? (int)$botData->bot_id : 0;
+        $botId = $botData ? $botData->bot_id : 0;
     }
-
-    // Ensure botId is integer
-    $botId = (int)$botId;
 
     // Initialize regular bot
     $bot = new Bot($botId);
