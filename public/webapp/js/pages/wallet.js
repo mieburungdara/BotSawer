@@ -151,11 +151,16 @@ export async function loadWallet(app) {
                         </div>
                     </div>
 
-                    <div class="form-group" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: rgba(99, 102, 241, 0.03); border-radius: 8px;">
-                        <input type="checkbox" id="withdrawConfirmation" style="width: 18px; height: 18px; margin-top: 2px;" required>
-                        <label for="withdrawConfirmation" style="font-size: 12px; font-weight: normal; margin-bottom: 0; color: var(--hint-color);">
-                            Saya mengonfirmasi bahwa data tujuan penarikan di atas sudah benar. Kesalahan data bukan tanggung jawab kami.
-                        </label>
+                    <div style="margin-bottom: 25px; padding: 16px; background: rgba(245, 158, 11, 0.05); border-radius: var(--radius-md); border: 1px solid rgba(245, 158, 11, 0.2);">
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="flex-shrink: 0; margin-top: 2px;">
+                                <input type="checkbox" id="withdrawConfirmation" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);" required>
+                            </div>
+                            <label for="withdrawConfirmation" style="font-size: 13px; line-height: 1.5; color: var(--text-color); cursor: pointer; margin-bottom: 0;">
+                                <strong style="display: block; margin-bottom: 4px; color: var(--warning);">Pernyataan Konfirmasi</strong>
+                                Saya menyatakan bahwa seluruh data tujuan penarikan di atas adalah <strong>benar dan milik saya pribadi</strong>. Saya memahami bahwa kesalahan pengisian data sepenuhnya menjadi tanggung jawab saya.
+                            </label>
+                        </div>
                     </div>
 
                     <div id="withdrawResult" style="margin-bottom: 15px;"></div>
