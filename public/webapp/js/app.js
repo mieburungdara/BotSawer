@@ -10,6 +10,10 @@ import { loadContents } from './pages/contents.js';
 import { loadAchievements } from './pages/achievements.js';
 import { loadProfile, viewPublicCreatorProfile, viewOtherProfile, viewPublicCreatorProfileLink } from './pages/profile.js';
 import { loadSettings, updateSetting } from './pages/settings.js';
+import { loadInfo } from './pages/info.js';
+import { loadHelp } from './pages/help.js';
+import { loadBlog } from './pages/blog.js';
+import { loadFaq } from './pages/faq.js';
 import { 
     loadAdmin, searchUsers, toggleUserBan, adjustUserBalance, loadAuditLogs, loadBots, addBot, toggleBot,
     loadAdmins, addAdmin, deactivateAdmin, loadPendingPayments, approvePayment, rejectPayment, viewPaymentProof,
@@ -262,14 +266,6 @@ class App {
                     <i data-lucide="search"></i>
                     Cari
                 </button>
-                <button class="nav-btn" data-page="wallet">
-                    <i data-lucide="wallet"></i>
-                    Dompet
-                </button>
-                <button class="nav-btn" onclick="app.toggleSidebar()">
-                    <i data-lucide="more-horizontal"></i>
-                    Menu
-                </button>
             </nav>
 
             <!-- Sidebar / Side Drawer -->
@@ -322,6 +318,20 @@ class App {
                         </a>
                         <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('settings'); app.toggleSidebar();">
                             <i data-lucide="settings"></i> Pengaturan
+                        </a>
+
+                        <div class="menu-section">INFORMASI & BANTUAN</div>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('info'); app.toggleSidebar();">
+                            <i data-lucide="info"></i> Informasi Bot
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('help'); app.toggleSidebar();">
+                            <i data-lucide="help-circle"></i> Panduan Pengguna
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('faq'); app.toggleSidebar();">
+                            <i data-lucide="message-circle"></i> Tanya Jawab (FAQ)
+                        </a>
+                        <a href="javascript:void(0)" class="menu-item" onclick="app.loadPage('blog'); app.toggleSidebar();">
+                            <i data-lucide="book-open"></i> Blog & Berita
                         </a>
 
                         ${this.userData.is_admin ? `
@@ -467,6 +477,18 @@ class App {
                     break;
                 case 'achievements':
                     html = await loadAchievements(this);
+                    break;
+                case 'info':
+                    html = await loadInfo(this);
+                    break;
+                case 'help':
+                    html = await loadHelp(this);
+                    break;
+                case 'blog':
+                    html = await loadBlog(this);
+                    break;
+                case 'faq':
+                    html = await loadFaq(this);
                     break;
                 default:
                     html = `<div class="card"><h3>Halaman tidak ditemukan</h3></div>`;

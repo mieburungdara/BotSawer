@@ -1982,3 +1982,43 @@ h1, h2, h3, h4 {
     color: var(--hint-color);
     border-top: 1px solid var(--secondary-bg-color);
 }
+
+/* Help Steps */
+.help-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.help-step {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.step-num {
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+}
+
+.step-content h4 {
+    margin: 0 0 5px 0;
+    font-size: 15px;
+}
+
+.step-content p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--hint-color);
+    line-height: 1.5;
+}
