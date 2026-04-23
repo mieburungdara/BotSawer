@@ -14,6 +14,7 @@ export async function loadContents(app, page = 1, highlightId = null) {
 
     let tableRows = '';
     if (contents.length > 0) {
+        contents.forEach(item => {
             const isHighlighted = highlightId && item.short_id == highlightId;
             tableRows += `
                 <tr ${isHighlighted ? 'class="highlight-row" id="media-' + item.short_id + '"' : ''} 
