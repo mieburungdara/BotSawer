@@ -84,7 +84,8 @@ const initBots = async () => {
       bot.telegram.setWebhook(fullWebhookUrl).then(() => {
         console.log(`Webhook set for ${botData.username} at ${fullWebhookUrl}`);
       }).catch(err => {
-        console.error(`Failed to set webhook for ${botData.username}:`, err);
+        console.error(`[WARNING] Failed to set webhook for ${botData.username}:`, err.message);
+        console.log(`💡 Tip: Check if your hosting blocks outgoing requests to api.telegram.org`);
       });
     } else {
       // POLLING MODE (Development)
@@ -96,8 +97,8 @@ const initBots = async () => {
     }
 
     // Graceful stop
-    process.once('SIGINT', () => bot.stop('SIGINT'));
-    process.once('SIGTERM', () => bot.stop('SIGTERM'));
+    process.once('SIGINT', () => { if (bot && bot.polling) bot.stop('SIGINT') });
+    process.once('SIGTERM', () => { if (bot && bot.polling) bot.stop('SIGTERM') });
   }
 };
 
