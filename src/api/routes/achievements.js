@@ -13,7 +13,7 @@ router.post('/achievements.php', async (req, res) => {
 
     // 1. Calculate Metrics
     const donationStats = await db('transactions')
-        .where('user_id', telegramId) // Note: in your PHP it was from_user_id, check your schema!
+        .where('from_user_id', telegramId)
         .where('type', 'donation')
         .where('status', 'success')
         .select(db.raw('COUNT(id) as count, COALESCE(SUM(amount), 0) as total'))

@@ -70,8 +70,9 @@ class CreatorService {
    * Get Creator Stats
    */
   async getStats(telegramId) {
-    const stats = await db('media_files')
+    const stats = await db('contents')
         .where('user_id', telegramId)
+        .whereNot('status', 'deleted')
         .count('id as total_media')
         .first();
         
@@ -96,8 +97,9 @@ class CreatorService {
    * Calculate Streaks
    */
   async getStreakData(telegramId) {
-    const publishDatesRows = await db('media_files')
+    const publishDatesRows = await db('contents')
       .where('user_id', telegramId)
+      .where('status', 'posted')
       .select(db.raw('DISTINCT DATE(created_at) as publish_date'))
       .orderBy('publish_date', 'desc');
 
