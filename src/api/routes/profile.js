@@ -15,11 +15,25 @@ router.post('/profile.php', async (req, res) => {
     // 1. GET PROFILE
     if (action === 'get') {
       const stats = await creator.getStats(user.telegram_id);
+      
+      // Get recent contents with media
+      const contents = await db('contents')
+        .where('user_id', user.telegram_id)
+        .whereNot('status', 'deleted')
+        .orderBy('created_at', 'desc')
+        .limit(20);
+
+      const contentsWithMedia = await Promise.all(contents.map(async (content) => {
+        const media = await db('media_files_raw').where('content_id', content.id);
+        return { ...content, media };
+      }));
+
       return res.json({ 
         success: true, 
         data: {
           ...user,
-          stats
+          stats,
+          contents: contentsWithMedia
         } 
       });
     }
