@@ -25,6 +25,8 @@ const url = new URL(domain || 'http://localhost');
 const subfolder = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
 const mainRouter = express.Router();
 
+console.log(`[INIT] Detected subfolder: ${subfolder || 'none (root)'}`);
+
 // Health Check (Inside router)
 mainRouter.get('/health', (req, res) => res.json({ 
   status: 'ok', 
@@ -59,10 +61,10 @@ mainRouter.use('/api', adminRoutes);
 mainRouter.use('/api', achievementsRoutes);
 mainRouter.use('/api', miscRoutes);
 
-// Mount everything under the subfolder AND root to be safe
-app.use(subfolder || '/', mainRouter);
+// Mount mainRouter on BOTH paths to be 100% safe
+app.use(mainRouter); // Path-less mounting
 if (subfolder && subfolder !== '/') {
-  app.use('/', mainRouter);
+  app.use(subfolder, mainRouter); // Path-specific mounting
 }
 
 // Bot Initialization
