@@ -32,6 +32,17 @@ jobs:
             **/node_modules/**
             PHP/**
 
+      - name: 🔄 Auto Restart App
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 22
+          script: |
+            mkdir -p /home/boxanonm/public_html/vesper/tmp
+            touch /home/boxanonm/public_html/vesper/tmp/restart.txt
+
       - name: 📱 Send Telegram Notification
         if: success()
         run: |
