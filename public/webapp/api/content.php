@@ -224,7 +224,7 @@ try {
         }
 
         // Get Bot Token
-        $bot = DB::table('bots')->where('id', $botId)->first();
+        $bot = DB::table('bots')->where('bot_id', $botId)->first();
         if (!$bot) {
             throw new Exception('Bot tidak valid');
         }
