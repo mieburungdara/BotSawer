@@ -6,13 +6,60 @@ const { extractMediaInfo, generateShortId } = require('./utils');
 // Store debounce timers in memory
 const debounceTimers = new Map();
 
+const creator = require('../services/creator');
+
+// Store debounce timers in memory
+const debounceTimers = new Map();
+
 /**
- * Handle Start Command (Deep Links)
+ * Handle Start Command (Deep Links & Welcome)
  */
 const handleStart = async (ctx, botData) => {
     const startParam = ctx.startPayload;
+    
+    // Ensure user is registered/updated
+    const telegramId = ctx.from.id;
+    let user = await db('users').where('telegram_id', telegramId).first();
+    if (!user) {
+        await db('users').insert({
+            telegram_id: telegramId,
+            first_name: ctx.from.first_name,
+            last_name: ctx.from.last_name,
+            username: ctx.from.username,
+            language_code: ctx.from.language_code || 'id'
+        });
+        user = { telegram_id: telegramId };
+    }
+
     if (!startParam) {
-        return ctx.reply(`Halo ${ctx.from.first_name}! Selamat datang di ${botData.name}.\n\nKirimkan foto atau video untuk mulai menjual konten Anda.`);
+        // Welcome Message with Streak Data
+        const streak = await creator.getStreakData(telegramId);
+        
+        const message = `✨ <b>Selamat Datang di ${botData.name}!</b> ✨\n\n` +
+                        `🚀 <i>Platform donasi sukarela terbaik untuk kreator konten hebat seperti Anda.</i>\n\n` +
+                        `🔹 <b>Panduan Cepat:</b>\n` +
+                        `💰 <b>/saldo</b> - Cek pundi-pundi rupiahmu\n` +
+                        `📤 <b>Kirim Foto/Video</b> - Mulai kumpulkan dukungan\n` +
+                        `💸 <b>Sawer</b> - Melalui link di channel publik\n\n` +
+                        `🔥 <b>Statistik Streak Anda:</b>\n` +
+                        `📈 Current Streak: <b>${streak.current_streak} Hari</b>\n` +
+                        `🏅 Badge: <b>${streak.streak_badge}</b>\n` +
+                        `<i>Jaga api semangatmu, teruslah berkarya!</i> 🎨\n\n` +
+                        `❓ Butuh bantuan? Ketik <b>/help</b>`;
+
+        const keyboard = {
+            inline_keyboard: [
+                [
+                    { text: '🖥️ Buka Dashboard WebApp', url: `https://t.me/${botData.username}/webapp` }
+                ],
+                [
+                    { text: '💳 Topup Saldo', callback_data: 'topup_info' },
+                    { text: '👥 Komunitas', url: 'https://t.me/vesperapp_community' }
+                ]
+            ]
+        };
+
+        return ctx.replyWithHTML(message, { reply_markup: keyboard });
     }
 
     try {
