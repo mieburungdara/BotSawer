@@ -20,29 +20,21 @@ app.use(express.json());
 // Static Files (WebApp) - Moved down to be handled by subfolder logic if needed
 // app.use(express.static(path.join(__dirname, 'public/webapp')));
 
-// Subfolder handling
-const url = new URL(domain || 'http://localhost');
-const subfolder = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
-const mainRouter = express.Router();
-
-console.log(`[INIT] Detected subfolder: ${subfolder || 'none (root)'}`);
-
-// Health Check (Inside router)
-mainRouter.get('/health', (req, res) => res.json({ 
+// Health Check
+app.get('/health', (req, res) => res.json({ 
   status: 'ok', 
-  project: 'VesperApp',
-  subfolder: subfolder || 'root'
+  project: 'VesperApp'
 }));
 
-// Serve WebApp Index on subfolder root
-mainRouter.get('/', (req, res) => {
+// Serve WebApp Index
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/webapp/index.html'));
 });
 
-// Static files under subfolder
-mainRouter.use(express.static(path.join(__dirname, 'public/webapp')));
+// Static files
+app.use(express.static(path.join(__dirname, 'public/webapp')));
 
-// API Routes (Mounted on mainRouter)
+// API Routes
 const contentRoutes = require('./src/api/routes/content');
 const creatorRoutes = require('./src/api/routes/creator');
 const walletRoutes = require('./src/api/routes/wallet');
@@ -52,20 +44,14 @@ const adminRoutes = require('./src/api/routes/admin');
 const achievementsRoutes = require('./src/api/routes/achievements');
 const miscRoutes = require('./src/api/routes/misc');
 
-mainRouter.use('/api', contentRoutes);
-mainRouter.use('/api', creatorRoutes);
-mainRouter.use('/api', walletRoutes);
-mainRouter.use('/api', exploreRoutes);
-mainRouter.use('/api', profileRoutes);
-mainRouter.use('/api', adminRoutes);
-mainRouter.use('/api', achievementsRoutes);
-mainRouter.use('/api', miscRoutes);
-
-// Mount mainRouter on BOTH paths to be 100% safe
-app.use(mainRouter); // Path-less mounting
-if (subfolder && subfolder !== '/') {
-  app.use(subfolder, mainRouter); // Path-specific mounting
-}
+app.use('/api', contentRoutes);
+app.use('/api', creatorRoutes);
+app.use('/api', walletRoutes);
+app.use('/api', exploreRoutes);
+app.use('/api', profileRoutes);
+app.use('/api', adminRoutes);
+app.use('/api', achievementsRoutes);
+app.use('/api', miscRoutes);
 
 // Bot Initialization
 const initBots = async () => {
@@ -81,8 +67,7 @@ const initBots = async () => {
       const webhookPath = `/webhook/${botData.token}`;
       const fullWebhookUrl = `${domain}${webhookPath}`;
 
-      // Register webhook on the MAIN APP with the subfolder prefix
-      app.use(`${subfolder}${webhookPath}`, bot.webhookCallback(webhookPath));
+      app.use(bot.webhookCallback(webhookPath));
       
       bot.telegram.setWebhook(fullWebhookUrl).then(() => {
         console.log(`Webhook set for ${botData.username} at ${fullWebhookUrl}`);
