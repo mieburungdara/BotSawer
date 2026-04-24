@@ -15,12 +15,12 @@ const db = knex({
 });
 
 // LEGACY COMPATIBILITY INTERCEPTOR
-// This proxy intercepts calls to 'media_files' and automatically joins 'contents' 
-// if columns like 'user_id', 'caption', or 'status' are requested.
 const originalFrom = db.from;
 db.from = function(tableName) {
   const queryBuilder = originalFrom.apply(this, arguments);
+  
   if (tableName === 'media_files') {
+    // 1. Intercept SELECT
     const originalSelect = queryBuilder.select;
     queryBuilder.select = function() {
       const args = Array.from(arguments);
@@ -30,6 +30,27 @@ db.from = function(tableName) {
         return this;
       }
       return originalSelect.apply(this, arguments);
+    };
+
+    // 2. Intercept WHERE
+    const originalWhere = queryBuilder.where;
+    queryBuilder.where = function(column, operator, value) {
+        // If where('user_id', ...) or where({user_id: ...})
+        const isLegacy = (typeof column === 'string' && (column === 'user_id' || column === 'caption')) || 
+                         (typeof column === 'object' && (column.user_id || column.caption));
+        
+        if (isLegacy) {
+            this.join('contents', 'media_files.content_id', '=', 'contents.id');
+            // Re-route the column name if it's an object
+            if (typeof column === 'object') {
+                const newObj = {};
+                if (column.user_id) newObj['contents.user_id'] = column.user_id;
+                if (column.caption) newObj['contents.caption'] = column.caption;
+                return originalWhere.call(this, newObj);
+            }
+            return originalWhere.call(this, `contents.${column}`, operator, value);
+        }
+        return originalWhere.apply(this, arguments);
     };
   }
   return queryBuilder;
