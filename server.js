@@ -79,14 +79,10 @@ const initBots = async () => {
       const webhookPath = `/webhook/${botData.token}`;
       const fullWebhookUrl = `${domain}${webhookPath}`;
 
+      // Register webhook callback on the app
       app.use(bot.webhookCallback(webhookPath));
       
-      bot.telegram.setWebhook(fullWebhookUrl).then(() => {
-        console.log(`Webhook set for ${botData.username} at ${fullWebhookUrl}`);
-      }).catch(err => {
-        console.error(`[WARNING] Failed to set webhook for ${botData.username}:`, err.message);
-        console.log(`💡 Tip: Check if your hosting blocks outgoing requests to api.telegram.org`);
-      });
+      console.log(`[BOT] Webhook path registered: ${webhookPath}`);
     } else {
       // POLLING MODE (Development)
       bot.launch().then(() => {
