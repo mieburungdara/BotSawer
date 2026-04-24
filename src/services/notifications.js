@@ -94,6 +94,42 @@ class NotificationService {
     }
     return sent;
   }
+
+  /**
+   * Forward media to backup channel and return message ID
+   */
+  async forwardToBackup(mediaInfo, user, shortId, mediaDbId) {
+    try {
+      await this.init();
+      if (!this.telegram) return;
+
+      const settingsRows = await db('settings').where('key', 'backup_channel').first();
+      const backupChannel = settingsRows ? settingsRows.value : null;
+      if (!backupChannel) return;
+
+      const adminCaption = `📁 <b>MEDIA BACKUP</b>\n\n` +
+                           `🆔 ID: #${shortId}\n` +
+                           `👤 User: ${user.first_name} ${user.last_name || ''} (@${user.username || 'n/a'})\n` +
+                           `🎨 Creator: ${user.display_name || 'Anonim'}\n` +
+                           `📎 Type: ${mediaInfo.type}\n` +
+                           `📅 Time: ${new Date().toLocaleString('id-ID')}`;
+
+      let sentMsg = null;
+      if (mediaInfo.type === 'photo') {
+        sentMsg = await this.telegram.sendPhoto(backupChannel, mediaInfo.file_id, { caption: adminCaption, parse_mode: 'HTML' });
+      } else if (mediaInfo.type === 'video') {
+        sentMsg = await this.telegram.sendVideo(backupChannel, mediaInfo.file_id, { caption: adminCaption, parse_mode: 'HTML' });
+      }
+
+      if (sentMsg && sentMsg.message_id) {
+        await db('media_files').where('id', mediaDbId).update({
+            backup_message_id: sentMsg.message_id
+        });
+      }
+    } catch (error) {
+      console.error('Backup forward failed:', error.message);
+    }
+  }
 }
 
 module.exports = new NotificationService();

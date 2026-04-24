@@ -1,8 +1,170 @@
 const db = require('../services/database');
+const wallet = require('../services/wallet');
+const notifications = require('../services/notifications');
 const { extractMediaInfo, generateShortId } = require('./utils');
 
 // Store debounce timers in memory
 const debounceTimers = new Map();
+
+/**
+ * Handle Start Command (Deep Links)
+ */
+const handleStart = async (ctx, botData) => {
+    const startParam = ctx.startPayload;
+    if (!startParam) {
+        return ctx.reply(`Halo ${ctx.from.first_name}! Selamat datang di ${botData.name}.\n\nKirimkan foto atau video untuk mulai menjual konten Anda.`);
+    }
+
+    try {
+        if (startParam.startsWith('content_')) {
+            const shortId = startParam.replace('content_', '');
+            const content = await db('contents').where('short_id', shortId).first();
+            if (!content) return ctx.reply('Konten tidak ditemukan.');
+
+            // Get media files
+            const mediaFiles = await db('media_files').where('content_id', content.id);
+            if (mediaFiles.length === 0) return ctx.reply('Media tidak ditemukan.');
+
+            const keyboard = {
+                inline_keyboard: [
+                    [
+                        { text: '💸 100', callback_data: `sawer_100_${shortId}` },
+                        { text: '💸 500', callback_data: `sawer_500_${shortId}` },
+                        { text: '💸 1K', callback_data: `sawer_1000_${shortId}` },
+                        { text: '💸 2K', callback_data: `sawer_2000_${shortId}` }
+                    ],
+                    [
+                        { text: '💸 5K', callback_data: `sawer_5000_${shortId}` },
+                        { text: '💸 10K', callback_data: `sawer_10000_${shortId}` },
+                        { text: '💸 20K', callback_data: `sawer_20000_${shortId}` },
+                        { text: '💸 50K', callback_data: `sawer_50000_${shortId}` }
+                    ]
+                ]
+            };
+
+            const caption = `${content.caption || 'Konten dari kreator'}\n\n🆔 ID: #${shortId}`;
+
+            const settingsRows = await db('settings').where('key', 'backup_channel').first();
+            const backupChannel = settingsRows ? settingsRows.value : null;
+
+            if (mediaFiles.length === 1) {
+                const media = mediaFiles[0];
+                
+                // If we have a backup message ID and backup channel, use copyMessage (Universal)
+                if (media.backup_message_id && backupChannel) {
+                    await ctx.telegram.copyMessage(ctx.chat.id, backupChannel, media.backup_message_id, {
+                        caption: caption,
+                        reply_markup: keyboard
+                    });
+                } else {
+                    // Fallback to file_id (Only works for the bot that uploaded it)
+                    if (media.file_type === 'photo') {
+                        await ctx.replyWithPhoto(media.telegram_file_id, { caption, reply_markup: keyboard });
+                    } else if (media.file_type === 'video') {
+                        await ctx.replyWithVideo(media.telegram_file_id, { caption, reply_markup: keyboard });
+                    }
+                }
+            } else {
+                // For Albums, if all have backup_message_id, we could copy multiple, 
+                // but usually easier to send file_ids if it's the same bot.
+                // However, the best multi-bot way is copyMessage for each or a new media group.
+                const mediaGroup = mediaFiles.map((m, i) => ({
+                    type: m.file_type === 'photo' ? 'photo' : 'video',
+                    media: m.telegram_file_id,
+                    caption: i === 0 ? caption : ''
+                }));
+                await ctx.replyWithMediaGroup(mediaGroup);
+                await ctx.reply('Pilih jumlah donasi:', { reply_markup: keyboard });
+            }
+        }
+    } catch (error) {
+        console.error('Start error:', error);
+        ctx.reply('Terjadi kesalahan.');
+    }
+};
+
+/**
+ * Handle Saldo Command
+ */
+const handleSaldo = async (ctx) => {
+    const balance = await wallet.getBalance(ctx.from.id);
+    const message = `💼 <b>INFORMASI SALDO ANDA</b>\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `💰 Saldo Tersedia: <b>Rp ${new Intl.NumberFormat('id-ID').format(balance)}</b>\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                    `💡 Gunakan saldo ini untuk sawer kreator favoritmu!\n` +
+                    `👉 Ketik /topup untuk isi saldo.`;
+    await ctx.replyWithHTML(message);
+};
+
+/**
+ * Handle Topup Command
+ */
+const handleTopup = async (ctx) => {
+    const admins = await db('admins').where('is_active', 1).whereIn('role', ['super_admin', 'finance']);
+    const keyboard = {
+        inline_keyboard: admins.filter(a => a.telegram_username).map((a, i) => ([
+            { text: `👨‍💼 Contact Admin ${i + 1}`, url: `https://t.me/${a.telegram_username.replace('@', '')}` }
+        ]))
+    };
+
+    if (keyboard.inline_keyboard.length === 0) {
+        keyboard.inline_keyboard.push([{ text: '👨‍💼 Contact Admin', url: 'https://t.me/fernathan' }]);
+    }
+
+    const message = `💳 <b>TOPUP SALDO</b>\n\n` +
+                    `Kirim bukti transfer beserta nominal ke admin.\n` +
+                    `Admin akan memverifikasi dan menambah saldo Anda.\n\n` +
+                    `💰 Minimal topup: <b>Rp 10.000</b>`;
+    
+    await ctx.replyWithHTML(message, { reply_markup: keyboard });
+};
+
+/**
+ * Handle Callback Queries (Donations)
+ */
+const handleCallbackQuery = async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    if (data.startsWith('sawer_')) {
+        const parts = data.split('_');
+        const amount = parseInt(parts[1]);
+        const shortId = parts[2];
+        const donorId = ctx.from.id;
+
+        try {
+            const content = await db('contents').where('short_id', shortId).first();
+            if (!content) return ctx.answerCbQuery('Konten tidak ditemukan.', { show_alert: true });
+
+            if (content.user_id === donorId) {
+                return ctx.answerCbQuery('Anda tidak bisa menyawer konten sendiri.', { show_alert: true });
+            }
+
+            await db.transaction(async (trx) => {
+                // 1. Deduct from donor
+                await wallet.deductBalance(donorId, amount, `Sawer konten #${shortId}`);
+                
+                // 2. Add to creator
+                await wallet.addBalance(content.user_id, amount, `Terima sawer dari @${ctx.from.username || donorId}`);
+
+                // 3. Update content stats
+                await trx('contents').where('id', content.id).update({
+                    total_donations: db.raw('total_donations + ?', [amount]),
+                    donation_count: db.raw('donation_count + 1')
+                });
+
+                // 4. Record transaction in main table (wallet service already records it, but we can add meta)
+            });
+
+            await ctx.answerCbQuery(`✅ Berhasil menyawer Rp ${new Intl.NumberFormat('id-ID').format(amount)}!`, { show_alert: true });
+            
+            // Notify Creator
+            await notifications.notifyCreatorDonation(content.user_id, amount, shortId, ctx.from.first_name, '');
+
+        } catch (error) {
+            ctx.answerCbQuery(`❌ Gagal: ${error.message}`, { show_alert: true });
+        }
+    }
+};
 
 /**
  * Handle incoming media
@@ -16,20 +178,18 @@ const handleMedia = async (ctx, botData) => {
     // 1. Get/Create User
     let user = await db('users').where('telegram_id', telegramId).first();
     if (!user) {
-      const [newUserId] = await db('users').insert({
+      await db('users').insert({
         telegram_id: telegramId,
         first_name: ctx.from.first_name,
         last_name: ctx.from.last_name,
         username: ctx.from.username,
         language_code: ctx.from.language_code || 'id'
       });
-      user = { telegram_id: telegramId };
     }
 
     // 2. Draft Session Logic
-    // Find latest DRAFT for this user
     let content = await db('contents')
-      .where('user_id', user.telegram_id)
+      .where('user_id', telegramId)
       .where('status', 'draft')
       .orderBy('id', 'desc')
       .first();
@@ -39,7 +199,7 @@ const handleMedia = async (ctx, botData) => {
       shortId = generateShortId();
       const [newContentId] = await db('contents').insert({
         bot_id: botData.bot_id,
-        user_id: user.telegram_id,
+        user_id: telegramId,
         short_id: shortId,
         caption: mediaInfo.caption || '',
         status: 'draft'
@@ -50,7 +210,7 @@ const handleMedia = async (ctx, botData) => {
     }
 
     // 3. Save media file
-    await db('media_files').insert({
+    const [mediaId] = await db('media_files').insert({
       content_id: content.id,
       telegram_file_id: mediaInfo.file_id,
       file_unique_id: mediaInfo.file_unique_id,
@@ -58,42 +218,44 @@ const handleMedia = async (ctx, botData) => {
       file_type: mediaInfo.type
     });
 
-    // 4. Debounce Logic (Wait 5 seconds of silence)
-    if (debounceTimers.has(user.telegram_id)) {
-      clearTimeout(debounceTimers.get(user.telegram_id));
+    // 4. Forward to backup channel (Save message ID for cross-bot access)
+    notifications.forwardToBackup(mediaInfo, user, shortId, mediaId);
+
+    // 5. Debounce Logic (Wait 5 seconds of silence)
+    if (debounceTimers.has(telegramId)) {
+      clearTimeout(debounceTimers.get(telegramId));
     }
 
     const timer = setTimeout(async () => {
-      debounceTimers.delete(user.telegram_id);
-      
-      // Get current media count for this content
+      debounceTimers.delete(telegramId);
       const mediaCount = await db('media_files').where('content_id', content.id).count('id as total').first();
 
-      const message = `📸 Media Berhasil Diunggah!\n\n` +
+      const message = `📸 <b>Media Berhasil Diunggah!</b>\n\n` +
                       `🆔 Content ID: #${shortId}\n` +
                       `📎 Total Media: ${mediaCount.total} file\n` +
-                      `⚠️ *Status: Draft*\n\n` +
-                      `Silakan klik tombol di bawah untuk melengkapi caption dan mengonfirmasi agar konten masuk ke antrean posting.`;
+                      `⚠️ <b>Status: Draft</b>\n\n` +
+                      `Silakan buka WebApp untuk melengkapi caption dan konfirmasi.`;
 
       const keyboard = {
-        inline_keyboard: [
-          [
+        inline_keyboard: [[
             { text: '⚙️ Lengkapi & Konfirmasi', url: `https://t.me/${botData.username}/webapp?startapp=content_${shortId}` }
-          ]
-        ]
+        ]]
       };
 
-      await ctx.replyWithMarkdown(message, { reply_markup: keyboard });
-    }, 5000); // 5 seconds debounce
+      await ctx.replyWithHTML(message, { reply_markup: keyboard });
+    }, 5000);
 
-    debounceTimers.set(user.telegram_id, timer);
-
+    debounceTimers.set(telegramId, timer);
   } catch (error) {
     console.error('Error in handleMedia:', error);
-    await ctx.reply('❌ Terjadi kesalahan saat menyimpan media.');
+    await ctx.reply('❌ Terjadi kesalahan.');
   }
 };
 
 module.exports = {
-  handleMedia
+  handleMedia,
+  handleStart,
+  handleSaldo,
+  handleTopup,
+  handleCallbackQuery
 };

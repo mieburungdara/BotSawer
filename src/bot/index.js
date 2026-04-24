@@ -1,16 +1,33 @@
-const { handleMedia } = require('./handlers');
+const { handleMedia, handleStart, handleSaldo, handleTopup, handleCallbackQuery } = require('./handlers');
 
 const setupBot = (bot, botData) => {
-  // Start command
-  bot.start((ctx) => {
-    ctx.reply(`Halo ${ctx.from.first_name}! Selamat datang di ${botData.name}.\n\nKirimkan foto atau video untuk mulai menjual konten Anda.`);
-  });
+  // Start command (handles Deep Links)
+  bot.start((ctx) => handleStart(ctx, botData));
 
-  // Handle Media
-  bot.on(['photo', 'video', 'document'], (ctx) => handleMedia(ctx, botData));
+  // Saldo command
+  bot.command('saldo', handleSaldo);
+
+  // Topup command
+  bot.command('topup', handleTopup);
 
   // Help command
-  bot.help((ctx) => ctx.reply('Kirimkan foto atau video, lalu buka WebApp untuk melengkapi data konten.'));
+  bot.help((ctx) => {
+    const message = `🤖 <b>Bantuan Bot Sawer</b>\n\n` +
+                    `📋 Perintah yang tersedia:\n` +
+                    `/start - Mulai bot\n` +
+                    `/saldo - Cek saldo Anda\n` +
+                    `/topup - Cara isi saldo\n` +
+                    `/help - Bantuan ini\n\n` +
+                    `💡 Kirim foto/video untuk posting konten.\n` +
+                    `💸 Klik tombol "Sawer" di channel untuk donasi.`;
+    ctx.replyWithHTML(message);
+  });
+
+  // Handle Callback Queries (Donations)
+  bot.on('callback_query', handleCallbackQuery);
+
+  // Handle Incoming Media
+  bot.on(['photo', 'video', 'document'], (ctx) => handleMedia(ctx, botData));
 };
 
 module.exports = { setupBot };
