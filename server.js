@@ -75,21 +75,12 @@ const initBots = async () => {
     setupBot(bot, botData);
     
     if (domain && process.env.APP_ENV === 'production') {
-      // WEBHOOK MODE (Production)
       const webhookPath = `/webhook/${botData.token}`;
-      const fullWebhookUrl = `${domain}${webhookPath}`;
-
-      // Register webhook callback on the app
       app.use(bot.webhookCallback(webhookPath));
-      
       console.log(`[BOT] Webhook path registered: ${webhookPath}`);
     } else {
-      // POLLING MODE (Development)
-      bot.launch().then(() => {
-        console.log(`Bot ${botData.username} is running (Polling).`);
-      }).catch(err => {
-        console.error(`Failed to launch bot ${botData.username}:`, err);
-      });
+      console.log(`[BOT] Starting Polling for ${botData.username}...`);
+      bot.launch().catch(err => console.error(`Polling error:`, err.message));
     }
 
     // Graceful stop
