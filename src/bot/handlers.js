@@ -256,7 +256,6 @@ const handleMedia = async (ctx, botData) => {
     // 3. Save media file
     const [mediaId] = await db('media_files').insert({
       content_id: content.id,
-      user_id: telegramId,
       telegram_file_id: mediaInfo.file_id,
       file_unique_id: mediaInfo.file_unique_id,
       thumb_file_id: mediaInfo.thumb_file_id,
