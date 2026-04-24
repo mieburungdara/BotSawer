@@ -23,13 +23,14 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: VesperApp/
+          server-dir: public_html/vesper/
           dry-run: false
           exclude: |
             **/.git*
             **/.git*/**
             .github/**
-            **/vendor/**
+            **/node_modules/**
+            PHP/**
 
       - name: 📱 Send Telegram Notification
         if: success()
