@@ -33,6 +33,7 @@ return array(
     'Monolog\\' => array($vendorDir . '/monolog/monolog/src/Monolog'),
     'Midtrans\\' => array($vendorDir . '/midtrans/midtrans-php/Midtrans'),
     'League\\Event\\' => array($vendorDir . '/league/event/src'),
+    'ImageKit\\' => array($vendorDir . '/imagekit/imagekit/src/ImageKit'),
     'Illuminate\\Support\\' => array($vendorDir . '/illuminate/collections', $vendorDir . '/illuminate/macroable', $vendorDir . '/illuminate/support'),
     'Illuminate\\Database\\' => array($vendorDir . '/illuminate/database'),
     'Illuminate\\Contracts\\' => array($vendorDir . '/illuminate/contracts'),
@@ -47,4 +48,5 @@ return array(
     'Carbon\\Doctrine\\' => array($vendorDir . '/carbonphp/carbon-doctrine-types/src/Carbon/Doctrine'),
     'Carbon\\' => array($vendorDir . '/nesbot/carbon/src/Carbon'),
     'BotSawer\\' => array($baseDir . '/src'),
+    'Assert\\' => array($vendorDir . '/beberlei/assert/lib/Assert'),
 );

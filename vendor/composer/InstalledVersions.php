@@ -30,11 +30,20 @@ private static $installed = array (
     'aliases' => 
     array (
     ),
-    'reference' => '87af3b0cdf1ec6fdcbff163d16235ced1ae3397c',
+    'reference' => '759661e578133344e80c1782e76d6ee163b8e3d6',
     'name' => 'botsawer/telegram-creator-payment',
   ),
   'versions' => 
   array (
+    'beberlei/assert' => 
+    array (
+      'pretty_version' => 'v2.9.9',
+      'version' => '2.9.9.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => '124317de301b7c91d5fce34c98bba2c6925bec95',
+    ),
     'botsawer/telegram-creator-payment' => 
     array (
       'pretty_version' => 'dev-master',
@@ -42,7 +51,7 @@ private static $installed = array (
       'aliases' => 
       array (
       ),
-      'reference' => '87af3b0cdf1ec6fdcbff163d16235ced1ae3397c',
+      'reference' => '759661e578133344e80c1782e76d6ee163b8e3d6',
     ),
     'carbonphp/carbon-doctrine-types' => 
     array (
@@ -151,6 +160,15 @@ private static $installed = array (
       array (
       ),
       'reference' => '1c79242468d3bbd9a0f7477df34f9647dde2a09b',
+    ),
+    'imagekit/imagekit' => 
+    array (
+      'pretty_version' => '4.0.2',
+      'version' => '4.0.2.0',
+      'aliases' => 
+      array (
+      ),
+      'reference' => 'b3ae1b6582f9f044359afd005e52ba8ea421f3f7',
     ),
     'irazasyed/telegram-bot-sdk' => 
     array (

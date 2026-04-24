@@ -58,8 +58,17 @@ try {
             'status' => $media->status,
             'caption' => $media->caption,
             'created_at' => $media->created_at,
-            'creator_id' => $creator->uuid ?: 'Anonim'
+            'creator_id' => $creator->uuid ?: 'Anonim',
+            'imagekit_url' => $media->imagekit_url,
+            'has_thumbnail_source' => ($media->file_type === 'photo' && !empty($media->telegram_file_id)) || !empty($media->thumb_file_id)
         ];
+
+        // Apply blur for non-owners if imagekit_url exists
+        if (!$isOwner && $responseData['imagekit_url']) {
+            // Check if there are already query params
+            $separator = strpos($responseData['imagekit_url'], '?') !== false ? '&' : '?';
+            $responseData['imagekit_url'] .= $separator . 'tr=bl-30';
+        }
 
         if ($isOwner) {
             $responseData['total_donations'] = (float)($media->total_donations ?? 0);
@@ -177,6 +186,67 @@ try {
         });
 
         echo json_encode(['success' => true, 'data' => ['message' => 'Terima kasih! Donasi berhasil dikirim.']]);
+        exit;
+    }
+
+    if ($action === 'generate_thumbnail') {
+        $shortId = $input['short_id'] ?? '';
+        $botId = $input['botId'] ?? null;
+
+        if (!$botId) {
+            throw new Exception('Bot ID tidak ditemukan');
+        }
+
+        $media = DB::table('media_files')
+            ->where('short_id', $shortId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$media) {
+            throw new Exception('Konten tidak ditemukan atau Anda bukan pemiliknya');
+        }
+
+        if ($media->imagekit_url) {
+            throw new Exception('Thumbnail sudah di-generate');
+        }
+
+        $fileIdToFetch = ($media->file_type === 'photo') ? $media->telegram_file_id : $media->thumb_file_id;
+
+        if (!$fileIdToFetch) {
+            throw new Exception('File ini tidak memiliki thumbnail yang bisa di-upload');
+        }
+
+        // Get Bot Token
+        $bot = DB::table('bots')->where('id', $botId)->first();
+        if (!$bot) {
+            throw new Exception('Bot tidak valid');
+        }
+
+        // Get File Path from Telegram
+        $tgApiUrl = "https://api.telegram.org/bot{$bot->token}/getFile?file_id={$fileIdToFetch}";
+        $tgResponse = file_get_contents($tgApiUrl);
+        $tgData = json_decode($tgResponse, true);
+
+        if (!$tgData || !$tgData['ok']) {
+            throw new Exception('Gagal mendapatkan file dari Telegram: ' . ($tgData['description'] ?? 'Unknown error'));
+        }
+
+        $filePath = $tgData['result']['file_path'];
+        $directUrl = "https://api.telegram.org/file/bot{$bot->token}/{$filePath}";
+
+        // Upload to ImageKit
+        $uploadResult = ImageKitManager::uploadFromUrl($directUrl, "{$media->short_id}_thumb");
+
+        // Save to DB
+        DB::table('media_files')->where('id', $media->id)->update([
+            'imagekit_file_id' => $uploadResult['fileId'],
+            'imagekit_url' => $uploadResult['url']
+        ]);
+
+        echo json_encode(['success' => true, 'data' => [
+            'message' => 'Thumbnail berhasil dibuat',
+            'imagekit_url' => $uploadResult['url']
+        ]]);
         exit;
     }
 

@@ -19,13 +19,14 @@ class ComposerStaticInit9e19632a74c57f401f52e6627cbbc0ff
         '7b11c4dc42b3b3023073cb14e519683c' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
         'a0edc8309cc5e1d60e3047b5df6b7052' => __DIR__ . '/..' . '/guzzlehttp/psr7/src/functions_include.php',
         'a1105708a18b76903365ca1c4aa61b02' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
-        '60799491728b879e74601d83e38b2cad' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
         'c964ee0ededf28c96ebd9db5099ef910' => __DIR__ . '/..' . '/guzzlehttp/promises/src/functions_include.php',
+        '60799491728b879e74601d83e38b2cad' => __DIR__ . '/..' . '/illuminate/collections/helpers.php',
         'f598d06aa772fa33d905e87be6398fb1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
         '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
         '72579e7bd17821bb1321b87411366eae' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
         '667aeda72477189d0494fecd327c3641' => __DIR__ . '/..' . '/symfony/var-dumper/Resources/functions/dump.php',
+        'a4ecaeafb8cfb009ad0e052c90355e98' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/functions.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -79,6 +80,7 @@ class ComposerStaticInit9e19632a74c57f401f52e6627cbbc0ff
         ),
         'I' => 
         array (
+            'ImageKit\\' => 9,
             'Illuminate\\Support\\' => 19,
             'Illuminate\\Database\\' => 20,
             'Illuminate\\Contracts\\' => 21,
@@ -105,6 +107,10 @@ class ComposerStaticInit9e19632a74c57f401f52e6627cbbc0ff
         'B' => 
         array (
             'BotSawer\\' => 9,
+        ),
+        'A' => 
+        array (
+            'Assert\\' => 7,
         ),
     );
 
@@ -217,6 +223,10 @@ class ComposerStaticInit9e19632a74c57f401f52e6627cbbc0ff
         array (
             0 => __DIR__ . '/..' . '/league/event/src',
         ),
+        'ImageKit\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit',
+        ),
         'Illuminate\\Support\\' => 
         array (
             0 => __DIR__ . '/..' . '/illuminate/collections',
@@ -275,9 +285,20 @@ class ComposerStaticInit9e19632a74c57f401f52e6627cbbc0ff
         array (
             0 => __DIR__ . '/../..' . '/src',
         ),
+        'Assert\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/beberlei/assert/lib/Assert',
+        ),
     );
 
     public static $classMap = array (
+        'Assert\\Assert' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/Assert.php',
+        'Assert\\Assertion' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/Assertion.php',
+        'Assert\\AssertionChain' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/AssertionChain.php',
+        'Assert\\AssertionFailedException' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/AssertionFailedException.php',
+        'Assert\\InvalidArgumentException' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/InvalidArgumentException.php',
+        'Assert\\LazyAssertion' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/LazyAssertion.php',
+        'Assert\\LazyAssertionException' => __DIR__ . '/..' . '/beberlei/assert/lib/Assert/LazyAssertionException.php',
         'Attribute' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
         'BotSawer\\AdminManager' => __DIR__ . '/../..' . '/src/AdminManager.php',
         'BotSawer\\AuditLogger' => __DIR__ . '/../..' . '/src/AuditLogger.php',
@@ -285,7 +306,6 @@ class ComposerStaticInit9e19632a74c57f401f52e6627cbbc0ff
         'BotSawer\\Creator' => __DIR__ . '/../..' . '/src/Creator.php',
         'BotSawer\\Database' => __DIR__ . '/../..' . '/src/Database.php',
         'BotSawer\\Logger' => __DIR__ . '/../..' . '/src/Logger.php',
-        'BotSawer\\ModeratorBot' => __DIR__ . '/../..' . '/src/ModeratorBot.php',
         'BotSawer\\NotificationManager' => __DIR__ . '/../..' . '/src/NotificationManager.php',
         'BotSawer\\RateLimiter' => __DIR__ . '/../..' . '/src/RateLimiter.php',
         'BotSawer\\Wallet' => __DIR__ . '/../..' . '/src/Wallet.php',
@@ -954,6 +974,24 @@ class ComposerStaticInit9e19632a74c57f401f52e6627cbbc0ff
         'Illuminate\\Support\\Traits\\Tappable' => __DIR__ . '/..' . '/illuminate/support/Traits/Tappable.php',
         'Illuminate\\Support\\ValidatedInput' => __DIR__ . '/..' . '/illuminate/support/ValidatedInput.php',
         'Illuminate\\Support\\ViewErrorBag' => __DIR__ . '/..' . '/illuminate/support/ViewErrorBag.php',
+        'ImageKit\\Configuration\\Configuration' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Configuration/Configuration.php',
+        'ImageKit\\Constants\\Endpoints' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Constants/Endpoints.php',
+        'ImageKit\\Constants\\ErrorMessages' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Constants/ErrorMessages.php',
+        'ImageKit\\Constants\\SupportedTransforms' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Constants/SupportedTransforms.php',
+        'ImageKit\\ImageKit' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/ImageKit.php',
+        'ImageKit\\Manage\\Cache' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Manage/Cache.php',
+        'ImageKit\\Manage\\CustomMetadataFields' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Manage/CustomMetadataFields.php',
+        'ImageKit\\Manage\\File' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Manage/File.php',
+        'ImageKit\\Manage\\Folder' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Manage/Folder.php',
+        'ImageKit\\Phash\\Phash' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Phash/Phash.php',
+        'ImageKit\\Resource\\GuzzleHttpWrapper' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Resource/GuzzleHttpWrapper.php',
+        'ImageKit\\Resource\\HttpRequest' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Resource/HttpRequest.php',
+        'ImageKit\\Signature\\Signature' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Signature/Signature.php',
+        'ImageKit\\Upload\\Upload' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Upload/Upload.php',
+        'ImageKit\\Url\\Url' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Url/Url.php',
+        'ImageKit\\Utils\\Authorization' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Utils/Authorization.php',
+        'ImageKit\\Utils\\Response' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Utils/Response.php',
+        'ImageKit\\Utils\\Transformation' => __DIR__ . '/..' . '/imagekit/imagekit/src/ImageKit/Utils/Transformation.php',
         'JsonException' => __DIR__ . '/..' . '/symfony/polyfill-php73/Resources/stubs/JsonException.php',
         'League\\Event\\AbstractEvent' => __DIR__ . '/..' . '/league/event/src/AbstractEvent.php',
         'League\\Event\\AbstractListener' => __DIR__ . '/..' . '/league/event/src/AbstractListener.php',

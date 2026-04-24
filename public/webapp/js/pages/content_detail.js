@@ -44,6 +44,26 @@ function renderOwnerView(app, content) {
                 </div>
 
                 <div class="form-group">
+                    <label>Media</label>
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        ${content.imagekit_url ? `
+                            <img src="${content.imagekit_url}" alt="Thumbnail" style="max-width: 100%; max-height: 300px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        ` : `
+                            <div style="padding: 20px; background: var(--secondary-bg); border-radius: var(--radius-md); color: var(--hint-color);">
+                                <i data-lucide="${content.file_type === 'video' ? 'video' : (content.file_type === 'photo' ? 'image' : 'file')}" style="width: 48px; height: 48px; margin-bottom: 10px;"></i>
+                                <div>Tidak ada thumbnail</div>
+                            </div>
+                        `}
+                    </div>
+                    
+                    ${!content.imagekit_url && content.has_thumbnail_source ? `
+                        <button class="btn btn-outline-primary" style="width: 100%;" onclick="app.generateThumbnail('${content.short_id}')" id="btnGenThumb">
+                            <i data-lucide="image-plus"></i> Generate Thumbnail
+                        </button>
+                    ` : ''}
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
                     <label>Tipe Media</label>
                     <div style="font-weight: 600; padding: 10px; background: var(--secondary-bg); border-radius: var(--radius-md);">
                         <i data-lucide="${content.file_type === 'video' ? 'video' : 'camera'}" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;"></i>
@@ -102,9 +122,15 @@ function renderPublicView(app, content) {
     return `
         <div class="grid-layout fade-in">
             <div class="card col-full" style="text-align: center;">
-                <div style="width: 64px; height: 64px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                    <i data-lucide="image" style="width: 32px; height: 32px;"></i>
-                </div>
+                ${content.imagekit_url ? `
+                    <div style="margin-bottom: 20px;">
+                        <img src="${content.imagekit_url}" alt="Preview" style="max-width: 100%; max-height: 250px; border-radius: var(--radius-lg); border: 2px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    </div>
+                ` : `
+                    <div style="width: 64px; height: 64px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                        <i data-lucide="${content.file_type === 'video' ? 'video' : (content.file_type === 'photo' ? 'image' : 'file')}" style="width: 32px; height: 32px;"></i>
+                    </div>
+                `}
                 <h3>Konten Premium #${content.short_id}</h3>
                 <p style="color: var(--hint-color); margin-bottom: 20px;">Dukung karya kreator ini melalui WebApp</p>
                 
@@ -139,6 +165,27 @@ function renderPublicView(app, content) {
             </div>
         </div>
     `;
+}
+
+export async function generateThumbnail(app, contentId) {
+    const btn = document.getElementById('btnGenThumb');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;"></div> Memproses...';
+    }
+
+    try {
+        const result = await app.apiCall('content.php', { action: 'generate_thumbnail', short_id: contentId });
+        app.telegram.showAlert('✅ ' + result.message);
+        app.loadPage('content_detail', contentId);
+    } catch (error) {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="image-plus"></i> Generate Thumbnail';
+            if (window.lucide) window.lucide.createIcons();
+        }
+        app.telegram.showAlert('❌ Gagal: ' + error.message);
+    }
 }
 
 export async function confirmContent(app, contentId) {
