@@ -20,7 +20,19 @@ app.use(express.json());
 // Static Files (WebApp)
 app.use(express.static(path.join(__dirname, 'public/webapp')));
 
-// API Routes
+// Subfolder handling
+const url = new URL(domain || 'http://localhost');
+const subfolder = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
+const mainRouter = express.Router();
+
+// Health Check (Inside router)
+mainRouter.get('/health', (req, res) => res.json({ 
+  status: 'ok', 
+  project: 'VesperApp',
+  subfolder: subfolder || 'root'
+}));
+
+// API Routes (Mounted on mainRouter)
 const contentRoutes = require('./src/api/routes/content');
 const creatorRoutes = require('./src/api/routes/creator');
 const walletRoutes = require('./src/api/routes/wallet');
@@ -30,17 +42,17 @@ const adminRoutes = require('./src/api/routes/admin');
 const achievementsRoutes = require('./src/api/routes/achievements');
 const miscRoutes = require('./src/api/routes/misc');
 
-app.use('/api', contentRoutes);
-app.use('/api', creatorRoutes);
-app.use('/api', walletRoutes);
-app.use('/api', exploreRoutes);
-app.use('/api', profileRoutes);
-app.use('/api', adminRoutes);
-app.use('/api', achievementsRoutes);
-app.use('/api', miscRoutes);
+mainRouter.use('/api', contentRoutes);
+mainRouter.use('/api', creatorRoutes);
+mainRouter.use('/api', walletRoutes);
+mainRouter.use('/api', exploreRoutes);
+mainRouter.use('/api', profileRoutes);
+mainRouter.use('/api', adminRoutes);
+mainRouter.use('/api', achievementsRoutes);
+mainRouter.use('/api', miscRoutes);
 
-// Health Check
-app.get('/health', (req, res) => res.json({ status: 'ok', project: 'VesperApp' }));
+// Mount everything under the subfolder (or root)
+app.use(subfolder || '/', mainRouter);
 
 // Bot Initialization
 const initBots = async () => {
@@ -53,17 +65,11 @@ const initBots = async () => {
     
     if (domain && process.env.APP_ENV === 'production') {
       // WEBHOOK MODE (Production)
-      // Extract subfolder path if exists (e.g., from https://domain.com/vesper)
-      const url = new URL(domain);
-      const subfolder = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
-      
       const webhookPath = `/webhook/${botData.token}`;
       const fullWebhookUrl = `${domain}${webhookPath}`;
 
-      // Register the webhook callback with Express
-      // We use the path WITHOUT the subfolder here because cPanel/Passenger 
-      // usually strips the subfolder prefix before it reaches Node.js
-      app.use(bot.webhookCallback(webhookPath));
+      // Register webhook on the MAIN APP with the subfolder prefix
+      app.use(`${subfolder}${webhookPath}`, bot.webhookCallback(webhookPath));
       
       bot.telegram.setWebhook(fullWebhookUrl).then(() => {
         console.log(`Webhook set for ${botData.username} at ${fullWebhookUrl}`);
