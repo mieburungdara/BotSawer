@@ -59,8 +59,11 @@ mainRouter.use('/api', adminRoutes);
 mainRouter.use('/api', achievementsRoutes);
 mainRouter.use('/api', miscRoutes);
 
-// Mount everything under the subfolder (or root)
+// Mount everything under the subfolder AND root to be safe
 app.use(subfolder || '/', mainRouter);
+if (subfolder && subfolder !== '/') {
+  app.use('/', mainRouter);
+}
 
 // Bot Initialization
 const initBots = async () => {
