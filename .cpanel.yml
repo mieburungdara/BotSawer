@@ -1,5 +1,4 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/boxanonm/public_html/vesper
-    - /bin/cp -R * $DEPLOYPATH
-    - /bin/cp .env $DEPLOYPATH
+    - /bin/cp -Ru * $DEPLOYPATH
