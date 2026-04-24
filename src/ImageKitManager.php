@@ -39,36 +39,41 @@ class ImageKitManager
     }
 
     /**
-     * Get a specific account by its ImageKit ID (from URL)
+     * Get a specific account by parsing the URL
      */
-    public static function getAccountById(string $imageKitId): ?object
+    public static function getAccountByUrl(string $fullUrl): ?object
     {
+        $parsed = parse_url($fullUrl);
+        $path = ltrim($parsed['path'] ?? '', '/');
+        $pathParts = explode('/', $path);
+        $ikIdInUrl = $pathParts[0] ?? '';
+
+        if (empty($ikIdInUrl)) return null;
+
+        // Lookup by imagekit_id or by checking if ikIdInUrl is part of url_endpoint
         return DB::table('imagekit_accounts')
-            ->where('imagekit_id', $imageKitId)
+            ->where('imagekit_id', $ikIdInUrl)
+            ->orWhere('url_endpoint', 'LIKE', '%' . $ikIdInUrl . '%')
             ->first();
     }
 
     /**
      * Generate a signed URL for security
-     * 
-     * @param string $fullUrl The original full ImageKit URL
-     * @param array $transformations List of transformations (e.g. [['blur' => 30]])
-     * @param int $expiry Seconds until the link expires
      */
     public static function signUrl(string $fullUrl, array $transformations = [], int $expiry = 3600): string
     {
         try {
-            // Extract imagekit_id and path
-            // URL format: https://ik.imagekit.io/tboxmyid/folder/file.jpg
             $parsed = parse_url($fullUrl);
             if (!isset($parsed['path'])) return $fullUrl;
 
-            $pathParts = explode('/', ltrim($parsed['path'], '/'));
-            $imageKitId = $pathParts[0];
-            $filePath = '/' . implode('/', array_slice($pathParts, 1));
-
-            $account = self::getAccountById($imageKitId);
+            $account = self::getAccountByUrl($fullUrl);
             if (!$account) return $fullUrl;
+
+            // Extract path after the ImageKit ID
+            $path = ltrim($parsed['path'], '/');
+            $pathParts = explode('/', $path);
+            // Reconstruct path excluding the first part (imagekit_id)
+            $filePath = '/' . implode('/', array_slice($pathParts, 1));
 
             $imageKit = new ImageKit(
                 $account->public_key,
