@@ -3,9 +3,6 @@ const wallet = require('../services/wallet');
 const notifications = require('../services/notifications');
 const { extractMediaInfo, generateShortId } = require('./utils');
 
-// Store debounce timers in memory
-const debounceTimers = new Map();
-
 const creator = require('../services/creator');
 
 // Store debounce timers in memory
