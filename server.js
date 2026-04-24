@@ -6,6 +6,7 @@ const db = require('./src/services/database');
 const { Telegraf } = require('telegraf');
 const { setupBot } = require('./src/bot');
 const scheduler = require('./src/services/scheduler');
+const logger = require('./src/services/logger');
 
 dotenv.config();
 
@@ -68,7 +69,7 @@ app.use('/api', miscRoutes);
 // Bot Initialization
 const initBots = async () => {
   const bots = await db('bots').where('is_active', 1);
-  console.log(`Initializing ${bots.length} bots...`);
+  logger.info(`Initializing ${bots.length} bots...`);
   
   for (const botData of bots) {
     const bot = new Telegraf(botData.token);
@@ -77,10 +78,10 @@ const initBots = async () => {
     if (domain && process.env.APP_ENV === 'production') {
       const webhookPath = `/webhook/${botData.token}`;
       app.use(bot.webhookCallback(webhookPath));
-      console.log(`[BOT] Webhook path registered: ${webhookPath}`);
+      logger.info(`[BOT] Webhook path registered: ${webhookPath}`);
     } else {
-      console.log(`[BOT] Starting Polling for ${botData.username}...`);
-      bot.launch().catch(err => console.error(`Polling error:`, err.message));
+      logger.info(`[BOT] Starting Polling for ${botData.username}...`);
+      bot.launch().catch(err => logger.error(`Polling error: ${err.message}`));
     }
 
     // Graceful stop
@@ -90,7 +91,7 @@ const initBots = async () => {
 };
 
 app.listen(port, () => {
-  console.log(`VesperApp API listening at http://localhost:${port}`);
-  initBots().catch(console.error);
-  scheduler.start().catch(console.error);
+  logger.info(`VesperApp API listening at http://localhost:${port}`);
+  initBots().catch(err => logger.error(`Bot Init Error: ${err.message}`));
+  scheduler.start().catch(err => logger.error(`Scheduler Error: ${err.message}`));
 });
