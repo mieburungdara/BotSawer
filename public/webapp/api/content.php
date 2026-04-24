@@ -63,11 +63,18 @@ try {
             'has_thumbnail_source' => ($media->file_type === 'photo' && !empty($media->telegram_file_id)) || !empty($media->thumb_file_id)
         ];
 
-        // Apply blur for non-owners if imagekit_url exists
-        if (!$isOwner && $responseData['imagekit_url']) {
-            // Check if there are already query params
-            $separator = strpos($responseData['imagekit_url'], '?') !== false ? '&' : '?';
-            $responseData['imagekit_url'] .= $separator . 'tr=bl-30';
+        // Apply Signed URL (with blur if not owner)
+        if ($responseData['imagekit_url']) {
+            $transformations = [];
+            if (!$isOwner) {
+                $transformations[] = ['blur' => '30'];
+            }
+            
+            $responseData['imagekit_url'] = ImageKitManager::signUrl(
+                $media->imagekit_url, 
+                $transformations,
+                3600 // 1 hour expiry
+            );
         }
 
         if ($isOwner) {
