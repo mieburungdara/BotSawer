@@ -1,16 +1,31 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-tg-bg: var(--tg-theme-bg-color, #0e1621);
+  --color-tg-secondary: var(--tg-theme-secondary-bg-color, #17212b);
+  --color-tg-text: var(--tg-theme-text-color, #ffffff);
+  --color-tg-hint: var(--tg-theme-hint-color, #708499);
+  --color-tg-link: var(--tg-theme-link-color, #24a1de);
+  --color-tg-button: var(--tg-theme-button-color, #24a1de);
+  --color-tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+}
 
 @layer base {
   body {
-    @apply bg-tg-bg text-tg-text antialiased overflow-x-hidden;
+    background-color: var(--color-tg-bg);
+    color: var(--color-tg-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 }
 
 .glass {
-  @apply bg-opacity-60 backdrop-blur-md bg-tg-secondary border border-white/5;
+  background-color: rgba(23, 33, 43, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Custom scrollbar */
