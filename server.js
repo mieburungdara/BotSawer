@@ -38,7 +38,9 @@ app.get('/health', (req, res) => res.json({
 
 // Serve WebApp Index
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/webapp/index.html'));
+  const indexPath = path.join(__dirname, 'public/webapp/index.html');
+  console.log(`[DEBUG] Attempting to serve index from: ${indexPath}`);
+  res.sendFile(indexPath);
 });
 
 // Static files
