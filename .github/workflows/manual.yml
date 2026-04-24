@@ -23,7 +23,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: botsawer/
+          server-dir: VesperApp/
           dry-run: false
           exclude: |
             **/.git*
@@ -43,3 +43,4 @@ jobs:
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d "text=$TEXT" \
             -d "parse_mode=Markdown"
+

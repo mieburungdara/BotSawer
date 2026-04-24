@@ -51,9 +51,10 @@ export async function loadFaq(app) {
                 
                 <div style="margin-top: 30px; text-align: center;">
                     <p style="font-size: 13px; color: var(--hint-color);">Punya pertanyaan lain?</p>
-                    <button class="btn btn-primary btn-sm" onclick="window.open('https://t.me/BotSawerSupport', '_blank')">Tanya CS Kami</button>
+                    <button class="btn btn-primary btn-sm" onclick="window.open('https://t.me/VesperAppSupport', '_blank')">Tanya CS Kami</button>
                 </div>
             </div>
         </div>
     `;
 }
+

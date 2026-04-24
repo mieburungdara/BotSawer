@@ -98,7 +98,7 @@
 ## 📂 Struktur Folder Project
 
 ```
-BotSawer/
+VesperApp/
 ├── config/
 │   ├── database.php
 │   ├── telegram.php

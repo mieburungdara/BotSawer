@@ -1,0 +1,39 @@
+{
+    "name": "VesperApp/telegram-creator-payment",
+    "description": "Bot Telegram sistem pembayaran otomatis untuk kreator konten foto dan video",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "ext-curl": "*",
+        "ext-json": "*",
+        "ext-mysqli": "*",
+        "guzzlehttp/guzzle": "^6.0",
+        "illuminate/database": "^8.0",
+        "imagekit/imagekit": "^4.0",
+        "irazasyed/telegram-bot-sdk": "^3.0",
+        "midtrans/midtrans-php": "^2.0",
+        "monolog/monolog": "^2.0",
+        "respect/validation": "^1.0",
+        "vlucas/phpdotenv": "^4.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0",
+        "symfony/var-dumper": "^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "VesperApp\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "platform": {
+
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
+

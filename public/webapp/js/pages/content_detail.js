@@ -44,19 +44,24 @@ function renderOwnerView(app, content) {
                 </div>
 
                 <div class="form-group">
-                    <label>Media</label>
-                    <div style="text-align: center; margin-bottom: 15px;">
-                        ${content.imagekit_url ? `
-                            <img src="${content.imagekit_url}" alt="Thumbnail" style="max-width: 100%; max-height: 300px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                        ` : `
-                            <div style="padding: 20px; background: var(--secondary-bg); border-radius: var(--radius-md); color: var(--hint-color);">
-                                <i data-lucide="${content.file_type === 'video' ? 'video' : (content.file_type === 'photo' ? 'image' : 'file')}" style="width: 48px; height: 48px; margin-bottom: 10px;"></i>
-                                <div>Tidak ada thumbnail</div>
+                    <label>Media (${content.media_list.length} File)</label>
+                    <div style="display: flex; overflow-x: auto; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; scroll-snap-type: x mandatory;">
+                        ${content.media_list.map((media, index) => `
+                            <div style="flex: 0 0 100%; scroll-snap-align: center; text-align: center;">
+                                <div style="margin-bottom: 5px; font-size: 12px; color: var(--hint-color);">Media ${index + 1} dari ${content.media_list.length}</div>
+                                ${media.imagekit_url ? `
+                                    <img src="${media.imagekit_url}" alt="Thumbnail" style="max-width: 100%; max-height: 300px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                                ` : `
+                                    <div style="padding: 20px; background: var(--secondary-bg); border-radius: var(--radius-md); color: var(--hint-color);">
+                                        <i data-lucide="${media.file_type === 'video' ? 'video' : (media.file_type === 'photo' ? 'image' : 'file')}" style="width: 48px; height: 48px; margin-bottom: 10px;"></i>
+                                        <div>Tidak ada thumbnail</div>
+                                    </div>
+                                `}
                             </div>
-                        `}
+                        `).join('')}
                     </div>
                     
-                    ${!content.imagekit_url && content.has_thumbnail_source ? `
+                    ${content.media_list.some(m => !m.imagekit_url && m.has_thumbnail_source) ? `
                         <button class="btn btn-outline-primary" style="width: 100%;" onclick="app.generateThumbnail('${content.short_id}')" id="btnGenThumb">
                             <i data-lucide="image-plus"></i> Generate Thumbnail
                         </button>
@@ -64,10 +69,10 @@ function renderOwnerView(app, content) {
                 </div>
 
                 <div class="form-group" style="margin-top: 15px;">
-                    <label>Tipe Media</label>
+                    <label>Tipe Konten</label>
                     <div style="font-weight: 600; padding: 10px; background: var(--secondary-bg); border-radius: var(--radius-md);">
-                        <i data-lucide="${content.file_type === 'video' ? 'video' : 'camera'}" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;"></i>
-                        ${content.file_type.toUpperCase()}
+                        <i data-lucide="${content.media_list.length > 1 ? 'layers' : (content.media_list[0]?.file_type === 'video' ? 'video' : 'camera')}" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;"></i>
+                        ${content.media_list.length > 1 ? 'ALBUM' : (content.media_list[0]?.file_type || 'UNKNOWN').toUpperCase()}
                     </div>
                 </div>
 
@@ -122,16 +127,21 @@ function renderPublicView(app, content) {
     return `
         <div class="grid-layout fade-in">
             <div class="card col-full" style="text-align: center;">
-                ${content.imagekit_url ? `
-                    <div style="margin-bottom: 20px;">
-                        <img src="${content.imagekit_url}" alt="Preview" style="max-width: 100%; max-height: 250px; border-radius: var(--radius-lg); border: 2px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    </div>
-                ` : `
-                    <div style="width: 64px; height: 64px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                        <i data-lucide="${content.file_type === 'video' ? 'video' : (content.file_type === 'photo' ? 'image' : 'file')}" style="width: 32px; height: 32px;"></i>
-                    </div>
-                `}
-                <h3>Konten Premium #${content.short_id}</h3>
+                <div style="display: flex; overflow-x: auto; gap: 10px; margin-bottom: 20px; padding-bottom: 10px; scroll-snap-type: x mandatory;">
+                    ${content.media_list.map((media, index) => `
+                        <div style="flex: 0 0 100%; scroll-snap-align: center;">
+                            ${content.media_list.length > 1 ? `<div style="margin-bottom: 5px; font-size: 12px; color: var(--hint-color);">File ${index + 1} dari ${content.media_list.length}</div>` : ''}
+                            ${media.imagekit_url ? `
+                                <img src="${media.imagekit_url}" alt="Preview" style="max-width: 100%; max-height: 250px; border-radius: var(--radius-lg); border: 2px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            ` : `
+                                <div style="width: 64px; height: 64px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                                    <i data-lucide="${media.file_type === 'video' ? 'video' : (media.file_type === 'photo' ? 'image' : 'file')}" style="width: 32px; height: 32px;"></i>
+                                </div>
+                            `}
+                        </div>
+                    `).join('')}
+                </div>
+                <h3>${content.media_list.length > 1 ? 'Album Premium' : 'Konten Premium'} #${content.short_id}</h3>
                 <p style="color: var(--hint-color); margin-bottom: 20px;">Dukung karya kreator ini melalui WebApp</p>
                 
                 <div style="padding: 20px; background: var(--secondary-bg); border-radius: var(--radius-md); margin-bottom: 25px;">

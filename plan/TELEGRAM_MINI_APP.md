@@ -39,7 +39,7 @@ Untuk pengalaman pengguna yang lebih baik, akan diimplementasikan **Telegram Min
 
 ## 📂 Struktur Folder Mini App
 ```
-BotSawer/
+VesperApp/
 └── webapp/
     ├── index.html
     ├── css/

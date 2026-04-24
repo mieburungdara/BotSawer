@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/boxanonm/public_html/botsawer/
+    - export DEPLOYPATH=/home/boxanonm/public_html/VesperApp/
     - /bin/cp -R * $DEPLOYPATH
     - composer install --no-dev --no-interaction --prefer-dist --working-dir=$DEPLOYPATH
     - |

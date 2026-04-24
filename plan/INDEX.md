@@ -1,7 +1,7 @@
-# 📁 BotSawer Documentation Index
+# 📁 VesperApp Documentation Index
 
 ## 📋 Overview
-This directory contains all documentation for the BotSawer project - a Telegram-based content monetization platform.
+This directory contains all documentation for the VesperApp project - a Telegram-based content monetization platform.
 
 ## 📚 Documentation Files
 
@@ -68,3 +68,4 @@ plan/
 
 **Last updated:** 2026-04-11
 **Total files:** 12 documentation files
+

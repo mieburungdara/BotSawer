@@ -1,7 +1,7 @@
-# BotSawer API Documentation
+# VesperApp API Documentation
 
 ## Overview
-BotSawer provides RESTful APIs for webapp integration with Telegram Mini Apps.
+VesperApp provides RESTful APIs for webapp integration with Telegram Mini Apps.
 
 ## Authentication
 All API requests require authentication via Telegram Web App data.

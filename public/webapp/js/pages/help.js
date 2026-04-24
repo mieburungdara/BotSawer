@@ -45,10 +45,11 @@ export async function loadHelp(app) {
                 <div style="margin-top: 25px; padding: 15px; background: rgba(var(--primary-rgb), 0.05); border-radius: 12px; display: flex; align-items: center; gap: 15px;">
                     <i data-lucide="message-square" style="color: var(--primary);"></i>
                     <div style="font-size: 13px;">
-                        Masih butuh bantuan? Hubungi kami melalui <a href="https://t.me/BotSawerSupport" target="_blank" style="color: var(--primary); font-weight: 700; text-decoration: none;">Customer Support</a>.
+                        Masih butuh bantuan? Hubungi kami melalui <a href="https://t.me/VesperAppSupport" target="_blank" style="color: var(--primary); font-weight: 700; text-decoration: none;">Customer Support</a>.
                     </div>
                 </div>
             </div>
         </div>
     `;
 }
+

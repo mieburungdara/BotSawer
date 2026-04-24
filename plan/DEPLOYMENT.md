@@ -1,6 +1,6 @@
-# 🚀 BotSawer Deployment Guide
+# 🚀 VesperApp Deployment Guide
 
-Panduan lengkap untuk deploy BotSawer ke production environment dengan fokus pada **Shared Hosting**.
+Panduan lengkap untuk deploy VesperApp ke production environment dengan fokus pada **Shared Hosting**.
 
 ## 📋 Prerequisites
 
@@ -31,8 +31,8 @@ Panduan lengkap untuk deploy BotSawer ke production environment dengan fokus pad
 
 2. **Buat Database**
    - Login ke cPanel → MySQL Databases
-   - Create database: `botsawer_db`
-   - Create user: `botsawer_user`
+   - Create database: `VesperApp_db`
+   - Create user: `VesperApp_user`
    - Set permissions: Full access ke database
 
 3. **Siapkan Domain/Subdomain**
@@ -78,7 +78,7 @@ php composer.phar install --no-dev --optimize-autoloader
 
 2. **Edit .env untuk shared hosting**
    ```env
-   APP_NAME=BotSawer
+   APP_NAME=VesperApp
    APP_ENV=production
    APP_DEBUG=false
    APP_URL=https://yourdomain.com
@@ -87,8 +87,8 @@ php composer.phar install --no-dev --optimize-autoloader
    DB_CONNECTION=mysql
    DB_HOST=localhost
    DB_PORT=3306
-   DB_DATABASE=botsawer_db
-   DB_USERNAME=botsawer_user
+   DB_DATABASE=VesperApp_db
+   DB_USERNAME=VesperApp_user
    DB_PASSWORD=your_db_password
 
     # Bot configuration dilakukan via webapp setelah setup selesai
@@ -191,7 +191,7 @@ Jika hosting tidak support cron, gunakan:
 <?php
 // cron.php - Alternative cron runner for shared hosting
 require_once __DIR__ . '/vendor/autoload.php';
-BotSawer\Database::init();
+VesperApp\Database::init();
 
 // Run scheduler
 exec('php ' . __DIR__ . '/schedule.php');
@@ -200,7 +200,7 @@ echo "Cron executed at " . date('Y-m-d H:i:s');
 
 ### Step 7: Multi Bot Configuration
 
-BotSawer menggunakan **Standalone Multi Bot System** untuk menghindari rate limit Telegram:
+VesperApp menggunakan **Standalone Multi Bot System** untuk menghindari rate limit Telegram:
 
 #### ✅ Setup Webhook Setiap Bot
 ```bash
@@ -249,7 +249,7 @@ Akses file ini via browser untuk setup webhook semua bot sekaligus.
    ```php
    <?php
    require 'vendor/autoload.php';
-   BotSawer\Database::init();
+   VesperApp\Database::init();
    echo "Database connected successfully";
    ```
 
@@ -277,21 +277,21 @@ sudo mv composer.phar /usr/local/bin/composer
 
 # Clone and setup
 cd /var/www
-sudo git clone https://github.com/mieburungdara/BotSawer.git
-sudo chown -R www-data:www-data BotSawer
-cd BotSawer
+sudo git clone https://github.com/mieburungdara/VesperApp.git
+sudo chown -R www-data:www-data VesperApp
+cd VesperApp
 
 # Install dependencies
 sudo -u www-data composer install --no-dev --optimize-autoloader
 
 # Database setup
-sudo mysql -e "CREATE DATABASE botsawer CHARACTER SET utf8mb4;"
-sudo mysql -e "CREATE USER 'botsawer'@'localhost' IDENTIFIED BY 'secure_password';"
-sudo mysql -e "GRANT ALL ON botsawer.* TO 'botsawer'@'localhost';"
-mysql -u botsawer -p botsawer < migrations/schema.sql
+sudo mysql -e "CREATE DATABASE VesperApp CHARACTER SET utf8mb4;"
+sudo mysql -e "CREATE USER 'VesperApp'@'localhost' IDENTIFIED BY 'secure_password';"
+sudo mysql -e "GRANT ALL ON VesperApp.* TO 'VesperApp'@'localhost';"
+mysql -u VesperApp -p VesperApp < migrations/schema.sql
 
 # Web server config
-sudo nano /etc/apache2/sites-available/botsawer.conf
+sudo nano /etc/apache2/sites-available/VesperApp.conf
 # ... (Apache config as before)
 
 # SSL Setup
@@ -299,7 +299,7 @@ sudo apt install certbot python3-certbot-apache
 sudo certbot --apache -d yourdomain.com
 
 # Cron setup
-echo "* * * * * cd /var/www/BotSawer && php schedule.php" | sudo crontab -
+echo "* * * * * cd /var/www/VesperApp && php schedule.php" | sudo crontab -
 ```
 
 ## 🔧 **Konfigurasi Environment**
@@ -311,8 +311,8 @@ APP_DEBUG=false
 APP_URL=https://yourdomain.com
 
 DB_HOST=localhost
-DB_DATABASE=botsawer_db
-DB_USERNAME=botsawer_user
+DB_DATABASE=VesperApp_db
+DB_USERNAME=VesperApp_user
 DB_PASSWORD=your_db_password
 
 TELEGRAM_BOT_TOKEN=your_token
@@ -329,8 +329,8 @@ APP_DEBUG=false
 APP_URL=https://yourdomain.com
 
 DB_HOST=localhost
-DB_DATABASE=botsawer
-DB_USERNAME=botsawer
+DB_DATABASE=VesperApp
+DB_USERNAME=VesperApp
 DB_PASSWORD=secure_password
 
 TELEGRAM_BOT_TOKEN=your_token
@@ -389,3 +389,4 @@ Add: php_value memory_limit 256M
 ```
 
 #### 3. 
+

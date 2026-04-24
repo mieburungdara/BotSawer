@@ -1,5 +1,5 @@
 /**
- * Utility functions for BotSawer WebApp
+ * Utility functions for VesperApp WebApp
  */
 
 export function formatCompactNumber(number) {
@@ -45,3 +45,4 @@ export function getTierColor(tier, isBg = false) {
     const color = colors[tier] || colors['Belum Ada'];
     return isBg ? color + '15' : color;
 }
+

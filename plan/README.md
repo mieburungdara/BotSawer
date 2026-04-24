@@ -1,6 +1,6 @@
-# 🤖 BotSawer - Telegram Content Monetization Bot
+# 🤖 VesperApp - Telegram Content Monetization Bot
 
-BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kreator konten untuk menerima donasi dari penggemar secara anonim dan otomatis.
+VesperApp adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kreator konten untuk menerima donasi dari penggemar secara anonim dan otomatis.
 
 ## ✨ Fitur Utama
 
@@ -30,7 +30,7 @@ BotSawer adalah sistem monetisasi konten berbasis Telegram yang memungkinkan kre
 
 ## 🤖 Bot System Architecture
 
-BotSawer menggunakan **Standalone Multi Bot System** untuk menghindari rate limit Telegram dan menangani beban pengguna secara masif.
+VesperApp menggunakan **Standalone Multi Bot System** untuk menghindari rate limit Telegram dan menangani beban pengguna secara masif.
 
 ### 🤖 **Arsitektur Multi Bot Anti Rate Limit**
 - **Semua bot identik dan berdiri sendiri** (tidak ada perbedaan user/moderator bot)
@@ -84,8 +84,8 @@ BotSawer menggunakan **Standalone Multi Bot System** untuk menghindari rate limi
 ### Installation
 1. **Clone repository**
    ```bash
-   git clone https://github.com/yourusername/botsawer.git
-   cd botsawer
+   git clone https://github.com/yourusername/VesperApp.git
+   cd VesperApp
    ```
 
 2. **Install dependencies**
@@ -118,7 +118,7 @@ BotSawer menggunakan **Standalone Multi Bot System** untuk menghindari rate limi
 
 6. **Setup cron job**
    ```bash
-   * * * * * cd /path/to/botsawer && php schedule.php
+   * * * * * cd /path/to/VesperApp && php schedule.php
    ```
 
 ## 📱 Access
@@ -137,4 +137,5 @@ See `DEPLOYMENT.md` for comprehensive production deployment guide.
 
 ---
 
-**BotSawer** - Monetize your creativity, connect with fans, earn from content! 🎨💰
+**VesperApp** - Monetize your creativity, connect with fans, earn from content! 🎨💰
+

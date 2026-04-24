@@ -1,5 +1,5 @@
 /**
- * API function for BotSawer WebApp
+ * API function for VesperApp WebApp
  */
 export async function apiCall(app, endpoint, data = {}) {
     const response = await fetch(`api/${endpoint}`, {
@@ -21,3 +21,4 @@ export async function apiCall(app, endpoint, data = {}) {
     }
     return result.data;
 }
+
