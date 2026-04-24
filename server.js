@@ -53,11 +53,20 @@ const initBots = async () => {
     
     if (domain && process.env.APP_ENV === 'production') {
       // WEBHOOK MODE (Production)
+      // Extract subfolder path if exists (e.g., from https://domain.com/vesper)
+      const url = new URL(domain);
+      const subfolder = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
+      
       const webhookPath = `/webhook/${botData.token}`;
+      const fullWebhookUrl = `${domain}${webhookPath}`;
+
+      // Register the webhook callback with Express
+      // We use the path WITHOUT the subfolder here because cPanel/Passenger 
+      // usually strips the subfolder prefix before it reaches Node.js
       app.use(bot.webhookCallback(webhookPath));
       
-      bot.telegram.setWebhook(`${domain}${webhookPath}`).then(() => {
-        console.log(`Webhook set for ${botData.username} at ${domain}${webhookPath}`);
+      bot.telegram.setWebhook(fullWebhookUrl).then(() => {
+        console.log(`Webhook set for ${botData.username} at ${fullWebhookUrl}`);
       }).catch(err => {
         console.error(`Failed to set webhook for ${botData.username}:`, err);
       });
