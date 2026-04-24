@@ -17,6 +17,16 @@ const domain = process.env.WEBHOOK_DOMAIN; // e.g. https://yourdomain.com
 app.use(morgan('dev'));
 app.use(express.json());
 
+// Bulletproof Subfolder Middleware
+app.use((req, res, next) => {
+  const subfolder = '/vesper';
+  if (req.url.startsWith(subfolder)) {
+    req.url = req.url.substring(subfolder.length);
+    if (req.url === '') req.url = '/';
+  }
+  next();
+});
+
 // Static Files (WebApp) - Moved down to be handled by subfolder logic if needed
 // app.use(express.static(path.join(__dirname, 'public/webapp')));
 
