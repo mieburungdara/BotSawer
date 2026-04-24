@@ -1,38 +1,55 @@
 const winston = require('winston');
+require('winston-daily-rotate-file');
 const path = require('path');
 
-const { combine, timestamp, printf, colorize, errors } = winston.format;
+const { combine, timestamp, printf, colorize, errors, json } = winston.format;
 
-// Custom format for logs
-const logFormat = printf(({ level, message, timestamp, stack }) => {
-  return `${timestamp} [${level}]: ${stack || message}`;
+// Custom format for readable logs
+const logFormat = printf(({ level, message, timestamp, stack, ...meta }) => {
+  const metaString = Object.keys(meta).length ? JSON.stringify(meta) : '';
+  return `${timestamp} [${level}]: ${stack || message} ${metaString}`;
 });
+
+// Configure transports
+const transports = [
+  // Daily Rotate for Combined Logs
+  new winston.transports.DailyRotateFile({
+    filename: path.join(__dirname, '../../logs/app-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    zippedArchive: true,
+    maxSize: '20m',
+    maxFiles: '14d',
+    level: 'info',
+  }),
+  // Daily Rotate for Error Logs
+  new winston.transports.DailyRotateFile({
+    filename: path.join(__dirname, '../../logs/error-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    zippedArchive: true,
+    maxSize: '20m',
+    maxFiles: '30d',
+    level: 'error',
+  }),
+];
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: combine(
     timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     errors({ stack: true }),
-    logFormat
+    json() // Log in JSON for easier parsing if needed
   ),
-  transports: [
-    // Write all logs with level 'error' and below to error.log
-    new winston.transports.File({ 
-      filename: path.join(__dirname, '../../logs/error.log'), 
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-    // Write all logs with level 'info' and below to app.log
-    new winston.transports.File({ 
-      filename: path.join(__dirname, '../../logs/app.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
+  transports: transports,
+  // Catch uncaught exceptions and unhandled rejections
+  exceptionHandlers: [
+    new winston.transports.File({ filename: path.join(__dirname, '../../logs/exceptions.log') })
+  ],
+  rejectionHandlers: [
+    new winston.transports.File({ filename: path.join(__dirname, '../../logs/rejections.log') })
   ],
 });
 
-// If we're not in production then log to the console with colors
+// Always add console with color in dev, and plain in prod
 if (process.env.APP_ENV !== 'production') {
   logger.add(new winston.transports.Console({
     format: combine(
@@ -41,10 +58,14 @@ if (process.env.APP_ENV !== 'production') {
     ),
   }));
 } else {
-    // In production, also log to console but without colors (better for cPanel logs)
-    logger.add(new winston.transports.Console({
-        format: logFormat
-    }));
+  logger.add(new winston.transports.Console({
+    format: logFormat
+  }));
 }
+
+// Create a stream object for Morgan integration
+logger.stream = {
+  write: (message) => logger.info(message.trim()),
+};
 
 module.exports = logger;

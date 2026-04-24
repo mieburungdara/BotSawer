@@ -15,7 +15,7 @@ const port = process.env.PORT || 3000;
 const domain = process.env.WEBHOOK_DOMAIN; // e.g. https://yourdomain.com
 
 // Middleware
-app.use(morgan('dev'));
+app.use(morgan('combined', { stream: logger.stream }));
 app.use(express.json());
 
 // Bulletproof Subfolder Middleware
