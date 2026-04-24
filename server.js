@@ -17,8 +17,8 @@ const domain = process.env.WEBHOOK_DOMAIN; // e.g. https://yourdomain.com
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Static Files (WebApp)
-app.use(express.static(path.join(__dirname, 'public/webapp')));
+// Static Files (WebApp) - Moved down to be handled by subfolder logic if needed
+// app.use(express.static(path.join(__dirname, 'public/webapp')));
 
 // Subfolder handling
 const url = new URL(domain || 'http://localhost');
@@ -31,6 +31,14 @@ mainRouter.get('/health', (req, res) => res.json({
   project: 'VesperApp',
   subfolder: subfolder || 'root'
 }));
+
+// Serve WebApp Index on subfolder root
+mainRouter.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/webapp/index.html'));
+});
+
+// Static files under subfolder
+mainRouter.use(express.static(path.join(__dirname, 'public/webapp')));
 
 // API Routes (Mounted on mainRouter)
 const contentRoutes = require('./src/api/routes/content');
