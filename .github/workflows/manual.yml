@@ -15,7 +15,11 @@ jobs:
       - name: 🚚 Checkout Code
         uses: actions/checkout@v4
 
-      # Langkah Composer sudah dihapus total dari sini
+      - name: 🎨 Build Vue Frontend
+        run: |
+          cd webapp-frontend
+          npm install
+          npm run build
 
       - name: 🚀 Sync via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

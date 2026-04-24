@@ -1,0 +1,1 @@
+@tailwind base;@tailwind components;@tailwind utilities;@layer base{@apply bg-tg-bg text-tg-text antialiased overflow-x-hidden;body{min-height:100vh}}@apply bg-opacity-60 backdrop-blur-md bg-tg-secondary border border-white/5;::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#ffffff1a;border-radius:10px}
