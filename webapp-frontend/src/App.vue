@@ -14,6 +14,8 @@ const isNotifOpen = ref(false)
 const tg = window.Telegram?.WebApp
 const balance = ref(0)
 const isLoadingBalance = ref(true)
+const touchStartX = ref(0)
+const touchStartY = ref(0)
 
 const notifications = ref([
   { id: 1, type: 'donation', text: '💸 Anda menerima donasi Rp 50.000!', time: '5m ago', unread: true },
@@ -64,10 +66,41 @@ const navigate = (id) => {
   activeTab.value = id
   isSidebarOpen.value = false
 }
+
+const handleTouchStart = (e) => {
+  touchStartX.value = e.touches[0].clientX
+  touchStartY.value = e.touches[0].clientY
+}
+
+const handleTouchEnd = (e) => {
+  const touchEndX = e.changedTouches[0].clientX
+  const touchEndY = e.changedTouches[0].clientY
+  
+  const deltaX = touchEndX - touchStartX.value
+  const deltaY = touchEndY - touchStartY.value
+  
+  // Swipe sensitivity (threshold)
+  const minSwipeDist = 50
+  
+  // A horizontal swipe (X movement > Y movement)
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    if (deltaX > minSwipeDist && touchStartX.value < 60) {
+      // Swipe Right from left edge (0-60px) -> Open Sidebar
+      isSidebarOpen.value = true
+    } else if (deltaX < -minSwipeDist && isSidebarOpen.value) {
+      // Swipe Left anywhere while open -> Close Sidebar
+      isSidebarOpen.value = false
+    }
+  }
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-tg-bg text-tg-text relative overflow-hidden">
+  <div 
+    @touchstart="handleTouchStart" 
+    @touchend="handleTouchEnd"
+    class="min-h-screen bg-tg-bg text-tg-text relative overflow-hidden"
+  >
     
     <!-- Sidebar Overlay -->
     <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"></div>
