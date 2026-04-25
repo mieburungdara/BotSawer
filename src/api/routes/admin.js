@@ -10,7 +10,7 @@ const audit = require('../../services/audit');
 /**
  * Admin API
  */
-router.post('/admin.php', async (req, res) => {
+router.post('/admin', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
     

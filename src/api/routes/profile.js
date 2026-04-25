@@ -7,7 +7,7 @@ const db = require('../../services/database');
 /**
  * Profile API
  */
-router.post('/profile.php', async (req, res) => {
+router.post('/profile', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
     const { action, profile_data } = req.body;

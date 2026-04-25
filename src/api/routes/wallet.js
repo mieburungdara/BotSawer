@@ -7,7 +7,7 @@ const db = require('../../services/database');
 /**
  * Wallet API
  */
-router.post('/wallet.php', async (req, res) => {
+router.post('/wallet', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
     const { action } = req.body;

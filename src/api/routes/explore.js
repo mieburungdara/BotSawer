@@ -6,7 +6,7 @@ const auth = require('../../services/auth');
 /**
  * Explore API
  */
-router.post('/explore.php', async (req, res) => {
+router.post('/explore', async (req, res) => {
   try {
     // Authentication is optional for explore, but we use it if available for context
     let user = null;

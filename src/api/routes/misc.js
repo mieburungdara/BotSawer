@@ -6,7 +6,7 @@ const db = require('../../services/database');
 /**
  * Dashboard API
  */
-router.post('/dashboard.php', async (req, res) => {
+router.post('/dashboard', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
 
@@ -48,7 +48,7 @@ router.post('/dashboard.php', async (req, res) => {
 /**
  * Ecosystem API
  */
-router.post('/ecosystem.php', async (req, res) => {
+router.post('/ecosystem', async (req, res) => {
     try {
         const bots = await db('bots').where('is_active', 1).where('type', 'public');
         const channels = await db('channels').where('is_active', 1);
@@ -66,7 +66,7 @@ router.post('/ecosystem.php', async (req, res) => {
 /**
  * Config API
  */
-router.post('/config.php', async (req, res) => {
+router.post('/config', async (req, res) => {
     try {
         const settingsRows = await db('settings').select('key', 'value');
         const settings = {};

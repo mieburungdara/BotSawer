@@ -7,7 +7,7 @@ const ik = require('../../services/imagekit');
 /**
  * Main Content API
  */
-router.post('/content.php', async (req, res) => {
+router.post('/content', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
     const { action, short_id } = req.body;

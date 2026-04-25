@@ -6,7 +6,7 @@ const auth = require('../../services/auth');
 /**
  * Creator API
  */
-router.post('/creator.php', async (req, res) => {
+router.post('/creator', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
     const { action } = req.body;

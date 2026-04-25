@@ -6,7 +6,7 @@ const db = require('../../services/database');
 /**
  * Achievements API
  */
-router.post('/achievements.php', async (req, res) => {
+router.post('/achievements', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
     const telegramId = user.telegram_id;
