@@ -14,11 +14,19 @@ router.post('/profile', async (req, res) => {
 
     // 1. GET PROFILE
     if (action === 'get') {
-      const stats = await creator.getStats(user.telegram_id);
+      const targetId = req.body.targetId || user.telegram_id;
+      
+      let profileUser = user;
+      if (req.body.targetId && req.body.targetId !== user.telegram_id) {
+          profileUser = await db('users').where('telegram_id', req.body.targetId).first();
+          if (!profileUser) throw new Error('Profil tidak ditemukan');
+      }
+
+      const stats = await creator.getStats(targetId);
       
       // Get recent contents with media
       const contents = await db('contents')
-        .where('user_id', user.telegram_id)
+        .where('user_id', targetId)
         .whereNot('status', 'deleted')
         .orderBy('created_at', 'desc')
         .limit(20);
@@ -31,7 +39,7 @@ router.post('/profile', async (req, res) => {
       return res.json({ 
         success: true, 
         data: {
-          ...user,
+          ...profileUser,
           stats,
           contents: contentsWithMedia
         } 

@@ -17,6 +17,7 @@ const balance = ref(0)
 const isLoadingBalance = ref(true)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
+const targetProfileId = ref(null)
 
 const notifications = ref([
   { id: 1, type: 'donation', text: '💸 Anda menerima donasi Rp 50.000!', time: '5m ago', unread: true },
@@ -83,6 +84,7 @@ const fetchBalance = async () => {
 }
 
 const navigate = (id) => {
+  if (id !== 'profile') targetProfileId.value = null
   activeTab.value = id
   isSidebarOpen.value = false
 }
@@ -208,8 +210,8 @@ const handleTouchEnd = (e) => {
       <!-- Main Content Area -->
       <main class="animate-in fade-in duration-700">
         <Dashboard v-if="activeTab === 'dashboard'" @navigate="navigate" />
-        <Explore v-if="activeTab === 'explore'" />
-        <Profile v-if="activeTab === 'profile'" />
+        <Explore v-if="activeTab === 'explore'" @view-profile="(id) => { targetProfileId = id; activeTab = 'profile' }" />
+        <Profile v-if="activeTab === 'profile'" :targetId="targetProfileId" @nav="navigate" />
         <Wallet v-if="activeTab === 'wallet'" @mutasi="activeTab = 'mutasi'" />
         <Achievements v-if="activeTab === 'achievements'" />
         <Library v-if="activeTab === 'library'" />

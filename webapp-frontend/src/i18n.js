@@ -10,12 +10,22 @@ const messages = {
       lastSearch: 'Recent Searches',
       clearAll: 'Clear All',
       noResults: 'No results found',
-      categories: {
-        Content: 'Content',
-        User: 'User',
-        Post: 'Post',
-        Menfess: 'Menfess'
-      }
+    },
+    profile: {
+      title: 'My Profile',
+      followers: 'Followers',
+      following: 'Following',
+      contents: 'Contents',
+      donations: 'Donations',
+      editProfile: 'EDIT PROFILE',
+      recentMedia: 'Recent Media',
+      noContent: 'No content yet.',
+      followingList: 'Following List',
+      followersList: 'Followers List',
+      follow: 'Follow',
+      unfollow: 'Unfollow',
+      noFollowers: 'No followers yet.',
+      noFollowing: 'Not following anyone yet.'
     },
     settings: {
       title: 'Settings',
@@ -52,6 +62,22 @@ const messages = {
         Post: 'Postingan',
         Menfess: 'Menfess'
       }
+    },
+    profile: {
+      title: 'Profil Saya',
+      followers: 'Pengikut',
+      following: 'Diikuti',
+      contents: 'Konten',
+      donations: 'Donasi',
+      editProfile: 'EDIT PROFIL',
+      recentMedia: 'Media Terbaru',
+      noContent: 'Belum ada konten.',
+      followingList: 'Daftar Diikuti',
+      followersList: 'Daftar Pengikut',
+      follow: 'Ikuti',
+      unfollow: 'Berhenti Ikuti',
+      noFollowers: 'Belum ada pengikut.',
+      noFollowing: 'Belum mengikuti siapapun.'
     },
     settings: {
       title: 'Settings',

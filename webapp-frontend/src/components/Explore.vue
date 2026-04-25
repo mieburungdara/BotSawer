@@ -174,6 +174,8 @@ const getInitials = (name) => {
   if (!name) return '??';
   return name.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase().substring(0, 2)
 }
+
+const emit = defineEmits(['view-profile'])
 </script>
 
 <template>
@@ -205,7 +207,8 @@ const getInitials = (name) => {
           <div 
             v-for="trend in trendingCreators" 
             :key="trend.telegram_id"
-            class="min-w-[140px] max-w-[140px] glass p-4 rounded-[2.5rem] flex flex-col items-center text-center gap-3 border border-white/5 bg-gradient-to-b from-white/5 to-transparent active:scale-95 transition-all"
+            @click="emit('view-profile', trend.telegram_id)"
+            class="min-w-[140px] max-w-[140px] glass p-4 rounded-[2.5rem] flex flex-col items-center text-center gap-3 border border-white/5 bg-gradient-to-b from-white/5 to-transparent active:scale-95 transition-all cursor-pointer"
           >
             <div class="relative">
                 <div 
@@ -352,7 +355,7 @@ const getInitials = (name) => {
           </div>
 
           <!-- Action -->
-          <button class="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-lg hover:bg-tg-button hover:text-white transition-all shadow-lg active:scale-90">
+          <button @click="emit('view-profile', creator.telegram_id)" class="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-lg hover:bg-tg-button hover:text-white transition-all shadow-lg active:scale-90">
             ➔
           </button>
         </div>
