@@ -164,7 +164,7 @@ const handleTouchEnd = (e) => {
             <div class="w-5 h-0.5 bg-tg-text rounded-full opacity-70"></div>
             <div class="w-3 h-0.5 bg-tg-button rounded-full self-start ml-3"></div>
           </button>
-          <div class="flex flex-col">
+          <div @click="navigate('dashboard')" class="flex flex-col cursor-pointer active:opacity-70 transition-opacity">
             <h1 class="text-lg font-black tracking-tight leading-none uppercase">Vesper<span class="text-tg-button">App</span></h1>
             <span class="text-[10px] font-bold text-tg-hint tracking-[0.2em] uppercase">Creator Hub</span>
           </div>
