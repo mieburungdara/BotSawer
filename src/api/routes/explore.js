@@ -45,6 +45,12 @@ router.post('/explore', async (req, res) => {
         return res.json({ success: true, data: { list: [], total: 0 } });
     }
 
+    // 6. GET TRENDING CREATORS
+    if (action === 'get_trending') {
+        const list = await creator.getTrendingCreators(10);
+        return res.json({ success: true, data: list });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {

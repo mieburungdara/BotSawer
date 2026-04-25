@@ -235,6 +235,38 @@ class CreatorService {
       .offset(offset);
 
     return { list, total: parseInt(totalResult.total || 0) };
+  /**
+   * Get Trending Creators (Explore)
+   */
+  async getTrendingCreators(limit = 10) {
+    // Try to get by earnings first
+    let trending = await db('users as u')
+      .leftJoin('transactions as t', function() {
+        this.on('u.telegram_id', '=', 't.user_id')
+            .andOn('t.type', '=', db.raw("'donation'"))
+            .andOn('t.status', '=', db.raw("'success'"))
+      })
+      .where('u.is_creator', 1)
+      .where('u.is_private', 0)
+      .select('u.telegram_id', 'u.display_name', 'u.username', 'u.photo_url', 'u.is_verified', 'u.bio')
+      .count('t.id as total_donations')
+      .sum('t.amount as total_earnings')
+      .groupBy('u.telegram_id')
+      .orderBy('total_earnings', 'desc')
+      .limit(limit);
+
+    // If no earnings yet, fallback to newest verified or just newest
+    if (trending.length === 0 || !trending[0].total_earnings) {
+        trending = await db('users')
+            .where('is_creator', 1)
+            .where('is_private', 0)
+            .select('telegram_id', 'display_name', 'username', 'photo_url', 'is_verified', 'bio')
+            .orderBy('is_verified', 'desc')
+            .orderBy('created_at', 'desc')
+            .limit(limit);
+    }
+
+    return trending;
   }
 }
 

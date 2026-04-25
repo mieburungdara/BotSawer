@@ -2,7 +2,9 @@
 import { ref, onMounted, watch, computed } from 'vue'
 
 const creators = ref([])
+const trendingCreators = ref([])
 const isLoading = ref(true)
+const isTrendingLoading = ref(true)
 const searchQuery = ref('')
 const selectedCategory = ref('User')
 
@@ -48,6 +50,31 @@ const repeatSearch = (query) => {
 const categories = [
   'Content', 'User', 'Post', 'Menfess'
 ]
+
+const fetchTrending = async () => {
+  isTrendingLoading.value = true
+  try {
+    const tg = window.Telegram?.WebApp
+    const botId = localStorage.getItem('vesper_bot_id')
+    const response = await fetch('/vesper/api/explore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId,
+        action: 'get_trending'
+      })
+    })
+    const result = await response.json()
+    if (result.success) {
+      trendingCreators.value = result.data
+    }
+  } catch (e) {
+    console.error("Trending Fetch Error:", e)
+  } finally {
+    isTrendingLoading.value = false
+  }
+}
 
 const fetchCreators = async (query = '') => {
   isLoading.value = true
@@ -125,6 +152,7 @@ watch(selectedCategory, () => {
 
 onMounted(() => {
   loadHistory()
+  fetchTrending()
   fetchCreators()
 })
 
@@ -154,6 +182,50 @@ const getInitials = (name) => {
     <div class="flex flex-col gap-1">
       <h2 class="text-3xl font-black text-gradient">Explore</h2>
       <p class="text-tg-hint text-xs font-medium uppercase tracking-wider">Temukan kreator berbakat</p>
+    </div>
+
+    <!-- Trending Section -->
+    <div v-if="isTrendingLoading || trendingCreators.length > 0" class="space-y-4">
+      <div class="flex items-center justify-between px-1">
+        <h3 class="text-sm font-black uppercase tracking-widest text-tg-button">Trending 🔥</h3>
+        <span class="w-1.5 h-1.5 rounded-full bg-tg-button animate-ping"></span>
+      </div>
+      
+      <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+        <!-- Skeleton -->
+        <template v-if="isTrendingLoading">
+          <div v-for="i in 4" :key="i" class="min-w-[140px] glass p-4 rounded-[2rem] flex flex-col items-center gap-3 animate-pulse">
+            <div class="w-16 h-16 rounded-full bg-white/5"></div>
+            <div class="h-3 bg-white/5 rounded w-full"></div>
+          </div>
+        </template>
+
+        <!-- Real Data -->
+        <template v-else>
+          <div 
+            v-for="trend in trendingCreators" 
+            :key="trend.telegram_id"
+            class="min-w-[140px] max-w-[140px] glass p-4 rounded-[2.5rem] flex flex-col items-center text-center gap-3 border border-white/5 bg-gradient-to-b from-white/5 to-transparent active:scale-95 transition-all"
+          >
+            <div class="relative">
+                <div 
+                    :class="getAvatarColor(trend.display_name)"
+                    class="w-16 h-16 rounded-full bg-gradient-to-br flex items-center justify-center font-black text-2xl text-white shadow-xl shadow-black/20 border-2 border-white/10 overflow-hidden"
+                >
+                    <img v-if="trend.photo_url" :src="trend.photo_url" class="w-full h-full object-cover" />
+                    <span v-else>{{ getInitials(trend.display_name) }}</span>
+                </div>
+                <div v-if="trend.is_verified" class="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full border-2 border-tg-bg flex items-center justify-center text-[8px] text-white">
+                    ✔
+                </div>
+            </div>
+            <div class="w-full">
+                <p class="text-xs font-black truncate w-full">{{ trend.display_name }}</p>
+                <p class="text-[9px] text-tg-hint font-bold truncate opacity-60">@{{ trend.username || 'user' }}</p>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- Search Bar -->
