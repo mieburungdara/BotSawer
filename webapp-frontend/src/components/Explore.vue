@@ -12,12 +12,47 @@ const totalItems = ref(0)
 const itemsPerPage = 20
 const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
 
+// Search History
+const searchHistory = ref([])
+const showHistory = ref(false)
+
+const loadHistory = () => {
+  const saved = localStorage.getItem('vesper_search_history')
+  if (saved) searchHistory.value = JSON.parse(saved)
+}
+
+const saveSearch = (query) => {
+  if (!query || query.trim() === '') return
+  const q = query.trim()
+  const history = [q, ...searchHistory.value.filter(h => h !== q)].slice(0, 8)
+  searchHistory.value = history
+  localStorage.setItem('vesper_search_history', JSON.stringify(history))
+}
+
+const removeHistory = (query) => {
+  searchHistory.value = searchHistory.value.filter(h => h !== query)
+  localStorage.setItem('vesper_search_history', JSON.stringify(searchHistory.value))
+}
+
+const clearHistory = () => {
+  searchHistory.value = []
+  localStorage.removeItem('vesper_search_history')
+}
+
+const repeatSearch = (query) => {
+  searchQuery.value = query
+  showHistory.value = false
+  fetchCreators(query)
+}
+
 const categories = [
   'Content', 'User', 'Post', 'Menfess'
 ]
 
 const fetchCreators = async (query = '') => {
   isLoading.value = true
+  if (query) saveSearch(query)
+  
   try {
     const tg = window.Telegram?.WebApp
     const botId = localStorage.getItem('vesper_bot_id')
@@ -85,6 +120,7 @@ watch(selectedCategory, () => {
 })
 
 onMounted(() => {
+  loadHistory()
   fetchCreators()
 })
 
@@ -121,10 +157,43 @@ const getInitials = (name) => {
       </div>
       <input 
         v-model="searchQuery"
+        @focus="showHistory = true"
         type="text" 
         placeholder="Cari nama atau username..." 
         class="w-full bg-tg-secondary/40 backdrop-blur-md border border-white/5 h-14 rounded-2xl pl-12 pr-4 text-sm font-bold outline-none focus:border-tg-button/50 focus:bg-tg-secondary/60 transition-all shadow-inner" 
       />
+
+      <!-- Search History Dropdown -->
+      <div 
+        v-if="showHistory && searchHistory.length > 0" 
+        class="absolute top-16 left-0 right-0 glass border border-white/10 rounded-[2rem] p-4 z-50 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300"
+      >
+        <div class="flex justify-between items-center mb-3 px-2">
+            <span class="text-[10px] font-black text-tg-hint uppercase tracking-widest">Pencarian Terakhir</span>
+            <button @click="clearHistory" class="text-[10px] font-bold text-red-400 uppercase">Hapus Semua</button>
+        </div>
+        <div class="space-y-1">
+            <div 
+                v-for="history in searchHistory" 
+                :key="history"
+                class="flex items-center justify-between group/item"
+            >
+                <div 
+                    @click="repeatSearch(history)"
+                    class="flex-1 flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 cursor-pointer transition-all"
+                >
+                    <span class="opacity-30 text-xs">🕒</span>
+                    <span class="text-sm font-medium">{{ history }}</span>
+                </div>
+                <button 
+                    @click="removeHistory(history)"
+                    class="p-2 opacity-0 group-hover/item:opacity-100 hover:text-red-400 transition-all"
+                >
+                    ✕
+                </button>
+            </div>
+        </div>
+      </div>
     </div>
 
     <!-- Categories -->
