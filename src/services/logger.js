@@ -1,5 +1,4 @@
 const winston = require('winston');
-require('winston-daily-rotate-file');
 const path = require('path');
 
 const { combine, timestamp, printf, colorize, errors, json } = winston.format;
@@ -12,22 +11,14 @@ const logFormat = printf(({ level, message, timestamp, stack, ...meta }) => {
 
 // Configure transports
 const transports = [
-  // Daily Rotate for Combined Logs
-  new winston.transports.DailyRotateFile({
-    filename: path.join(__dirname, '../../logs/app-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    zippedArchive: true,
-    maxSize: '20m',
-    maxFiles: '14d',
+  // Combined Logs
+  new winston.transports.File({
+    filename: path.join(__dirname, '../../logs/app.log'),
     level: 'info',
   }),
-  // Daily Rotate for Error Logs
-  new winston.transports.DailyRotateFile({
-    filename: path.join(__dirname, '../../logs/error-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    zippedArchive: true,
-    maxSize: '20m',
-    maxFiles: '30d',
+  // Error Logs
+  new winston.transports.File({
+    filename: path.join(__dirname, '../../logs/error.log'),
     level: 'error',
   }),
 ];
