@@ -1,7 +1,11 @@
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
 
 const fontSize = ref(localStorage.getItem('vesper_font_size') || 'medium')
+const currentLocale = ref(locale.value)
 
 const updateFontSize = (size) => {
   fontSize.value = size
@@ -13,51 +17,84 @@ const updateFontSize = (size) => {
   html.classList.add(`font-size-${size}`)
 }
 
+const updateLocale = (lang) => {
+  currentLocale.value = lang
+  locale.value = lang
+  localStorage.setItem('vesper_locale', lang)
+}
+
 const settings = ref([
-  { title: 'Notifikasi', icon: '🔔', desc: 'Kelola pemberitahuan donasi', toggle: true, value: true, aria: 'Aktifkan notifikasi donasi' },
-  { title: 'Mode Privat', icon: '🔒', desc: 'Sembunyikan profil dari Explore', toggle: true, value: false, aria: 'Aktifkan mode privat' },
-  { title: 'Bahasa', icon: '🌐', desc: 'Indonesia', toggle: false, aria: 'Ubah bahasa aplikasi' },
-  { title: 'Metode Pembayaran', icon: '💳', desc: 'Kelola rekening bank & e-wallet', toggle: false, aria: 'Pengaturan dompet dan pembayaran' },
-  { title: 'Hubungi Admin', icon: '🎧', desc: 'Bantuan & Pertanyaan', toggle: false, aria: 'Hubungi layanan bantuan' },
+  { title: t('settings.notifications'), icon: '🔔', desc: t('settings.notifDesc'), toggle: true, value: true, aria: t('settings.notifications') },
+  { title: t('settings.privateMode'), icon: '🔒', desc: t('settings.privateDesc'), toggle: true, value: false, aria: t('settings.privateMode') },
+  { title: t('settings.payments'), icon: '💳', desc: t('settings.paymentsDesc'), toggle: false, aria: t('settings.payments') },
+  { title: t('settings.contactAdmin'), icon: '🎧', desc: t('settings.contactDesc'), toggle: false, aria: t('settings.contactAdmin') },
 ])
 </script>
 
 <template>
   <div class="space-y-6 animate-in fade-in duration-500 pb-10" role="main">
     <div class="flex flex-col gap-1">
-      <h2 class="text-2xl font-black">Settings</h2>
-      <p class="text-tg-hint text-xs">Atur preferensi aplikasi Anda</p>
+      <h2 class="text-2xl font-black">{{ $t('settings.title') }}</h2>
+      <p class="text-tg-hint text-xs">{{ $t('settings.subtitle') }}</p>
     </div>
 
     <!-- User Account Quick Card -->
-    <div class="glass p-4 rounded-3xl flex items-center gap-4 border border-white/10" role="region" aria-label="Informasi Akun">
+    <div class="glass p-4 rounded-3xl flex items-center gap-4 border border-white/10" role="region" :aria-label="$t('settings.accountInfo')">
       <div class="w-12 h-12 rounded-full bg-tg-button/20 flex items-center justify-center text-xl" aria-hidden="true">
         👤
       </div>
       <div class="flex-1">
         <h3 class="text-sm font-bold">Admin Vesper</h3>
-        <p class="text-[10px] text-tg-hint">Terverifikasi sejak 2024</p>
+        <p class="text-[10px] text-tg-hint">{{ $t('settings.verifiedSince') }} 2024</p>
       </div>
-      <button class="text-tg-button text-xs font-bold" aria-label="Ubah informasi profil">Ubah</button>
+      <button class="text-tg-button text-xs font-bold" :aria-label="$t('settings.change')">{{ $t('settings.change') }}</button>
     </div>
 
-    <!-- Accessibility: Font Size -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between px-1">
-        <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">Aksesibilitas: Ukuran Font</h3>
+    <!-- Accessibility: Font Size & Language -->
+    <div class="space-y-4">
+      <div class="space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.accessibility') }}: {{ $t('settings.fontSize') }}</h3>
+        </div>
+        <div class="glass p-1.5 rounded-2xl flex gap-1 border border-white/5" role="radiogroup" :aria-label="$t('settings.fontSize')">
+          <button 
+            v-for="size in ['small', 'medium', 'large']" 
+            :key="size"
+            @click="updateFontSize(size)"
+            :class="fontSize === size ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+            :aria-checked="fontSize === size"
+            role="radio"
+            class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+          >
+            {{ size }}
+          </button>
+        </div>
       </div>
-      <div class="glass p-1.5 rounded-2xl flex gap-1 border border-white/5" role="radiogroup" aria-label="Pilih ukuran font">
-        <button 
-          v-for="size in ['small', 'medium', 'large']" 
-          :key="size"
-          @click="updateFontSize(size)"
-          :class="fontSize === size ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
-          :aria-checked="fontSize === size"
-          role="radio"
-          class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
-        >
-          {{ size }}
-        </button>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.language') }}</h3>
+        </div>
+        <div class="glass p-1.5 rounded-2xl flex gap-1 border border-white/5" role="radiogroup" :aria-label="$t('settings.language')">
+          <button 
+            @click="updateLocale('id')"
+            :class="locale === 'id' ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+            :aria-checked="locale === 'id'"
+            role="radio"
+            class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+          >
+            Bahasa Indonesia
+          </button>
+          <button 
+            @click="updateLocale('en')"
+            :class="locale === 'en' ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+            :aria-checked="locale === 'en'"
+            role="radio"
+            class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+          >
+            English
+          </button>
+        </div>
       </div>
     </div>
 
@@ -89,13 +126,12 @@ const settings = ref([
 
     <!-- Footer Links -->
     <div class="pt-4 space-y-4 text-center">
-       <p class="text-[10px] text-tg-hint font-medium">Kebijakan Privasi • Syarat & Ketentuan</p>
        <button 
          @click="window.Telegram?.WebApp?.close()"
          class="text-red-500 text-xs font-black uppercase tracking-widest active:scale-95 transition-all"
-         aria-label="Tutup aplikasi Vesper"
+         :aria-label="$t('settings.closeApp')"
        >
-         Tutup Vesper
+         {{ $t('settings.closeApp') }}
        </button>
     </div>
   </div>

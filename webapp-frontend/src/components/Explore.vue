@@ -180,14 +180,14 @@ const getInitials = (name) => {
   <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
     <!-- Header -->
     <div class="flex flex-col gap-1">
-      <h2 class="text-3xl font-black text-gradient">Explore</h2>
-      <p class="text-tg-hint text-xs font-medium uppercase tracking-wider">Temukan kreator berbakat</p>
+      <h2 class="text-3xl font-black text-gradient">{{ $t('explore.title') }}</h2>
+      <p class="text-tg-hint text-xs font-medium uppercase tracking-wider">{{ $t('explore.subtitle') }}</p>
     </div>
 
     <!-- Trending Section -->
     <div v-if="isTrendingLoading || trendingCreators.length > 0" class="space-y-4">
       <div class="flex items-center justify-between px-1">
-        <h3 class="text-sm font-black uppercase tracking-widest text-tg-button">Trending 🔥</h3>
+        <h3 class="text-sm font-black uppercase tracking-widest text-tg-button">{{ $t('explore.trending') }} 🔥</h3>
         <span class="w-1.5 h-1.5 rounded-full bg-tg-button animate-ping"></span>
       </div>
       
@@ -237,7 +237,7 @@ const getInitials = (name) => {
         v-model="searchQuery"
         @focus="showHistory = true"
         type="text" 
-        placeholder="Cari nama atau username..." 
+        :placeholder="$t('explore.searchPlaceholder')" 
         class="w-full bg-tg-secondary/40 backdrop-blur-md border border-white/5 h-14 rounded-2xl pl-12 pr-4 text-sm font-bold outline-none focus:border-tg-button/50 focus:bg-tg-secondary/60 transition-all shadow-inner" 
       />
 
@@ -247,8 +247,8 @@ const getInitials = (name) => {
         class="absolute top-16 left-0 right-0 glass border border-white/10 rounded-[2rem] p-4 z-50 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300"
       >
         <div class="flex justify-between items-center mb-3 px-2">
-            <span class="text-[10px] font-black text-tg-hint uppercase tracking-widest">Pencarian Terakhir</span>
-            <button @click="clearHistory" class="text-[10px] font-bold text-red-400 uppercase">Hapus Semua</button>
+            <span class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('explore.lastSearch') }}</span>
+            <button @click="clearHistory" class="text-[10px] font-bold text-red-400 uppercase">{{ $t('explore.clearAll') }}</button>
         </div>
         <div class="space-y-1">
             <div 
@@ -283,7 +283,7 @@ const getInitials = (name) => {
         :class="selectedCategory === cat ? 'bg-tg-button text-white shadow-lg shadow-tg-button/30 border-tg-button' : 'bg-white/5 text-tg-hint border-white/5'"
         class="px-5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap border transition-all active:scale-95"
       >
-        {{ cat }}
+        {{ $t(`explore.categories.${cat}`) }}
       </button>
     </div>
 
@@ -304,7 +304,7 @@ const getInitials = (name) => {
       <!-- Empty State -->
       <div v-else-if="creators.length === 0" class="py-12 text-center space-y-4">
         <div class="text-6xl opacity-20">🔎</div>
-        <p class="text-tg-hint font-bold text-sm">Tidak ada kreator ditemukan</p>
+        <p class="text-tg-hint font-bold text-sm">{{ $t('explore.noResults') }}</p>
       </div>
 
       <!-- Real Data -->
@@ -334,11 +334,10 @@ const getInitials = (name) => {
               <h4 class="text-sm font-black truncate">{{ creator.display_name }}</h4>
               <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">@{{ creator.username }}</p>
               <p class="text-[11px] text-white/60 line-clamp-1 mt-1 italic font-medium">
-                {{ creator.bio || 'Bangga menjadi kreator di Vesper!' }}
+                {{ creator.bio || $t('explore.defaultBio') }}
               </p>
             </template>
             <template v-else-if="selectedCategory === 'Content' || selectedCategory === 'Post'">
-              <h4 class="text-sm font-black line-clamp-1">{{ creator.caption || 'Tanpa caption' }}</h4>
               <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">Oleh {{ creator.display_name }}</p>
               <p class="text-[9px] text-tg-button font-bold mt-1 uppercase tracking-tighter">
                 {{ new Date(creator.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
