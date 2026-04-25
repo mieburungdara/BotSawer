@@ -86,6 +86,8 @@ class CreatorService {
    * Get Creator Stats
    */
   async getStats(telegramId) {
+    const user = await db('users').where('telegram_id', telegramId).select('is_verified').first();
+    
     const stats = await db('contents')
         .where('user_id', telegramId)
         .whereNot('status', 'deleted')
@@ -100,11 +102,25 @@ class CreatorService {
         .first();
 
     const streakData = await this.getStreakData(telegramId);
+    
+    const totalEarnings = parseFloat(earnings.total_earnings || 0);
+    const totalDonations = parseInt(earnings.total_donations || 0);
+    const currentStreak = streakData.current_streak || 0;
+
+    // Calculate Badges
+    const badges = [];
+    if (user?.is_verified) badges.push({ id: 'verified', icon: '✅', color: 'bg-blue-500' });
+    if (totalEarnings >= 100000) badges.push({ id: 'top_creator', icon: '👑', color: 'bg-yellow-500' });
+    if (currentStreak >= 30) badges.push({ id: 'streak_master', icon: '🔥', color: 'bg-orange-600' });
+    if (totalDonations >= 10) badges.push({ id: 'rising_star', icon: '⭐', color: 'bg-purple-500' });
+    if (totalDonations >= 50) badges.push({ id: 'superstar', icon: '💎', color: 'bg-cyan-500' });
+    if (parseInt(stats.total_media || 0) >= 20) badges.push({ id: 'active_creator', icon: '📸', color: 'bg-emerald-500' });
 
     return {
       total_media: parseInt(stats.total_media || 0),
-      total_earnings: parseFloat(earnings.total_earnings || 0),
-      total_donations: parseInt(earnings.total_donations || 0),
+      total_earnings: totalEarnings,
+      total_donations: totalDonations,
+      badges,
       ...streakData
     };
   }

@@ -16,7 +16,8 @@ const user = ref({
   contents: 0,
   donations: 0,
   photo_url: null,
-  telegram_id: null
+  telegram_id: null,
+  badges: []
 })
 
 const gallery = ref([])
@@ -56,7 +57,8 @@ const fetchProfileData = async (targetId = null) => {
           following: 0,
           contents: data.stats.total_media,
           donations: data.stats.total_donations,
-          photo_url: data.photo_url
+          photo_url: data.photo_url,
+          badges: data.stats.badges || []
       };
       
       // Fetch Follow Stats
@@ -205,6 +207,30 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
                         {{ user.donations }}
                     </p>
                     <p class="text-[8px] text-tg-hint font-bold uppercase tracking-tighter">{{ $t('profile.donations') }}</p>
+                </div>
+            </div>
+
+            <!-- Badges Section -->
+            <div v-if="user.badges && user.badges.length > 0" class="px-1">
+                <div class="glass p-4 rounded-[2.5rem] border border-white/5 bg-gradient-to-r from-tg-button/10 to-transparent">
+                    <div class="flex items-center justify-between mb-4 px-2">
+                        <h3 class="text-[10px] font-black uppercase tracking-widest text-tg-button">{{ $t('profile.badges.title') }}</h3>
+                        <span class="text-[10px] text-tg-hint font-bold opacity-50">{{ user.badges.length }} EARNED</span>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <div 
+                            v-for="badge in user.badges" 
+                            :key="badge.id"
+                            class="flex flex-col items-center gap-1.5 group"
+                        >
+                            <div :class="badge.color" class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-lg transition-transform group-hover:scale-110 duration-300">
+                                {{ badge.icon }}
+                            </div>
+                            <span class="text-[8px] font-black uppercase tracking-tighter opacity-70 group-hover:opacity-100 transition-opacity">
+                                {{ $t(`profile.badges.${badge.id}`) }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

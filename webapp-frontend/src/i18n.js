@@ -25,7 +25,16 @@ const messages = {
       follow: 'Follow',
       unfollow: 'Unfollow',
       noFollowers: 'No followers yet.',
-      noFollowing: 'Not following anyone yet.'
+      noFollowing: 'Not following anyone yet.',
+      badges: {
+        title: 'Achievements',
+        verified: 'Verified',
+        top_creator: 'Top Creator',
+        streak_master: 'Streak Master',
+        rising_star: 'Rising Star',
+        superstar: 'Superstar',
+        active_creator: 'Active Creator'
+      }
     },
     settings: {
       title: 'Settings',
@@ -77,7 +86,16 @@ const messages = {
       follow: 'Ikuti',
       unfollow: 'Berhenti Ikuti',
       noFollowers: 'Belum ada pengikut.',
-      noFollowing: 'Belum mengikuti siapapun.'
+      noFollowing: 'Belum mengikuti siapapun.',
+      badges: {
+        title: 'Pencapaian',
+        verified: 'Terverifikasi',
+        top_creator: 'Top Creator',
+        streak_master: 'Streak Master',
+        rising_star: 'Rising Star',
+        superstar: 'Superstar',
+        active_creator: 'Kreator Aktif'
+      }
     },
     settings: {
       title: 'Settings',
