@@ -43,7 +43,7 @@ onMounted(() => {
 
 const fetchBalance = async () => {
   try {
-    const response = await fetch('/vesper/api/wallet.php', {
+    const response = await fetch('/vesper/api/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

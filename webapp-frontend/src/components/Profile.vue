@@ -18,7 +18,7 @@ const fetchProfileData = async () => {
   isLoading.value = true
   try {
     const tg = window.Telegram?.WebApp;
-    const response = await fetch('/vesper/api/profile.php', {
+    const response = await fetch('/vesper/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
