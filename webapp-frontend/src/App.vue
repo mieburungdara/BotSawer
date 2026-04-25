@@ -28,7 +28,7 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '⚡', color: 'bg-yellow-500' },
   { id: 'explore', label: 'Explore', icon: '🌍', color: 'bg-blue-500' },
   { id: 'profile', label: 'My Profile', icon: '👤', color: 'bg-purple-500' },
-  { id: 'wallet', label: 'Wallet', icon: '💰', color: 'bg-green-500' },
+  { id: 'wallet', label: 'Dompet', icon: '💰', color: 'bg-green-500' },
   { id: 'achievements', label: 'Awards', icon: '🏆', color: 'bg-yellow-500' },
   { id: 'library', label: 'Library', icon: '📚', color: 'bg-orange-500' },
   { id: 'settings', label: 'Settings', icon: '⚙️', color: 'bg-gray-500' },
