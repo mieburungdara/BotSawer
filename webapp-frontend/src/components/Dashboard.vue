@@ -22,7 +22,7 @@ const fetchDashboardData = async () => {
   isLoading.value = true
   try {
     const tg = window.Telegram?.WebApp;
-    const response = await fetch('/api/dashboard.php', {
+    const response = await fetch('api/dashboard.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
