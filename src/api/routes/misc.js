@@ -93,4 +93,19 @@ router.post('/config', async (req, res) => {
     }
 });
 
+/**
+ * Payment Methods API
+ */
+router.post('/payment-methods', async (req, res) => {
+    try {
+        const methods = await db('payment_methods').where('is_active', 1);
+        return res.json({
+            success: true,
+            data: methods
+        });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

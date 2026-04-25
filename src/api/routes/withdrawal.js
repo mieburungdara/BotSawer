@@ -21,6 +21,14 @@ router.post('/withdrawal', async (req, res) => {
         throw new Error('Saldo tidak mencukupi');
     }
 
+    // Get Payment Method Config from DB (Security)
+    const method = await db('payment_methods').where('code', ewallet_info.type).first();
+    if (!method) throw new Error('Metode pembayaran tidak valid');
+
+    const admin_fee = method.admin_fee;
+    const commission_fee = Math.round(amount * parseFloat(method.commission_rate));
+    const net_amount = amount - admin_fee - commission_fee;
+
     // Process Withdrawal
     await db.transaction(async (trx) => {
         // 1. Deduct full amount from balance
@@ -37,6 +45,7 @@ router.post('/withdrawal', async (req, res) => {
             status: 'pending',
             description: `Penarikan via ${ewallet_info.type} (${ewallet_info.number})`,
             metadata: JSON.stringify({
+                account_name: ewallet_info.name,
                 admin_fee,
                 commission_fee,
                 net_amount,
