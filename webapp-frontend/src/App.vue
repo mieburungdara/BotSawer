@@ -187,7 +187,7 @@ const handleTouchEnd = (e) => {
 
       <!-- Main Content Area -->
       <main class="animate-in fade-in duration-700">
-        <Dashboard v-if="activeTab === 'dashboard'" />
+        <Dashboard v-if="activeTab === 'dashboard'" @navigate="navigate" />
         <Explore v-if="activeTab === 'explore'" />
         <Profile v-if="activeTab === 'profile'" />
         <Wallet v-if="activeTab === 'wallet'" @mutasi="activeTab = 'mutasi'" />

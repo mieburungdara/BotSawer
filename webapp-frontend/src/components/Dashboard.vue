@@ -2,6 +2,15 @@
 import { ref, onMounted } from 'vue'
 
 const isLoading = ref(true)
+const emit = defineEmits(['navigate'])
+
+const quickLinks = [
+  { id: 'explore', label: 'Explore', icon: '🌍', color: 'bg-blue-500/10 text-blue-500' },
+  { id: 'profile', label: 'Profile', icon: '👤', color: 'bg-purple-500/10 text-purple-500' },
+  { id: 'wallet', label: 'Wallet', icon: '💰', color: 'bg-green-500/10 text-green-500' },
+  { id: 'library', label: 'Library', icon: '📚', color: 'bg-orange-500/10 text-orange-500' },
+  { id: 'settings', label: 'Settings', icon: '⚙️', color: 'bg-gray-500/10 text-gray-500' },
+]
 const balance = ref(0)
 const stats = ref({
   total_earnings: 0,
@@ -50,6 +59,26 @@ onMounted(fetchDashboardData)
     <!-- Real Content -->
     <template v-else>
 
+
+      <!-- Quick Access Grid -->
+      <section>
+        <div class="flex items-center gap-2 mb-4 px-1">
+          <h3 class="font-black text-sm uppercase tracking-wider text-tg-hint">⚡ Quick Access</h3>
+        </div>
+        <div class="grid grid-cols-5 gap-2">
+          <button 
+            v-for="link in quickLinks" 
+            :key="link.id" 
+            @click="$emit('navigate', link.id)"
+            class="flex flex-col items-center gap-2 p-3 rounded-2xl glass border border-white/5 active:scale-90 transition-all"
+          >
+            <div :class="link.color" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner">
+              {{ link.icon }}
+            </div>
+            <span class="text-[9px] font-bold uppercase tracking-tighter">{{ link.label }}</span>
+          </button>
+        </div>
+      </section>
 
       <!-- Quick Stats Grid -->
       <div class="grid grid-cols-3 gap-3">
