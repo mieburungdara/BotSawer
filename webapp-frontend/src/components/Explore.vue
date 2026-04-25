@@ -84,12 +84,16 @@ const fetchCreators = async (query = '') => {
     })
     
     const result = await response.json()
-    if (result.success) {
-      creators.value = result.data.list;
-      totalItems.value = result.data.total;
+    if (result.success && result.data) {
+      creators.value = result.data.list || [];
+      totalItems.value = result.data.total || 0;
+    } else {
+      creators.value = [];
+      totalItems.value = 0;
     }
   } catch (e) {
     console.error("Explore Fetch Error:", e)
+    creators.value = []
   } finally {
     isLoading.value = false
   }
@@ -133,12 +137,14 @@ const getAvatarColor = (name) => {
     'from-purple-500 to-violet-500',
     'from-cyan-500 to-sky-500'
   ]
+  if (!name) return colors[0];
   const index = name.length % colors.length
   return colors[index]
 }
 
 const getInitials = (name) => {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+  if (!name) return '??';
+  return name.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase().substring(0, 2)
 }
 </script>
 

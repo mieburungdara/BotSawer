@@ -24,7 +24,7 @@ router.post('/explore', async (req, res) => {
 
     // 2. SEARCH CREATORS (USER)
     if (action === 'search_creators') {
-        const list = await creator.searchCreators(query || '', 20);
+        const list = await creator.searchCreators(query || '', 20, offset || 0);
         return res.json({ success: true, data: list });
     }
 
@@ -36,13 +36,13 @@ router.post('/explore', async (req, res) => {
 
     // 4. SEARCH CONTENTS / POSTS
     if (action === 'search_contents' || action === 'search_posts') {
-        const list = await creator.searchContents(query || '', 20);
+        const list = await creator.searchContents(query || '', 20, offset || 0);
         return res.json({ success: true, data: list });
     }
 
     // 5. MENFESS (Placeholder - Table not yet exist)
     if (action === 'get_menfess' || action === 'search_menfess') {
-        return res.json({ success: true, data: [] });
+        return res.json({ success: true, data: { list: [], total: 0 } });
     }
 
     throw new Error('Action tidak dikenal');
