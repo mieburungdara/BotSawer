@@ -31,7 +31,12 @@ const settings = ref([
 
     <!-- Settings List -->
     <div class="space-y-2">
-      <div v-for="(item, index) in settings" :key="index" class="glass p-4 rounded-2xl flex items-center gap-4 border border-white/5 active:bg-white/5 transition-all">
+      <div 
+        v-for="(item, index) in settings" 
+        :key="index" 
+        @click="item.toggle ? item.value = !item.value : null"
+        class="glass p-4 rounded-2xl flex items-center gap-4 border border-white/5 active:bg-white/5 transition-all cursor-pointer"
+      >
         <div class="w-10 h-10 rounded-xl bg-tg-secondary flex items-center justify-center text-lg">
           {{ item.icon }}
         </div>
