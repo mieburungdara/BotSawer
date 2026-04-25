@@ -90,7 +90,7 @@ const initBots = async () => {
   }
 };
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   logger.info(`VesperApp API listening at http://localhost:${port}`);
   initBots().catch(err => logger.error(`Bot Init Error: ${err.message}`));
   scheduler.start().catch(err => logger.error(`Scheduler Error: ${err.message}`));
