@@ -108,3 +108,7 @@ composer.lock
 /storage/
 /cache/
 check_bots.php
+id_rsa.pub
+scratch/ssh2_test.js
+id_rsa
+SSH
