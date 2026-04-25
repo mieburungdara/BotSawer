@@ -36,25 +36,58 @@ class AuthService {
   async authenticate(input) {
     const { initData, botId } = input;
     
-    const bot = await db('bots').where('bot_id', botId).first();
-    if (!bot) throw new Error('Bot tidak valid');
+    if (!initData) throw new Error('InitData diperlukan untuk otentikasi');
 
-    if (!this.validateInitData(initData, bot.token)) {
-      throw new Error('Invalid request signature');
+    let bot = null;
+    if (botId) {
+        bot = await db('bots').where('bot_id', botId).where('is_active', 1).first();
+    }
+
+    // If bot found, try to validate
+    if (bot && this.validateInitData(initData, bot.token)) {
+        // Signature valid for this bot
+    } else {
+        // If specific botId failed or was not provided, try all active bots
+        const allBots = await db('bots').where('is_active', 1);
+        let foundValid = false;
+        
+        for (const b of allBots) {
+            if (this.validateInitData(initData, b.token)) {
+                bot = b;
+                foundValid = true;
+                break;
+            }
+        }
+        
+        if (!foundValid) {
+            throw new Error('Invalid request signature. Pastikan Anda membuka aplikasi melalui bot resmi.');
+        }
     }
 
     const urlParams = new URLSearchParams(initData);
-    const userData = JSON.parse(urlParams.get('user'));
+    const userJson = urlParams.get('user');
+    if (!userJson) throw new Error('Data user tidak ditemukan dalam initData');
+    
+    const userData = JSON.parse(userJson);
     const telegramId = userData.id;
 
     let user = await db('users').where('telegram_id', telegramId).first();
     
     if (!user) {
-        // This should normally be handled by the bot when user starts it
-        throw new Error('User tidak ditemukan. Silakan mulai bot terlebih dahulu.');
+        // Create user if not exists (Telegram WebApp guarantees data is valid here)
+        const [newUserId] = await db('users').insert({
+            telegram_id: telegramId,
+            first_name: userData.first_name || '',
+            last_name: userData.last_name || '',
+            username: userData.username || '',
+            language_code: userData.language_code || 'id',
+            is_creator: 0
+        });
+        user = await db('users').where('id', newUserId).first();
     }
 
-    return user;
+    // Return user with bot info for context
+    return { ...user, active_bot: bot };
   }
 }
 
