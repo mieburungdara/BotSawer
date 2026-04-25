@@ -18,12 +18,10 @@ const domain = process.env.WEBHOOK_DOMAIN; // e.g. https://yourdomain.com
 app.use(morgan('combined', { stream: logger.stream }));
 app.use(express.json());
 
-// Bulletproof Subfolder Middleware
+// Logging Middleware (Debug cPanel paths)
 app.use((req, res, next) => {
-  const subfolder = '/vesper';
-  if (req.url.startsWith(subfolder)) {
-    req.url = req.url.substring(subfolder.length);
-    if (req.url === '') req.url = '/';
+  if (req.url.includes('/api/')) {
+    logger.info(`[API REQUEST] ${req.method} ${req.url}`);
   }
   next();
 });
@@ -31,23 +29,7 @@ app.use((req, res, next) => {
 // Static Files (WebApp) - Moved down to be handled by subfolder logic if needed
 // app.use(express.static(path.join(__dirname, 'public/webapp')));
 
-// Health Check
-app.get('/health', (req, res) => res.json({ 
-  status: 'ok', 
-  project: 'VesperApp'
-}));
-
-// Serve WebApp Index
-app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, 'public/webapp/index.html');
-  console.log(`[DEBUG] Attempting to serve index from: ${indexPath}`);
-  res.sendFile(indexPath);
-});
-
-// Static files
-app.use(express.static(path.join(__dirname, 'public/webapp')));
-
-// API Routes
+// API Routes Definition
 const contentRoutes = require('./src/api/routes/content');
 const creatorRoutes = require('./src/api/routes/creator');
 const walletRoutes = require('./src/api/routes/wallet');
@@ -57,14 +39,35 @@ const adminRoutes = require('./src/api/routes/admin');
 const achievementsRoutes = require('./src/api/routes/achievements');
 const miscRoutes = require('./src/api/routes/misc');
 
-app.use('/api', contentRoutes);
-app.use('/api', creatorRoutes);
-app.use('/api', walletRoutes);
-app.use('/api', exploreRoutes);
-app.use('/api', profileRoutes);
-app.use('/api', adminRoutes);
-app.use('/api', achievementsRoutes);
-app.use('/api', miscRoutes);
+const apiRouter = express.Router();
+apiRouter.use(contentRoutes);
+apiRouter.use(creatorRoutes);
+apiRouter.use(walletRoutes);
+apiRouter.use(exploreRoutes);
+apiRouter.use(profileRoutes);
+apiRouter.use(adminRoutes);
+apiRouter.use(achievementsRoutes);
+apiRouter.use(miscRoutes);
+
+// Mount API Router to both possible paths
+app.use('/api', apiRouter);
+app.use('/vesper/api', apiRouter);
+
+// Health Check (also at root and subfolder)
+const healthHandler = (req, res) => res.json({ status: 'ok', project: 'VesperApp' });
+app.get('/health', healthHandler);
+app.get('/vesper/health', healthHandler);
+
+// WebApp Serving Logic
+app.get(['/', '/vesper', '/vesper/'], (req, res) => {
+  const indexPath = path.join(__dirname, 'public/webapp/index.html');
+  res.sendFile(indexPath);
+});
+
+// Static files (with subfolder support)
+app.use('/vesper', express.static(path.join(__dirname, 'public/webapp')));
+app.use(express.static(path.join(__dirname, 'public/webapp')));
+
 
 // Bot Initialization
 const initBots = async () => {
