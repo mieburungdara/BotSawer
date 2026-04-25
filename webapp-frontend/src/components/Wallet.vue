@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import Withdrawal from './Withdrawal.vue'
 
 const isWithdrawOpen = ref(false)
@@ -7,6 +7,24 @@ const balance = ref(0)
 const transactions = ref([])
 const isLoading = ref(true)
 const error = ref(null)
+
+const totalPendapatan = computed(() => {
+    return transactions.value
+        .filter(t => t.type === 'donation' && t.status === 'success')
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+})
+
+const totalTopup = computed(() => {
+    return transactions.value
+        .filter(t => t.type === 'topup' && t.status === 'success')
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+})
+
+const totalPenarikan = computed(() => {
+    return transactions.value
+        .filter(t => t.type === 'withdrawal' && t.status === 'success')
+        .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount || 0)), 0)
+})
 
 const getBotId = () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -95,14 +113,18 @@ onMounted(fetchWalletData)
     </div>
 
     <!-- Quick Stats -->
-    <div class="grid grid-cols-2 gap-3">
-        <div class="glass p-4 rounded-3xl border border-white/5 text-center">
-            <p class="text-[9px] font-black text-tg-hint uppercase tracking-tighter">Total Masuk</p>
-            <p class="text-sm font-black text-green-500 mt-1">Rp 0</p>
+    <div class="grid grid-cols-3 gap-2">
+        <div class="glass p-3 rounded-2xl border border-white/5 text-center bg-green-500/5">
+            <p class="text-[8px] font-black text-tg-hint uppercase tracking-tighter">Pendapatan</p>
+            <p class="text-[10px] font-black text-green-500 mt-1">Rp {{ totalPendapatan.toLocaleString('id-ID') }}</p>
         </div>
-        <div class="glass p-4 rounded-3xl border border-white/5 text-center">
-            <p class="text-[9px] font-black text-tg-hint uppercase tracking-tighter">Total Keluar</p>
-            <p class="text-sm font-black text-red-400 mt-1">Rp 0</p>
+        <div class="glass p-3 rounded-2xl border border-white/5 text-center bg-blue-500/5">
+            <p class="text-[8px] font-black text-tg-hint uppercase tracking-tighter">Topup</p>
+            <p class="text-[10px] font-black text-blue-400 mt-1">Rp {{ totalTopup.toLocaleString('id-ID') }}</p>
+        </div>
+        <div class="glass p-3 rounded-2xl border border-white/5 text-center bg-red-500/5">
+            <p class="text-[8px] font-black text-tg-hint uppercase tracking-tighter">Penarikan</p>
+            <p class="text-[10px] font-black text-red-400 mt-1">Rp {{ totalPenarikan.toLocaleString('id-ID') }}</p>
         </div>
     </div>
 
