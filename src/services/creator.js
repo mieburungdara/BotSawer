@@ -28,6 +28,9 @@ class CreatorService {
     if (data.bio !== undefined) updateData.bio = data.bio;
     if (data.bank_account !== undefined) updateData.bank_account = data.bank_account;
     if (data.is_private !== undefined) updateData.is_private = data.is_private;
+    if (data.ewallet_type !== undefined) updateData.ewallet_type = data.ewallet_type;
+    if (data.ewallet_number !== undefined) updateData.ewallet_number = data.ewallet_number;
+    if (data.ewallet_name !== undefined) updateData.ewallet_name = data.ewallet_name;
 
     if (Object.keys(updateData).length === 0) return true;
 
