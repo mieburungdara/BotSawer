@@ -2,20 +2,23 @@
 import { ref, onMounted } from 'vue'
 
 const isLoading = ref(true)
+const error = ref(null)
 const user = ref({
-  name: 'Loading...',
-  username: '@...',
+  name: '',
+  username: '',
   bio: '',
   verified: false,
   followers: 0,
   contents: 0,
-  donations: 0
+  donations: 0,
+  photo_url: null
 })
 
 const gallery = ref([])
 
 const fetchProfileData = async () => {
   isLoading.value = true
+  error.value = null
   try {
     const tg = window.Telegram?.WebApp;
     const urlParams = new URLSearchParams(window.location.search);
@@ -38,23 +41,26 @@ const fetchProfileData = async () => {
           username: '@' + (data.username || 'user'),
           bio: data.bio || 'Digital Content Creator',
           verified: data.is_verified === 1,
-          followers: 0, // Logic for followers not yet implemented in DB
+          followers: 0, 
           contents: data.stats.total_media,
-          donations: data.stats.total_donations
+          donations: data.stats.total_donations,
+          photo_url: data.photo_url
       };
       
-      // Map contents to gallery items
       if (data.contents) {
           gallery.value = data.contents.map(c => ({
               id: c.id,
               type: c.media && c.media[0] ? c.media[0].file_type : 'photo',
-              url: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.caption || 'C') + '&background=random',
+              url: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.display_name || 'C') + '&background=random',
               views: 'New'
           }));
       }
+    } else {
+        error.value = result.message || 'Gagal memuat profil.';
     }
   } catch (e) {
     console.error("Profile Fetch Error:", e);
+    error.value = 'Terjadi kesalahan jaringan atau server.';
   } finally {
     isLoading.value = false
   }
@@ -65,8 +71,18 @@ onMounted(fetchProfileData)
 
 <template>
   <div class="space-y-6 animate-in fade-in duration-500 pb-10">
+    <!-- Error State -->
+    <div v-if="error" class="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
+        <div class="text-5xl">⚠️</div>
+        <h2 class="text-lg font-black uppercase text-red-500">Gagal Memuat Profil</h2>
+        <p class="text-xs text-tg-hint leading-relaxed">{{ error }}</p>
+        <button @click="fetchProfileData" class="bg-tg-button text-white px-8 py-3 rounded-2xl text-xs font-black shadow-lg shadow-tg-button/20 active:scale-95 transition-all">
+            COBA LAGI
+        </button>
+    </div>
+
     <!-- Skeleton Loading State -->
-    <div v-if="isLoading" class="space-y-8 animate-pulse">
+    <div v-else-if="isLoading" class="space-y-8 animate-pulse">
         <div class="flex flex-col items-center pt-4">
             <div class="w-28 h-28 rounded-[2rem] bg-white/5"></div>
             <div class="h-6 w-32 bg-white/5 rounded-full mt-4"></div>
@@ -84,7 +100,7 @@ onMounted(fetchProfileData)
         <div class="flex flex-col items-center pt-4">
             <div class="relative group">
                 <div class="w-32 h-32 rounded-[2.5rem] bg-gradient-to-tr from-tg-button via-purple-500 to-pink-500 p-1 shadow-2xl shadow-tg-button/30 transition-transform duration-500 group-hover:scale-105">
-                    <img :src="'https://ui-avatars.com/api/?name=' + user.name + '&background=17212b&color=fff&size=256'" class="w-full h-full rounded-[2.3rem] object-cover border-4 border-tg-secondary" />
+                    <img :src="user.photo_url || 'https://ui-avatars.com/api/?name=' + user.name + '&background=17212b&color=fff&size=256'" class="w-full h-full rounded-[2.3rem] object-cover border-4 border-tg-secondary" />
                 </div>
                 <div v-if="user.verified" class="absolute -bottom-1 -right-1 w-9 h-9 bg-blue-500 rounded-full border-4 border-tg-bg flex items-center justify-center text-white text-[10px] shadow-lg">
                     ✔
