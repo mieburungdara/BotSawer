@@ -10,7 +10,7 @@ const db = require('../../services/database');
 router.post('/withdrawal', async (req, res) => {
   try {
     const user = await auth.authenticate(req.body);
-    const { amount, admin_fee, commission_fee, net_amount, ewallet_info } = req.body;
+    const { amount, ewallet_info } = req.body;
 
     if (!amount || amount < 50000) {
         throw new Error('Minimal penarikan adalah Rp 50.000');
