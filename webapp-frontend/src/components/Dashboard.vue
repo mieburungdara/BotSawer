@@ -21,13 +21,15 @@ const stats = ref({
 const fetchDashboardData = async () => {
   isLoading.value = true
   try {
-    const tg = window.Telegram?.WebApp;
+    const urlParams = new URLSearchParams(window.location.search);
+    const botId = urlParams.get('bot_id') || localStorage.getItem('vesper_bot_id');
+
     const response = await fetch('/vesper/api/dashboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            auth: tg?.initData,
-            bot_id: tg?.initDataUnsafe?.query?.bot_id 
+            initData: tg?.initData,
+            botId: botId
         })
     });
     const result = await response.json();

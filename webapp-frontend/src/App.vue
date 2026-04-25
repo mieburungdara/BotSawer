@@ -37,9 +37,22 @@ onMounted(() => {
     tg.ready()
     tg.expand()
     document.body.className = tg.colorScheme
+    
+    // Get botId from URL if possible
+    const urlParams = new URLSearchParams(window.location.search);
+    const botIdParam = urlParams.get('bot_id');
+    if (botIdParam) {
+        localStorage.setItem('vesper_bot_id', botIdParam);
+    }
+    
     fetchBalance()
   }
 })
+
+const getBotId = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('bot_id') || localStorage.getItem('vesper_bot_id');
+}
 
 const fetchBalance = async () => {
   try {
@@ -47,7 +60,8 @@ const fetchBalance = async () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            auth: tg?.initData,
+            initData: tg?.initData,
+            botId: getBotId(),
             action: 'get_balance'
         })
     });

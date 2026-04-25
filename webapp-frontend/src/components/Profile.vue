@@ -17,12 +17,15 @@ const gallery = ref([])
 const fetchProfileData = async () => {
   isLoading.value = true
   try {
-    const tg = window.Telegram?.WebApp;
+    const urlParams = new URLSearchParams(window.location.search);
+    const botId = urlParams.get('bot_id') || localStorage.getItem('vesper_bot_id');
+
     const response = await fetch('/vesper/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            auth: tg?.initData,
+            initData: tg?.initData,
+            botId: botId,
             action: 'get'
         })
     });
