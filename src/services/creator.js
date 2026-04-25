@@ -41,32 +41,45 @@ class CreatorService {
   /**
    * Get all creators (Explore)
    */
-  async getAllCreators(limit = 50, offset = 0) {
-    return await db('users')
+  async getAllCreators(limit = 20, offset = 0) {
+    const totalResult = await db('users')
+      .where('is_private', 0)
+      .where('is_creator', 1)
+      .count('telegram_id as total')
+      .first();
+
+    const list = await db('users')
       .where('is_private', 0)
       .where('is_creator', 1)
       .select('telegram_id', 'display_name', 'username', 'first_name', 'last_name', 'bio', 'photo_url', 'is_verified')
       .orderBy('created_at', 'desc')
       .limit(limit)
       .offset(offset);
+
+    return { list, total: parseInt(totalResult.total || 0) };
   }
 
   /**
    * Search creators
    */
-  async searchCreators(query, limit = 20) {
+  async searchCreators(query, limit = 20, offset = 0) {
     const searchTerm = `%${query}%`;
-    return await db('users')
+    const baseQuery = db('users')
       .where('is_private', 0)
       .where('is_creator', 1)
       .andWhere((builder) => {
         builder.where('display_name', 'like', searchTerm)
           .orWhere('username', 'like', searchTerm)
           .orWhere('first_name', 'like', searchTerm);
-      })
-      .select('telegram_id', 'display_name', 'username', 'first_name', 'last_name', 'bio', 'photo_url', 'is_verified')
+      });
+
+    const totalResult = await baseQuery.clone().count('telegram_id as total').first();
+    const list = await baseQuery.select('telegram_id', 'display_name', 'username', 'first_name', 'last_name', 'bio', 'photo_url', 'is_verified')
       .orderBy('created_at', 'desc')
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
+
+    return { list, total: parseInt(totalResult.total || 0) };
   }
 
   /**
@@ -172,7 +185,13 @@ class CreatorService {
    * Get all public contents (Explore - Content/Post)
    */
   async getAllContents(limit = 20, offset = 0) {
-    return await db('contents as c')
+    const totalResult = await db('contents as c')
+      .join('users as u', 'c.user_id', 'u.telegram_id')
+      .where('c.status', 'posted')
+      .count('c.id as total')
+      .first();
+
+    const list = await db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
       .select(
@@ -187,18 +206,22 @@ class CreatorService {
       .orderBy('c.created_at', 'desc')
       .limit(limit)
       .offset(offset);
+
+    return { list, total: parseInt(totalResult.total || 0) };
   }
 
   /**
    * Search public contents
    */
-  async searchContents(query, limit = 20) {
+  async searchContents(query, limit = 20, offset = 0) {
     const searchTerm = `%${query}%`;
-    return await db('contents as c')
+    const baseQuery = db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
-      .andWhere('c.caption', 'like', searchTerm)
-      .select(
+      .andWhere('c.caption', 'like', searchTerm);
+
+    const totalResult = await baseQuery.clone().count('c.id as total').first();
+    const list = await baseQuery.select(
         'c.short_id', 
         'c.caption', 
         'c.created_at', 
@@ -208,7 +231,10 @@ class CreatorService {
         'u.is_verified'
       )
       .orderBy('c.created_at', 'desc')
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
+
+    return { list, total: parseInt(totalResult.total || 0) };
   }
 }
 

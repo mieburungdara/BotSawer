@@ -1,10 +1,16 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 
 const creators = ref([])
 const isLoading = ref(true)
 const searchQuery = ref('')
 const selectedCategory = ref('User')
+
+// Pagination State
+const currentPage = ref(1)
+const totalItems = ref(0)
+const itemsPerPage = 20
+const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
 
 const categories = [
   'Content', 'User', 'Post', 'Menfess'
@@ -37,13 +43,15 @@ const fetchCreators = async (query = '') => {
         initData: tg?.initData,
         botId,
         action,
-        query: query
+        query: query,
+        offset: (currentPage.value - 1) * itemsPerPage
       })
     })
     
     const result = await response.json()
     if (result.success) {
-      creators.value = result.data
+      creators.value = result.data.list;
+      totalItems.value = result.data.total;
     }
   } catch (e) {
     console.error("Explore Fetch Error:", e)
@@ -52,11 +60,19 @@ const fetchCreators = async (query = '') => {
   }
 }
 
+const changePage = (page) => {
+    if (page < 1 || page > totalPages.value) return;
+    currentPage.value = page;
+    fetchCreators(searchQuery.value);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 // Debounce search
 let timeout = null
 watch(searchQuery, (newVal) => {
   clearTimeout(timeout)
   timeout = setTimeout(() => {
+    currentPage.value = 1; // Reset to page 1 on search
     fetchCreators(newVal)
   }, 500)
 })
@@ -64,6 +80,7 @@ watch(searchQuery, (newVal) => {
 // Re-fetch when category changes
 watch(selectedCategory, () => {
     searchQuery.value = '';
+    currentPage.value = 1;
     fetchCreators();
 })
 
@@ -194,6 +211,47 @@ const getInitials = (name) => {
           </button>
         </div>
       </template>
+
+      <!-- Pagination UI -->
+      <div v-if="totalPages > 1" class="flex flex-col items-center gap-4 py-8">
+        <div class="flex items-center gap-2">
+            <!-- Prev -->
+            <button 
+                @click="changePage(currentPage - 1)"
+                :disabled="currentPage === 1"
+                :class="currentPage === 1 ? 'opacity-30 pointer-events-none' : 'active:scale-90'"
+                class="w-10 h-10 rounded-xl glass border border-white/5 flex items-center justify-center transition-all"
+            >
+                ‹
+            </button>
+
+            <!-- Numbers -->
+            <div class="flex items-center gap-1.5">
+                <button 
+                    v-for="p in totalPages" 
+                    :key="p"
+                    @click="changePage(p)"
+                    :class="p === currentPage ? 'bg-tg-button text-white shadow-lg shadow-tg-button/30' : 'glass text-tg-hint border-white/5'"
+                    class="w-10 h-10 rounded-xl text-xs font-black transition-all flex items-center justify-center"
+                >
+                    {{ p }}
+                </button>
+            </div>
+
+            <!-- Next -->
+            <button 
+                @click="changePage(currentPage + 1)"
+                :disabled="currentPage === totalPages"
+                :class="currentPage === totalPages ? 'opacity-30 pointer-events-none' : 'active:scale-90'"
+                class="w-10 h-10 rounded-xl glass border border-white/5 flex items-center justify-center transition-all"
+            >
+                ›
+            </button>
+        </div>
+        <p class="text-[10px] text-tg-hint font-bold uppercase tracking-widest">
+            Halaman {{ currentPage }} dari {{ totalPages }}
+        </p>
+      </div>
     </div>
   </div>
 </template>
