@@ -12,6 +12,8 @@ const activeTab = ref('dashboard')
 const isSidebarOpen = ref(false)
 const isNotifOpen = ref(false)
 const tg = window.Telegram?.WebApp
+const balance = ref(0)
+const isLoadingBalance = ref(true)
 
 const notifications = ref([
   { id: 1, type: 'donation', text: '💸 Anda menerima donasi Rp 50.000!', time: '5m ago', unread: true },
@@ -33,8 +35,30 @@ onMounted(() => {
     tg.ready()
     tg.expand()
     document.body.className = tg.colorScheme
+    fetchBalance()
   }
 })
+
+const fetchBalance = async () => {
+  try {
+    const response = await fetch('/api/wallet.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            auth: tg?.initData,
+            action: 'get_balance'
+        })
+    });
+    const result = await response.json();
+    if (result.success) {
+      balance.value = result.data.balance;
+    }
+  } catch (e) {
+    console.error("Header Balance Fetch Error:", e);
+  } finally {
+    isLoadingBalance.value = false
+  }
+}
 
 const navigate = (id) => {
   activeTab.value = id
@@ -113,10 +137,21 @@ const navigate = (id) => {
           </div>
         </div>
 
-        <button @click="isNotifOpen = true" class="w-11 h-11 rounded-xl glass flex items-center justify-center border border-white/10 shadow-lg relative active:scale-90 transition-all">
-          <span class="text-xl">🔔</span>
-          <div v-if="notifications.some(n => n.unread)" class="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 border-2 border-tg-bg rounded-full animate-pulse"></div>
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Balance Pill -->
+          <div @click="activeTab = 'wallet'" class="h-11 px-4 glass rounded-xl flex items-center gap-2 border border-white/10 shadow-lg active:scale-95 transition-all cursor-pointer">
+            <span class="text-sm">💰</span>
+            <span class="text-xs font-black tracking-tight">
+              <span v-if="isLoadingBalance" class="opacity-50">...</span>
+              <span v-else>Rp {{ balance.toLocaleString('id-ID') }}</span>
+            </span>
+          </div>
+
+          <button @click="isNotifOpen = true" class="w-11 h-11 rounded-xl glass flex items-center justify-center border border-white/10 shadow-lg relative active:scale-90 transition-all">
+            <span class="text-xl">🔔</span>
+            <div v-if="notifications.some(n => n.unread)" class="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 border-2 border-tg-bg rounded-full animate-pulse"></div>
+          </button>
+        </div>
       </header>
 
       <!-- Main Content Area -->
