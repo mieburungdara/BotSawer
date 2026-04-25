@@ -167,6 +167,49 @@ class CreatorService {
       last_publish_date: lastPublishDate
     };
   }
+
+  /**
+   * Get all public contents (Explore - Content/Post)
+   */
+  async getAllContents(limit = 20, offset = 0) {
+    return await db('contents as c')
+      .join('users as u', 'c.user_id', 'u.telegram_id')
+      .where('c.status', 'posted')
+      .select(
+        'c.short_id', 
+        'c.caption', 
+        'c.created_at', 
+        'u.display_name', 
+        'u.username', 
+        'u.photo_url',
+        'u.is_verified'
+      )
+      .orderBy('c.created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+  }
+
+  /**
+   * Search public contents
+   */
+  async searchContents(query, limit = 20) {
+    const searchTerm = `%${query}%`;
+    return await db('contents as c')
+      .join('users as u', 'c.user_id', 'u.telegram_id')
+      .where('c.status', 'posted')
+      .andWhere('c.caption', 'like', searchTerm)
+      .select(
+        'c.short_id', 
+        'c.caption', 
+        'c.created_at', 
+        'u.display_name', 
+        'u.username', 
+        'u.photo_url',
+        'u.is_verified'
+      )
+      .orderBy('c.created_at', 'desc')
+      .limit(limit);
+  }
 }
 
 module.exports = new CreatorService();

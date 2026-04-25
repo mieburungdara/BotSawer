@@ -16,16 +16,33 @@ router.post('/explore', async (req, res) => {
 
     const { action, query, offset } = req.body;
 
-    // 1. GET ALL CREATORS
+    // 1. GET ALL CREATORS (USER)
     if (action === 'get_creators') {
       const list = await creator.getAllCreators(20, offset || 0);
       return res.json({ success: true, data: list });
     }
 
-    // 2. SEARCH CREATORS
+    // 2. SEARCH CREATORS (USER)
     if (action === 'search_creators') {
         const list = await creator.searchCreators(query || '', 20);
         return res.json({ success: true, data: list });
+    }
+
+    // 3. GET ALL CONTENTS / POSTS
+    if (action === 'get_contents' || action === 'get_posts') {
+        const list = await creator.getAllContents(20, offset || 0);
+        return res.json({ success: true, data: list });
+    }
+
+    // 4. SEARCH CONTENTS / POSTS
+    if (action === 'search_contents' || action === 'search_posts') {
+        const list = await creator.searchContents(query || '', 20);
+        return res.json({ success: true, data: list });
+    }
+
+    // 5. MENFESS (Placeholder - Table not yet exist)
+    if (action === 'get_menfess' || action === 'search_menfess') {
+        return res.json({ success: true, data: [] });
     }
 
     throw new Error('Action tidak dikenal');

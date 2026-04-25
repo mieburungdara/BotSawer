@@ -4,10 +4,10 @@ import { ref, onMounted, watch } from 'vue'
 const creators = ref([])
 const isLoading = ref(true)
 const searchQuery = ref('')
-const selectedCategory = ref('Semua')
+const selectedCategory = ref('User')
 
 const categories = [
-  'Semua', 'Seni', 'Teknologi', 'Musik', 'Gaya Hidup', 'Makanan', 'Edukasi'
+  'Content', 'User', 'Post', 'Menfess'
 ]
 
 const fetchCreators = async (query = '') => {
@@ -16,13 +16,27 @@ const fetchCreators = async (query = '') => {
     const tg = window.Telegram?.WebApp
     const botId = localStorage.getItem('vesper_bot_id')
     
+    // Map category to action
+    let action = 'get_creators';
+    if (selectedCategory.value === 'Content') action = 'get_contents';
+    if (selectedCategory.value === 'Post') action = 'get_posts';
+    if (selectedCategory.value === 'Menfess') action = 'get_menfess';
+    if (selectedCategory.value === 'User') action = 'get_creators';
+
+    // If there is a query, use search action
+    if (query) {
+        if (selectedCategory.value === 'User') action = 'search_creators';
+        else if (selectedCategory.value === 'Content' || selectedCategory.value === 'Post') action = 'search_contents';
+        else if (selectedCategory.value === 'Menfess') action = 'search_menfess';
+    }
+    
     const response = await fetch('/vesper/api/explore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         initData: tg?.initData,
         botId,
-        action: query ? 'search_creators' : 'get_creators',
+        action,
         query: query
       })
     })
@@ -45,6 +59,12 @@ watch(searchQuery, (newVal) => {
   timeout = setTimeout(() => {
     fetchCreators(newVal)
   }, 500)
+})
+
+// Re-fetch when category changes
+watch(selectedCategory, () => {
+    searchQuery.value = '';
+    fetchCreators();
 })
 
 onMounted(() => {
@@ -146,11 +166,26 @@ const getInitials = (name) => {
 
           <!-- Info -->
           <div class="flex-1 min-w-0">
-            <h4 class="text-sm font-black truncate">{{ creator.display_name }}</h4>
-            <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">@{{ creator.username || creator.first_name }}</p>
-            <p class="text-[11px] text-white/60 line-clamp-1 mt-1 italic font-medium">
-              {{ creator.bio || 'Bangga menjadi kreator di Vesper!' }}
-            </p>
+            <template v-if="selectedCategory === 'User'">
+              <h4 class="text-sm font-black truncate">{{ creator.display_name }}</h4>
+              <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">@{{ creator.username }}</p>
+              <p class="text-[11px] text-white/60 line-clamp-1 mt-1 italic font-medium">
+                {{ creator.bio || 'Bangga menjadi kreator di Vesper!' }}
+              </p>
+            </template>
+            <template v-else-if="selectedCategory === 'Content' || selectedCategory === 'Post'">
+              <h4 class="text-sm font-black line-clamp-1">{{ creator.caption || 'Tanpa caption' }}</h4>
+              <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">Oleh {{ creator.display_name }}</p>
+              <p class="text-[9px] text-tg-button font-bold mt-1 uppercase tracking-tighter">
+                {{ new Date(creator.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
+              </p>
+            </template>
+            <template v-else>
+              <h4 class="text-sm font-black truncate">Menfess Anonim</h4>
+              <p class="text-[11px] text-white/60 line-clamp-2 mt-1 italic font-medium">
+                Belum ada menfess yang tersedia.
+              </p>
+            </template>
           </div>
 
           <!-- Action -->
