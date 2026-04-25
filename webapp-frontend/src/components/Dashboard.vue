@@ -34,8 +34,8 @@ onMounted(fetchDashboardData)
     
     <!-- Skeleton Loading -->
     <div v-if="isLoading" class="space-y-6">
-      <div class="h-44 w-full bg-tg-secondary/50 rounded-3xl animate-pulse"></div>
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-3 gap-3">
+        <div class="h-20 bg-tg-secondary/50 rounded-2xl animate-pulse"></div>
         <div class="h-20 bg-tg-secondary/50 rounded-2xl animate-pulse"></div>
         <div class="h-20 bg-tg-secondary/50 rounded-2xl animate-pulse"></div>
       </div>
@@ -43,30 +43,7 @@ onMounted(fetchDashboardData)
 
     <!-- Real Content -->
     <template v-else>
-      <!-- Balance Card -->
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-tg-button via-tg-button to-blue-700 p-6 shadow-2xl shadow-tg-button/20 border border-white/10">
-        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-        <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-blue-400/10 rounded-full blur-3xl"></div>
-        
-        <div class="relative z-10">
-          <div class="flex justify-between items-start mb-2">
-            <p class="text-white/70 text-xs font-bold uppercase tracking-widest">Main Wallet</p>
-            <span class="bg-white/20 text-white text-[10px] px-2 py-1 rounded-md font-bold backdrop-blur-sm">ACTIVE</span>
-          </div>
-          <h2 class="text-4xl font-black text-white mb-8 tracking-tight">
-            <span class="text-xl font-medium text-white/60 mr-1">Rp</span>{{ balance.toLocaleString('id-ID') }}
-          </h2>
-          
-          <div class="flex gap-3">
-            <button class="flex-1 bg-white/15 hover:bg-white/25 backdrop-blur-lg text-white py-3 rounded-2xl text-sm font-bold transition-all border border-white/10 active:scale-95">
-              Withdraw
-            </button>
-            <button class="flex-1 bg-white text-tg-button py-3 rounded-2xl text-sm font-black shadow-xl transition-all active:scale-95">
-              Topup Saldo
-            </button>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Quick Stats Grid -->
       <div class="grid grid-cols-3 gap-3">
