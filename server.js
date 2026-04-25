@@ -20,9 +20,7 @@ app.use(express.json());
 
 // Logging Middleware (Debug cPanel paths)
 app.use((req, res, next) => {
-  if (req.url.includes('/api/')) {
-    logger.info(`[API REQUEST] ${req.method} ${req.url}`);
-  }
+  logger.info(`[INCOMING] ${req.method} ${req.url} (Original: ${req.originalUrl})`);
   next();
 });
 
@@ -47,7 +45,17 @@ apiRouter.use(exploreRoutes);
 apiRouter.use(profileRoutes);
 apiRouter.use(adminRoutes);
 apiRouter.use(achievementsRoutes);
-apiRouter.use(miscRoutes);
+apiRouter.use(miscRoutes); // miscRoutes has /dashboard, /ecosystem, /config
+
+// Catch-all API 404 to return JSON instead of HTML
+apiRouter.use((req, res) => {
+  logger.warn(`[API 404] ${req.method} ${req.url}`);
+  res.status(404).json({ 
+    success: false, 
+    message: `API endpoint not found: ${req.url}`,
+    hint: 'Check if the route is defined without .php suffix'
+  });
+});
 
 // Mount API Router to both possible paths
 app.use('/api', apiRouter);
