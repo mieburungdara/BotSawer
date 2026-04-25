@@ -10,7 +10,14 @@
   --color-tg-button-text: var(--tg-theme-button-text-color, #ffffff);
 }
 
+:root {
+  --base-font-size: 16px;
+}
+
 @layer base {
+  html {
+    font-size: var(--base-font-size);
+  }
   body {
     background-color: var(--color-tg-bg);
     color: var(--color-tg-text);
@@ -18,8 +25,13 @@
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
     overflow-x: hidden;
+    font-family: 'Inter', sans-serif;
   }
 }
+
+.font-size-small { --base-font-size: 14px; }
+.font-size-medium { --base-font-size: 16px; }
+.font-size-large { --base-font-size: 18px; }
 
 .glass {
   background-color: rgba(23, 33, 43, 0.6);

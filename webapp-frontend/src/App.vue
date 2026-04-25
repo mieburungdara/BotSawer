@@ -40,6 +40,10 @@ onMounted(() => {
     tg.expand()
     document.body.className = tg.colorScheme
     
+    // Apply saved font size
+    const savedFontSize = localStorage.getItem('vesper_font_size') || 'medium'
+    document.documentElement.classList.add(`font-size-${savedFontSize}`)
+    
     // Get botId from URL if possible
     const urlParams = new URLSearchParams(window.location.search);
     const botIdParam = urlParams.get('bot_id');
