@@ -6,6 +6,7 @@ import Explore from './components/Explore.vue'
 import Wallet from './components/Wallet.vue'
 import Settings from './components/Settings.vue'
 import Mutasi from './components/Mutasi.vue'
+import Library from './components/Library.vue'
 
 const activeTab = ref('dashboard')
 const isSidebarOpen = ref(false)
@@ -23,6 +24,7 @@ const menuItems = [
   { id: 'explore', label: 'Explore', icon: '🌍', color: 'bg-blue-500' },
   { id: 'profile', label: 'My Profile', icon: '👤', color: 'bg-purple-500' },
   { id: 'wallet', label: 'Wallet', icon: '💰', color: 'bg-green-500' },
+  { id: 'library', label: 'Library', icon: '📚', color: 'bg-orange-500' },
   { id: 'settings', label: 'Settings', icon: '⚙️', color: 'bg-gray-500' },
 ]
 
@@ -123,6 +125,7 @@ const navigate = (id) => {
         <Explore v-if="activeTab === 'explore'" />
         <Profile v-if="activeTab === 'profile'" />
         <Wallet v-if="activeTab === 'wallet'" @mutasi="activeTab = 'mutasi'" />
+        <Library v-if="activeTab === 'library'" />
         <Settings v-if="activeTab === 'settings'" />
         <Mutasi v-if="activeTab === 'mutasi'" @back="activeTab = 'wallet'" />
       </main>
