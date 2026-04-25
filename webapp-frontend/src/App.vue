@@ -139,10 +139,9 @@ const navigate = (id) => {
 
         <div class="flex items-center gap-2">
           <!-- Balance Pill -->
-          <div @click="activeTab = 'wallet'" class="h-11 px-4 glass rounded-xl flex items-center gap-2 border border-white/10 shadow-lg active:scale-95 transition-all cursor-pointer">
+          <div @click="activeTab = 'wallet'" class="px-2 py-1 active:scale-95 transition-all cursor-pointer">
             <span class="text-xs font-black tracking-tight">
-              <span v-if="isLoadingBalance" class="opacity-50">...</span>
-              <span v-else>Rp {{ balance.toLocaleString('id-ID') }}</span>
+              Rp {{ balance.toLocaleString('id-ID') }}
             </span>
           </div>
 
