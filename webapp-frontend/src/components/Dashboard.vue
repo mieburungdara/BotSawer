@@ -11,19 +11,25 @@ const stats = ref({
 
 const fetchDashboardData = async () => {
   isLoading.value = true
-  
-  // Simulasi delay jaringan (1 detik)
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // DUMMY DATA
-  balance.value = 258400
-  stats.value = {
-    total_earnings: 1250000,
-    active_contents: 24,
-    total_donations: 86
+  try {
+    const tg = window.Telegram?.WebApp;
+    const response = await fetch('/api/dashboard.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            auth: tg?.initData,
+            bot_id: tg?.initDataUnsafe?.query?.bot_id 
+        })
+    });
+    const result = await response.json();
+    if (result.success) {
+      stats.value = result.data.stats;
+    }
+  } catch (e) {
+    console.error("Dashboard Fetch Error:", e);
+  } finally {
+    isLoading.value = false
   }
-  
-  isLoading.value = false
 }
 
 onMounted(fetchDashboardData)
@@ -49,7 +55,7 @@ onMounted(fetchDashboardData)
       <div class="grid grid-cols-3 gap-3">
         <div class="glass p-3 rounded-2xl text-center border border-white/5">
           <p class="text-tg-hint text-[10px] font-bold uppercase mb-1">Earning</p>
-          <p class="text-sm font-black">1.2M</p>
+          <p class="text-sm font-black">Rp{{ stats.total_earnings.toLocaleString('id-ID') }}</p>
         </div>
         <div class="glass p-3 rounded-2xl text-center border border-white/5">
           <p class="text-tg-hint text-[10px] font-bold uppercase mb-1">Media</p>
