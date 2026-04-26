@@ -115,6 +115,33 @@ const handleScroll = () => {
   }
 }
 
+const toggleBookmark = async (item) => {
+  if (item.is_sponsored) return;
+  
+  try {
+    const tg = window.Telegram?.WebApp;
+    const response = await fetch('/vesper/api/bookmarks/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg?.initData,
+        content_id: item.id
+      })
+    });
+    const result = await response.json();
+    if (result.success) {
+      item.is_bookmarked = result.is_bookmarked ? 1 : 0;
+      
+      // Haptic feedback
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+      }
+    }
+  } catch (e) {
+    console.error("Toggle Bookmark Error:", e);
+  }
+}
+
 onMounted(() => {
   fetchDashboardData();
   fetchFeed(true);
@@ -236,6 +263,16 @@ onUnmounted(() => {
                 <p v-if="!item.is_sponsored" class="text-[10px] text-tg-hint">@{{ item.username }} • {{ new Date(item.created_at).toLocaleDateString('id-ID') }}</p>
                 <p v-else class="text-[10px] text-yellow-500/70 font-bold uppercase tracking-wider">Promoted</p>
               </div>
+              <!-- Bookmark Button -->
+              <button v-if="!item.is_sponsored" 
+                      @click.stop="toggleBookmark(item)"
+                      class="p-2 active:scale-125 transition-transform">
+                <span :class="item.is_bookmarked ? 'text-yellow-500' : 'text-tg-hint'" class="text-lg">
+                  {{ item.is_bookmarked ? '🔖' : '🔖' }}
+                  <span v-if="item.is_bookmarked" class="opacity-100"></span>
+                  <span v-else class="opacity-40"></span>
+                </span>
+              </button>
             </div>
             
             <p class="text-sm relative z-10">{{ item.caption }}</p>

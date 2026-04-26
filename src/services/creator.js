@@ -248,17 +248,22 @@ class CreatorService {
     const list = await db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .join('follows as f', 'u.telegram_id', 'f.followed_id')
+      .leftJoin('bookmarks as b', function() {
+        this.on('c.id', '=', 'b.content_id').andOn('b.user_id', '=', db.raw('?', [followerId]))
+      })
       .where('f.follower_id', followerId)
       .where('c.status', 'posted')
       .where('u.is_private', 0)
       .select(
+        'c.id',
         'c.short_id', 
         'c.caption', 
         'c.created_at', 
         'u.display_name', 
         'u.username', 
         'u.photo_url',
-        'u.is_verified'
+        'u.is_verified',
+        db.raw('CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as is_bookmarked')
       )
       .orderBy('c.created_at', 'desc')
       .limit(limit)
