@@ -6,6 +6,7 @@ const emit = defineEmits(['nav'])
 const { t, locale } = useI18n()
 
 const fontSize = ref(localStorage.getItem('vesper_font_size') || 'medium')
+const fontFamily = ref(localStorage.getItem('vesper_font_family') || 'inter')
 const currentLocale = ref(locale.value)
 
 const updateFontSize = (size) => {
@@ -16,6 +17,16 @@ const updateFontSize = (size) => {
   const html = document.documentElement
   html.classList.remove('font-size-small', 'font-size-medium', 'font-size-large')
   html.classList.add(`font-size-${size}`)
+}
+
+const updateFontFamily = (family) => {
+  fontFamily.value = family
+  localStorage.setItem('vesper_font_family', family)
+  
+  // Update document class
+  const html = document.documentElement
+  html.classList.remove('font-family-inter', 'font-family-roboto', 'font-family-outfit', 'font-family-montserrat')
+  html.classList.add(`font-family-${family}`)
 }
 
 const updateLocale = (lang) => {
@@ -69,6 +80,26 @@ const settings = ref([
             class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
           >
             {{ size }}
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.fontFamily') || 'Jenis Font' }}</h3>
+        </div>
+        <div class="glass p-1.5 rounded-2xl flex flex-wrap gap-1 border border-white/5" role="radiogroup" aria-label="Jenis Font">
+          <button 
+            v-for="family in ['inter', 'roboto', 'outfit', 'montserrat']" 
+            :key="family"
+            @click="updateFontFamily(family)"
+            :class="fontFamily === family ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+            :aria-checked="fontFamily === family"
+            role="radio"
+            class="flex-[1_1_45%] py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+            :style="{ fontFamily: family === 'inter' ? 'Inter' : family === 'roboto' ? 'Roboto' : family === 'outfit' ? 'Outfit' : 'Montserrat' }"
+          >
+            {{ family }}
           </button>
         </div>
       </div>
