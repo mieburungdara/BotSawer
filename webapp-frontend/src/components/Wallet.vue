@@ -154,18 +154,18 @@ onMounted(fetchWalletData)
 
       <div v-else class="space-y-3">
         <div v-for="tx in transactions" :key="tx.id" class="glass p-4 rounded-2xl flex items-center gap-4 border border-white/5 group hover:border-white/10 transition-colors">
-          <div :class="tx.type === 'withdrawal' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'" class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner">
-            {{ tx.type === 'withdrawal' ? '📤' : (tx.type === 'topup' ? '📥' : '🎁') }}
+          <div :class="tx.amount < 0 || tx.type === 'withdrawal' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'" class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner shrink-0">
+            {{ tx.type === 'withdrawal' ? '📤' : (tx.type === 'topup' ? '📥' : (tx.amount < 0 ? '💸' : '🎁')) }}
           </div>
-          <div class="flex-1">
-            <h4 class="text-sm font-black">{{ tx.description || (tx.type === 'withdrawal' ? 'Penarikan Saldo' : 'Donasi Masuk') }}</h4>
+          <div class="flex-1 min-w-0">
+            <h4 class="text-sm font-black truncate">{{ tx.description || (tx.type === 'withdrawal' ? 'Penarikan Saldo' : (tx.type === 'topup' ? 'Topup Saldo' : (tx.amount < 0 ? 'Donasi Keluar' : 'Donasi Masuk'))) }}</h4>
             <p class="text-[10px] text-tg-hint font-bold uppercase tracking-widest opacity-60">{{ formatDate(tx.created_at) }}</p>
           </div>
-          <div class="text-right">
+          <div class="text-right shrink-0">
             <p :class="tx.amount > 0 ? 'text-green-500' : 'text-red-500'" class="text-sm font-black">
               {{ tx.amount > 0 ? '+' : '' }}{{ tx.amount.toLocaleString('id-ID') }}
             </p>
-            <span :class="tx.status === 'success' ? 'bg-green-500/20 text-green-500' : (tx.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-red-500/20 text-red-500')" class="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
+            <span :class="tx.status === 'success' ? 'bg-green-500/20 text-green-500' : (tx.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-red-500/20 text-red-500')" class="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter inline-block mt-0.5">
               {{ tx.status }}
             </span>
           </div>

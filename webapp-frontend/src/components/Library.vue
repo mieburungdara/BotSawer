@@ -7,11 +7,8 @@ const isLoading = ref(false)
 
 const sections = [
   { id: 'bookmarks', label: 'Bookmarks', icon: '🔖' },
-  { id: 'sawer', label: 'History', icon: '🎁' },
   { id: 'my-posts', label: 'My Posts', icon: '📝' }
 ]
-
-const sawerHistory = ref([])
 
 const fetchBookmarks = async () => {
   isLoading.value = true
@@ -33,32 +30,8 @@ const fetchBookmarks = async () => {
   }
 }
 
-const fetchSawerHistory = async () => {
-  isLoading.value = true
-  try {
-    const tg = window.Telegram?.WebApp;
-    const response = await fetch('/vesper/api/wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        initData: tg?.initData,
-        action: 'get_history'
-      })
-    });
-    const result = await response.json();
-    if (result.success) {
-      sawerHistory.value = result.data;
-    }
-  } catch (e) {
-    console.error("Fetch Sawer History Error:", e);
-  } finally {
-    isLoading.value = false
-  }
-}
-
 onMounted(() => {
   fetchBookmarks();
-  fetchSawerHistory();
 })
 
 const toggleBookmark = async (item) => {
@@ -137,41 +110,7 @@ const toggleBookmark = async (item) => {
         </template>
       </div>
 
-      <!-- Sawer History Section -->
-      <div v-if="activeSection === 'sawer'" class="space-y-4">
-        <div v-if="isLoading" class="py-10 text-center">
-            <div class="inline-block w-8 h-8 border-4 border-tg-hint border-t-tg-button rounded-full animate-spin"></div>
-        </div>
-        <template v-else>
-            <div v-if="sawerHistory.length === 0" class="glass p-12 rounded-3xl text-center border border-white/5">
-                <div class="text-5xl mb-4 opacity-30">🎁</div>
-                <p class="font-bold text-tg-hint">Belum ada riwayat sawer</p>
-                <p class="text-xs text-tg-hint/70 mt-2">Kirim atau terima donasi untuk melihat riwayat di sini.</p>
-            </div>
-            
-            <div v-for="tx in sawerHistory" :key="tx.id" class="glass p-4 rounded-3xl border border-white/5 flex items-center gap-4 relative overflow-hidden">
-                <div :class="tx.type === 'donation_received' ? 'bg-green-500/20 text-green-500' : 'bg-tg-button/20 text-tg-button'" class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0">
-                    {{ tx.type === 'donation_received' ? '📈' : '📉' }}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-sm font-black uppercase tracking-wider truncate">
-                            {{ tx.type === 'donation_received' ? 'Penerimaan' : 'Donasi Keluar' }}
-                        </h4>
-                        <span :class="tx.type === 'donation_received' ? 'text-green-500' : 'text-tg-button'" class="text-xs font-black">
-                            {{ tx.type === 'donation_received' ? '+' : '-' }}Rp {{ tx.amount.toLocaleString('id-ID') }}
-                        </span>
-                    </div>
-                    <p class="text-[10px] text-tg-hint truncate font-medium">
-                        {{ new Date(tx.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) }}
-                    </p>
-                    <p v-if="tx.description" class="text-[10px] italic text-tg-hint/70 truncate mt-0.5">
-                        "{{ tx.description }}"
-                    </p>
-                </div>
-            </div>
-        </template>
-      </div>
+
 
       <div v-if="activeSection === 'my-posts'" class="space-y-4">
         <div class="glass p-8 rounded-3xl text-center border border-white/5 opacity-50 italic text-sm">
