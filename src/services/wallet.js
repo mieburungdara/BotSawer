@@ -187,6 +187,96 @@ class WalletService {
     const wallet = await db('wallets').where('user_id', telegramId).first();
     return wallet ? parseFloat(wallet.balance) : 0;
   }
+
+  /**
+   * Subscribe to a creator
+   */
+  async subscribe(subscriberId, creatorId, amount) {
+    if (amount <= 0) throw new Error('Harga langganan tidak valid');
+    if (String(subscriberId) === String(creatorId)) throw new Error('Anda tidak bisa berlangganan ke diri sendiri');
+
+    return await db.transaction(async (trx) => {
+      // 1. Check if already subscribed
+      const existing = await trx('subscriptions')
+        .where('subscriber_uuid', subscriberId)
+        .where('creator_uuid', creatorId)
+        .where('status', 'active')
+        .first();
+      
+      if (existing) throw new Error('Anda sudah berlangganan ke kreator ini');
+
+      // 2. Check balance
+      const wallet = await trx('wallets').where('user_id', subscriberId).forUpdate().first();
+      if (!wallet || parseFloat(wallet.balance) < amount) {
+        throw new Error('Saldo Anda tidak mencukupi untuk berlangganan');
+      }
+
+      // 3. Deduct balance
+      await trx('wallets').where('user_id', subscriberId).update({
+        balance: db.raw('balance - ?', [amount])
+      });
+
+      // 4. Add to creator
+      await trx('wallets').where('user_id', creatorId).update({
+        balance: db.raw('balance + ?', [amount]),
+        total_earning: db.raw('total_earning + ?', [amount])
+      });
+
+      // 5. Create subscription record
+      const nextBilling = new Date();
+      nextBilling.setMonth(nextBilling.getMonth() + 1);
+
+      await trx('subscriptions').insert({
+        subscriber_uuid: subscriberId,
+        creator_uuid: creatorId,
+        amount: amount,
+        status: 'active',
+        next_billing_at: nextBilling
+      });
+
+      // 6. Record Transactions
+      await trx('transactions').insert({
+        user_id: subscriberId,
+        type: 'subscription',
+        amount: -amount,
+        status: 'success',
+        description: `Langganan bulanan untuk kreator ${creatorId}`
+      });
+
+      await trx('transactions').insert({
+        user_id: creatorId,
+        from_user_id: subscriberId,
+        type: 'subscription',
+        amount: amount,
+        status: 'success',
+        description: `Pendapatan langganan dari user ${subscriberId}`
+      });
+
+      return true;
+    });
+  }
+
+  /**
+   * Cancel subscription
+   */
+  async cancelSubscription(subscriberId, creatorId) {
+    await db('subscriptions')
+      .where('subscriber_uuid', subscriberId)
+      .where('creator_uuid', creatorId)
+      .update({ status: 'cancelled' });
+    return true;
+  }
+
+  /**
+   * Get subscription status
+   */
+  async getSubscription(subscriberId, creatorId) {
+    return await db('subscriptions')
+      .where('subscriber_uuid', subscriberId)
+      .where('creator_uuid', creatorId)
+      .where('status', 'active')
+      .first();
+  }
 }
 
 module.exports = new WalletService();

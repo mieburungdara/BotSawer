@@ -73,7 +73,12 @@ router.post('/profile', async (req, res) => {
           contents: contentsWithMedia,
           is_own: user.telegram_id === targetId,
           is_following: isFollowing,
-          is_blocked: blockStatus.blockedByMe
+          is_blocked: blockStatus.blockedByMe,
+          subscription: await db('subscriptions')
+            .where('subscriber_uuid', user.telegram_id)
+            .where('creator_uuid', targetId)
+            .where('status', 'active')
+            .first()
         } 
       });
     }
@@ -98,6 +103,13 @@ router.post('/profile', async (req, res) => {
 
         await db('users').where('telegram_id', user.telegram_id).update(updateData);
         return res.json({ success: true, message: 'Goal updated successfully' });
+    }
+
+    // 4. UPDATE SUBSCRIPTION PRICE
+    if (action === 'update_subscription_price') {
+        const { price } = req.body;
+        await db('users').where('telegram_id', user.telegram_id).update({ monthly_subscription_price: price });
+        return res.json({ success: true, message: 'Harga langganan berhasil diperbarui' });
     }
 
     throw new Error('Action tidak dikenal');

@@ -29,7 +29,9 @@ const user = ref({
   donation_streak: 0,
   donation_goal: 0,
   donation_goal_title: '',
-  donation_goal_current: 0
+  donation_goal_current: 0,
+  monthly_subscription_price: 0,
+  subscription: null
 })
 const systemConfig = ref({
   bot_username: 'VesperBot',
@@ -61,6 +63,13 @@ const donationMessage = ref('')
 const isDonating = ref(false)
 const donationError = ref('')
 const donationPresets = [2000, 5000, 10000, 25000, 50000]
+
+// Subscription Logic
+const showSubPriceModal = ref(false)
+const subPriceInput = ref(0)
+const showSubscribeModal = ref(false)
+const isSubscribing = ref(false)
+const subError = ref('')
 
 const fetchProfileData = async (targetId = null) => {
   isLoading.value = true
@@ -117,7 +126,9 @@ const fetchProfileData = async (targetId = null) => {
           donation_streak: data.donation_streak || 0,
           donation_goal: data.donation_goal || 0,
           donation_goal_title: data.donation_goal_title || '',
-          donation_goal_current: data.donation_goal_current || 0
+          donation_goal_current: data.donation_goal_current || 0,
+          monthly_subscription_price: data.monthly_subscription_price || 0,
+          subscription: data.subscription || null
       };
       
       // Fetch Follow Stats
@@ -485,6 +496,112 @@ const processDonation = async () => {
     isDonating.value = false;
   }
 }
+
+const openSubPriceModal = () => {
+    subPriceInput.value = user.value.monthly_subscription_price;
+    showSubPriceModal.value = true;
+}
+
+const updateSubPrice = async () => {
+    try {
+        const tg = window.Telegram?.WebApp;
+        const botId = localStorage.getItem('vesper_bot_id');
+        
+        const response = await fetch('/vesper/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                initData: tg?.initData,
+                botId: botId,
+                action: 'update_subscription_price',
+                price: subPriceInput.value
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showSubPriceModal.value = false;
+            fetchProfileData(user.value.telegram_id);
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            tg?.showAlert(result.message || 'Gagal memperbarui harga langganan');
+        }
+    } catch (e) {
+        console.error("Update Sub Price Error:", e);
+    }
+}
+
+const openSubscribeModal = () => {
+    showSubscribeModal.value = true;
+    subError.value = '';
+}
+
+const processSubscribe = async () => {
+    isSubscribing.value = true;
+    subError.value = '';
+    
+    try {
+        const tg = window.Telegram?.WebApp;
+        const botId = localStorage.getItem('vesper_bot_id');
+
+        const response = await fetch('/vesper/api/wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                initData: tg?.initData,
+                botId: botId,
+                action: 'subscribe',
+                creatorId: user.value.telegram_id,
+                amount: user.value.monthly_subscription_price
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            showSubscribeModal.value = false;
+            fetchProfileData(user.value.telegram_id);
+        } else {
+            subError.value = result.message || 'Berlangganan gagal';
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        }
+    } catch (e) {
+        subError.value = 'Terjadi kesalahan sistem';
+        console.error(e);
+    } finally {
+        isSubscribing.value = false;
+    }
+}
+
+const cancelSub = async () => {
+    const tg = window.Telegram?.WebApp;
+    const confirmed = await new Promise(resolve => {
+        tg?.showConfirm('Apakah Anda yakin ingin membatalkan langganan?', (ok) => resolve(ok));
+    });
+    if (!confirmed) return;
+
+    try {
+        const botId = localStorage.getItem('vesper_bot_id');
+        const response = await fetch('/vesper/api/wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                initData: tg?.initData,
+                botId: botId,
+                action: 'cancel_subscription',
+                creatorId: user.value.telegram_id
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            fetchProfileData(user.value.telegram_id);
+            tg?.showAlert('Langganan dibatalkan');
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
 </script>
 
 <template>
@@ -546,22 +663,37 @@ const processDonation = async () => {
                         "{{ user.bio }}"
                     </p>
 
-                    <!-- Sawer Goal Progress Bar -->
-                    <div v-if="user.donation_goal > 0" class="w-full max-w-xs mt-6 px-4">
-                      <div class="flex items-center justify-between mb-2">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-tg-button">{{ user.donation_goal_title || 'Goal Progress' }}</span>
-                        <span class="text-[10px] font-black text-white">{{ ((user.donation_goal_current / user.donation_goal) * 100).toFixed(0) }}%</span>
+                      <!-- Sawer Goal & Subscription Progress -->
+                      <div v-if="user.donation_goal > 0 || user.monthly_subscription_price > 0" class="w-full max-w-xs mt-6 px-4 space-y-4">
+                        <!-- Goal -->
+                        <div v-if="user.donation_goal > 0">
+                          <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-tg-button">{{ user.donation_goal_title || 'Goal Progress' }}</span>
+                            <span class="text-[10px] font-black text-white">{{ ((user.donation_goal_current / user.donation_goal) * 100).toFixed(0) }}%</span>
+                          </div>
+                          <div class="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
+                            <div 
+                              class="h-full bg-gradient-to-r from-tg-button to-purple-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(36,161,222,0.5)]"
+                              :style="{ width: Math.min(100, (user.donation_goal_current / user.donation_goal) * 100) + '%' }"
+                            ></div>
+                          </div>
+                          <p class="text-[9px] text-tg-hint font-bold mt-2 uppercase tracking-tight">
+                            Rp {{ user.donation_goal_current.toLocaleString('id-ID') }} / Rp {{ user.donation_goal.toLocaleString('id-ID') }}
+                          </p>
+                        </div>
+
+                        <!-- Subscription Badge if Subscribed -->
+                        <div v-if="user.subscription" class="p-3 bg-gradient-to-r from-purple-500/20 to-pink-500/10 rounded-2xl border border-purple-500/30 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">⭐</span>
+                                <div class="text-left">
+                                    <p class="text-[10px] font-black uppercase text-purple-400 leading-none">SUBSCRIBER</p>
+                                    <p class="text-[9px] text-tg-hint font-bold">Terdaftar hingga {{ new Date(user.subscription.next_billing_at).toLocaleDateString() }}</p>
+                                </div>
+                            </div>
+                            <button @click="cancelSub" class="text-[8px] font-black text-red-400 uppercase tracking-widest bg-red-500/10 px-2 py-1 rounded-lg">Cancel</button>
+                        </div>
                       </div>
-                      <div class="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
-                        <div 
-                          class="h-full bg-gradient-to-r from-tg-button to-purple-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(36,161,222,0.5)]"
-                          :style="{ width: Math.min(100, (user.donation_goal_current / user.donation_goal) * 100) + '%' }"
-                        ></div>
-                      </div>
-                      <p class="text-[9px] text-tg-hint font-bold mt-2 uppercase tracking-tight">
-                        Rp {{ user.donation_goal_current.toLocaleString('id-ID') }} / Rp {{ user.donation_goal.toLocaleString('id-ID') }}
-                      </p>
-                    </div>
 
                     <!-- Social Links -->
                     <div v-if="user.instagram_url || user.tiktok_url || user.facebook_url || user.portfolio_url" class="flex justify-center gap-3 mt-4">
@@ -672,15 +804,33 @@ const processDonation = async () => {
                 </button>
             </div>
 
-            <!-- Start New Goal (Owner Only) -->
-            <div v-if="user.is_own" class="px-1 mt-4">
+            <!-- Start New Goal & Subscription (Owner Only) -->
+            <div v-if="user.is_own" class="grid grid-cols-2 gap-2 px-1 mt-4">
               <button 
                 @click="openGoalModal"
-                class="w-full py-4 glass border border-tg-button/20 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] text-tg-button hover:bg-tg-button/5 transition-all active:scale-95 flex items-center justify-center gap-3"
+                class="py-4 glass border border-tg-button/20 rounded-[2rem] text-[10px] font-black uppercase tracking-widest text-tg-button hover:bg-tg-button/5 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
                 <span>🎯</span>
-                {{ user.donation_goal > 0 ? 'UPDATE SAWER GOAL' : 'START NEW GOAL' }}
+                GOAL
               </button>
+              <button 
+                @click="openSubPriceModal"
+                class="py-4 glass border border-purple-500/20 rounded-[2rem] text-[10px] font-black uppercase tracking-widest text-purple-400 hover:bg-purple-500/5 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <span>⭐</span>
+                SUBSCRIPTION
+              </button>
+            </div>
+
+            <!-- Subscribe Button (Visitor) -->
+            <div v-if="!user.is_own && user.monthly_subscription_price > 0 && !user.subscription" class="px-1 mt-4">
+                <button 
+                    @click="openSubscribeModal"
+                    class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                >
+                    <span>⭐</span>
+                    SUBSCRIBE (Rp {{ user.monthly_subscription_price.toLocaleString('id-ID') }}/Mo)
+                </button>
             </div>
 
             <!-- Content Section -->
@@ -933,6 +1083,74 @@ const processDonation = async () => {
           <button v-else @click="updateGoal(true)" class="w-full py-4 bg-tg-button text-white rounded-2xl font-black text-sm shadow-xl shadow-tg-button/30 active:scale-95 transition-all">
             SIMPAN & MULAI GOAL
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subscription Price Modal -->
+    <div v-if="showSubPriceModal" class="fixed inset-0 z-[110] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="w-full max-w-md glass rounded-[2.5rem] border border-white/10 p-6 space-y-6 animate-in slide-in-from-bottom-full duration-500 text-white">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-xl font-black">⭐ Subscription Model</h3>
+            <p class="text-xs text-tg-hint font-bold uppercase tracking-wider">Recurring Monthly Support</p>
+          </div>
+          <button @click="showSubPriceModal = false" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl">✕</button>
+        </div>
+
+        <div class="space-y-5">
+          <div class="p-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl space-y-2 text-left">
+            <p class="text-[10px] text-purple-400 font-black uppercase tracking-wider">Why Subscription?</p>
+            <p class="text-[9px] text-tg-hint font-medium">Earn steady, recurring income from your loyal followers. They'll pay this amount every month automatically.</p>
+          </div>
+
+          <div class="space-y-2 text-left">
+            <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint ml-2">Monthly Price (Rp)</label>
+            <input v-model="subPriceInput" type="number" step="1000" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold focus:border-purple-500 outline-none transition-all text-white" />
+            <p class="text-[8px] text-tg-hint ml-2 uppercase font-black tracking-widest">Set to 0 to disable subscription model.</p>
+          </div>
+
+          <button @click="updateSubPrice" class="w-full py-4 bg-purple-500 text-white rounded-2xl font-black text-sm shadow-xl shadow-purple-500/30 active:scale-95 transition-all">
+            UPDATE PRICE
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subscribe Modal (Visitor) -->
+    <div v-if="showSubscribeModal" class="fixed inset-0 z-[110] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="w-full max-w-md glass rounded-[2.5rem] border border-white/10 p-6 space-y-6 animate-in slide-in-from-bottom-full duration-500 text-white">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-xl font-black">⭐ Subscribe to {{ user.name }}</h3>
+            <p class="text-xs text-tg-hint font-bold uppercase tracking-wider">Support recurringly every month</p>
+          </div>
+          <button @click="showSubscribeModal = false" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl">✕</button>
+        </div>
+
+        <div class="space-y-5 text-center py-4">
+            <div class="w-24 h-24 mx-auto bg-gradient-to-tr from-purple-500 to-pink-500 rounded-[2rem] flex items-center justify-center text-4xl shadow-2xl shadow-purple-500/30 animate-pulse">
+                ⭐
+            </div>
+            <div>
+                <p class="text-2xl font-black">Rp {{ user.monthly_subscription_price.toLocaleString('id-ID') }}</p>
+                <p class="text-[10px] text-tg-hint font-black uppercase tracking-[0.2em]">PER MONTH</p>
+            </div>
+            
+            <p class="text-xs text-tg-hint px-6 leading-relaxed">
+                You will be charged monthly. You can cancel at any time from the creator's profile.
+            </p>
+
+            <div v-if="subError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                <p class="text-[10px] text-red-400 font-bold uppercase tracking-tight">{{ subError }}</p>
+            </div>
+
+            <button @click="processSubscribe" 
+                    :disabled="isSubscribing"
+                    class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-black text-sm shadow-xl shadow-purple-500/30 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                <span v-if="isSubscribing" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                {{ isSubscribing ? 'MEMPROSES...' : 'CONFIRM SUBSCRIPTION' }}
+            </button>
         </div>
       </div>
     </div>

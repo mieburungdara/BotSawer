@@ -43,6 +43,35 @@ router.post('/wallet', async (req, res) => {
         });
     }
 
+    // 4. SUBSCRIBE
+    if (action === 'subscribe') {
+        const { creatorId, amount } = req.body;
+        if (!creatorId || !amount) throw new Error('Creator ID dan jumlah harus diisi');
+        
+        await wallet.subscribe(user.telegram_id, creatorId, amount);
+        const newBalance = await wallet.getBalance(user.telegram_id);
+        
+        return res.json({ 
+            success: true, 
+            message: 'Berhasil berlangganan!',
+            data: { balance: newBalance }
+        });
+    }
+
+    // 5. CANCEL SUBSCRIPTION
+    if (action === 'cancel_subscription') {
+        const { creatorId } = req.body;
+        await wallet.cancelSubscription(user.telegram_id, creatorId);
+        return res.json({ success: true, message: 'Langganan berhasil dibatalkan' });
+    }
+
+    // 6. GET SUBSCRIPTION STATUS
+    if (action === 'get_subscription') {
+        const { creatorId } = req.body;
+        const sub = await wallet.getSubscription(user.telegram_id, creatorId);
+        return res.json({ success: true, data: sub });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {
