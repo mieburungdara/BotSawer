@@ -8,6 +8,7 @@ const { t, locale } = useI18n()
 const fontSize = ref(localStorage.getItem('vesper_font_size') || 'medium')
 const fontFamily = ref(localStorage.getItem('vesper_font_family') || 'inter')
 const currentLocale = ref(locale.value)
+const isAppearanceExpanded = ref(false)
 
 const updateFontSize = (size) => {
   fontSize.value = size
@@ -63,44 +64,72 @@ const settings = ref([
       <button @click="emit('nav', 'profile')" class="text-tg-button text-xs font-bold" :aria-label="$t('settings.editSocial')">{{ $t('settings.editSocial') }}</button>
     </div>
 
-    <!-- Accessibility: Font Size & Language -->
+    <!-- Accessibility & Appearance -->
     <div class="space-y-4">
-      <div class="space-y-3">
-        <div class="flex items-center justify-between px-1">
-          <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.accessibility') }}: {{ $t('settings.fontSize') }}</h3>
-        </div>
-        <div class="glass p-1.5 rounded-2xl flex gap-1 border border-white/5" role="radiogroup" :aria-label="$t('settings.fontSize')">
-          <button 
-            v-for="size in ['small', 'medium', 'large']" 
-            :key="size"
-            @click="updateFontSize(size)"
-            :class="fontSize === size ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
-            :aria-checked="fontSize === size"
-            role="radio"
-            class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+      <div class="glass p-4 rounded-3xl border border-white/5 transition-all">
+        <button 
+          @click="isAppearanceExpanded = !isAppearanceExpanded"
+          class="w-full flex items-center justify-between group"
+          :aria-expanded="isAppearanceExpanded"
+        >
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-tg-button/10 flex items-center justify-center text-lg">
+              🎨
+            </div>
+            <div class="text-left">
+              <h4 class="text-sm font-bold">{{ $t('settings.accessibility') }}</h4>
+              <p class="text-[10px] text-tg-hint">{{ $t('settings.fontSettingsDesc') || 'Atur ukuran dan jenis tulisan' }}</p>
+            </div>
+          </div>
+          <span 
+            class="text-tg-hint text-xs transition-transform duration-300"
+            :class="{ 'rotate-180': isAppearanceExpanded }"
           >
-            {{ size }}
-          </button>
-        </div>
-      </div>
+            ▼
+          </span>
+        </button>
 
-      <div class="space-y-3">
-        <div class="flex items-center justify-between px-1">
-          <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.fontFamily') || 'Jenis Font' }}</h3>
-        </div>
-        <div class="glass p-1.5 rounded-2xl flex flex-wrap gap-1 border border-white/5" role="radiogroup" aria-label="Jenis Font">
-          <button 
-            v-for="family in ['inter', 'roboto', 'outfit', 'montserrat']" 
-            :key="family"
-            @click="updateFontFamily(family)"
-            :class="fontFamily === family ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
-            :aria-checked="fontFamily === family"
-            role="radio"
-            class="flex-[1_1_45%] py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
-            :style="{ fontFamily: family === 'inter' ? 'Inter' : family === 'roboto' ? 'Roboto' : family === 'outfit' ? 'Outfit' : 'Montserrat' }"
-          >
-            {{ family }}
-          </button>
+        <div v-show="isAppearanceExpanded" class="mt-6 space-y-6 animate-in slide-in-from-top-2 duration-300">
+          <!-- Font Size -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.fontSize') }}</h3>
+            </div>
+            <div class="bg-black/20 p-1 rounded-2xl flex gap-1 border border-white/5" role="radiogroup" :aria-label="$t('settings.fontSize')">
+              <button 
+                v-for="size in ['small', 'medium', 'large']" 
+                :key="size"
+                @click="updateFontSize(size)"
+                :class="fontSize === size ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+                :aria-checked="fontSize === size"
+                role="radio"
+                class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+              >
+                {{ size }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Font Family -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.fontFamily') }}</h3>
+            </div>
+            <div class="bg-black/20 p-1 rounded-2xl flex flex-wrap gap-1 border border-white/5" role="radiogroup" aria-label="Jenis Font">
+              <button 
+                v-for="family in ['inter', 'roboto', 'outfit', 'montserrat']" 
+                :key="family"
+                @click="updateFontFamily(family)"
+                :class="fontFamily === family ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+                :aria-checked="fontFamily === family"
+                role="radio"
+                class="flex-[1_1_45%] py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                :style="{ fontFamily: family === 'inter' ? 'Inter' : family === 'roboto' ? 'Roboto' : family === 'outfit' ? 'Outfit' : 'Montserrat' }"
+              >
+                {{ family }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
