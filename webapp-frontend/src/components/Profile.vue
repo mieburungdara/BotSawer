@@ -17,7 +17,9 @@ const user = ref({
   donations: 0,
   photo_url: null,
   telegram_id: null,
-  badges: []
+  badges: [],
+  is_own: true,
+  is_following: false
 })
 
 const gallery = ref([])
@@ -58,7 +60,9 @@ const fetchProfileData = async (targetId = null) => {
           contents: data.stats.total_media,
           donations: data.stats.total_donations,
           photo_url: data.photo_url,
-          badges: data.stats.badges || []
+          badges: data.stats.badges || [],
+          is_own: data.is_own,
+          is_following: data.is_following
       };
       
       // Fetch Follow Stats
@@ -131,6 +135,44 @@ const openFollowList = async (type) => {
     } finally {
         followLoading.value = false;
     }
+}
+
+const toggleFollow = async (targetUserId = null) => {
+    const targetId = targetUserId || user.value.telegram_id;
+    const isTargetMainProfile = targetId === user.value.telegram_id;
+    
+    try {
+        const tg = window.Telegram?.WebApp;
+        const currentStatus = isTargetMainProfile ? user.value.is_following : false; // For list items we might need more state
+        const action = currentStatus ? 'unfollow' : 'follow';
+        
+        const response = await fetch('/vesper/api/follow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                initData: tg?.initData,
+                action: action,
+                targetId: targetId
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            if (isTargetMainProfile) {
+                user.value.is_following = !user.value.is_following;
+                fetchFollowStats(user.value.telegram_id);
+            } else {
+                // If clicked from a list, we might want to refresh the list or just show success
+                openFollowList(followModalTitle.value.includes(t('profile.followers')) ? 'followers' : 'following');
+            }
+        }
+    } catch (e) {
+        console.error("Toggle Follow Error:", e);
+    }
+}
+
+const navigateToUser = (userId) => {
+    showFollowModal.value = false;
+    fetchProfileData(userId);
 }
 
 onMounted(() => fetchProfileData(props.targetId))
@@ -236,10 +278,27 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
 
             <!-- Action Buttons -->
             <div class="flex gap-3 px-1">
-                <button class="flex-1 flex items-center justify-center gap-2 bg-tg-button text-white py-4 rounded-2xl text-xs font-black shadow-xl shadow-tg-button/20 active:scale-95 transition-all">
-                    <span>📝</span>
-                    {{ $t('profile.editProfile') }}
-                </button>
+                <template v-if="user.is_own">
+                    <button class="flex-1 flex items-center justify-center gap-2 bg-tg-button text-white py-4 rounded-2xl text-xs font-black shadow-xl shadow-tg-button/20 active:scale-95 transition-all">
+                        <span>📝</span>
+                        {{ $t('profile.editProfile') }}
+                    </button>
+                </template>
+                <template v-else>
+                    <button 
+                        @click="toggleFollow()" 
+                        :class="user.is_following ? 'bg-tg-secondary text-tg-text' : 'bg-tg-button text-white shadow-tg-button/20'"
+                        class="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl text-xs font-black shadow-xl active:scale-95 transition-all"
+                    >
+                        <span>{{ user.is_following ? '👤' : '➕' }}</span>
+                        {{ user.is_following ? $t('profile.unfollow') : $t('profile.follow') }}
+                    </button>
+                    <button class="flex-1 flex items-center justify-center gap-2 bg-tg-secondary/50 text-tg-text py-4 rounded-2xl text-xs font-black border border-white/5 active:scale-95 transition-all">
+                        <span>💬</span>
+                        {{ $t('profile.message') }}
+                    </button>
+                </template>
+                
                 <button @click="$emit('nav', 'settings')" class="w-14 h-14 glass flex items-center justify-center rounded-2xl border border-white/10 active:scale-95 transition-all">
                     <span class="text-xl">⚙️</span>
                 </button>
@@ -293,7 +352,7 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
                     <p class="text-xs italic">{{ followModalTitle.includes(t('profile.followers')) ? $t('profile.noFollowers') : $t('profile.noFollowing') }}</p>
                 </div>
                 <div v-else class="space-y-3">
-                    <div v-for="person in followList" :key="person.telegram_id" class="glass p-3 rounded-2xl border border-white/5 flex items-center gap-4 hover:bg-white/5 transition-all">
+                    <div v-for="person in followList" :key="person.telegram_id" @click="navigateToUser(person.telegram_id)" class="glass p-3 rounded-2xl border border-white/5 flex items-center gap-4 hover:bg-white/5 transition-all cursor-pointer">
                         <div class="w-12 h-12 rounded-2xl bg-tg-secondary p-0.5 overflow-hidden">
                             <img :src="person.photo_url || 'https://ui-avatars.com/api/?name=' + person.display_name + '&background=random'" class="w-full h-full object-cover rounded-[0.9rem]" />
                         </div>
@@ -304,9 +363,8 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
                             </div>
                             <p class="text-[10px] text-tg-hint truncate font-medium">@{{ person.username }}</p>
                         </div>
-                        <button class="bg-tg-button/10 text-tg-button px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-tg-button hover:text-white transition-all">
-                            {{ $t('profile.follow') }}
-                        </button>
+                        <!-- We don't show follow toggle here for now to keep it simple, clicking will go to their profile -->
+                        <div class="text-[10px] text-tg-button font-black uppercase opacity-50">VIEW</div>
                     </div>
                 </div>
             </div>

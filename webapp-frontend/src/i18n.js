@@ -26,6 +26,7 @@ const messages = {
       unfollow: 'Unfollow',
       noFollowers: 'No followers yet.',
       noFollowing: 'Not following anyone yet.',
+      message: 'Message',
       badges: {
         title: 'Achievements',
         verified: 'Verified',
@@ -87,6 +88,7 @@ const messages = {
       unfollow: 'Berhenti Ikuti',
       noFollowers: 'Belum ada pengikut.',
       noFollowing: 'Belum mengikuti siapapun.',
+      message: 'Pesan',
       badges: {
         title: 'Pencapaian',
         verified: 'Terverifikasi',
@@ -114,7 +116,8 @@ const messages = {
       paymentsDesc: 'Kelola rekening bank & e-wallet',
       contactAdmin: 'Hubungi Admin',
       contactDesc: 'Bantuan & Pertanyaan',
-      closeApp: 'Tutup Vesper'
+      closeApp: 'Tutup Vesper',
+      message: 'Pesan'
     }
   }
 }

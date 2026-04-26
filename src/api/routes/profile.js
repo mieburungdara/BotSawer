@@ -4,6 +4,8 @@ const creator = require('../../services/creator');
 const auth = require('../../services/auth');
 const db = require('../../services/database');
 
+const followService = require('../../services/follow');
+
 /**
  * Profile API
  */
@@ -23,6 +25,7 @@ router.post('/profile', async (req, res) => {
       }
 
       const stats = await creator.getStats(targetId);
+      const isFollowing = await followService.isFollowing(user.telegram_id, targetId);
       
       // Get recent contents with media
       const contents = await db('contents')
@@ -41,7 +44,9 @@ router.post('/profile', async (req, res) => {
         data: {
           ...profileUser,
           stats,
-          contents: contentsWithMedia
+          contents: contentsWithMedia,
+          is_own: user.telegram_id === targetId,
+          is_following: isFollowing
         } 
       });
     }
