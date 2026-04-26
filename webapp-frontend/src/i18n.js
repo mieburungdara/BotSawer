@@ -69,6 +69,17 @@ const messages = {
       contactAdmin: 'Contact Admin',
       contactDesc: 'Help & Questions',
       closeApp: 'Close Vesper'
+    },
+    dm: {
+      title: 'Messages',
+      subtitle: 'Direct Messages',
+      noConversations: 'No conversations yet',
+      noConversationsHint: 'Visit someone\'s profile and tap "Message" to start chatting.',
+      noMessages: 'No messages',
+      typeMessage: 'Type a message...',
+      send: 'Send',
+      you: 'You',
+      startConversation: 'Say hello to {name}! Send your first message.',
     }
   },
   id: {
@@ -146,6 +157,17 @@ const messages = {
       contactDesc: 'Bantuan & Pertanyaan',
       closeApp: 'Tutup Vesper',
       message: 'Pesan'
+    },
+    dm: {
+      title: 'Pesan',
+      subtitle: 'Pesan Langsung',
+      noConversations: 'Belum ada percakapan',
+      noConversationsHint: 'Kunjungi profil seseorang dan ketuk "Pesan" untuk mulai mengobrol.',
+      noMessages: 'Belum ada pesan',
+      typeMessage: 'Ketik pesan...',
+      send: 'Kirim',
+      you: 'Kamu',
+      startConversation: 'Sapa {name}! Kirim pesan pertamamu.',
     }
   }
 }

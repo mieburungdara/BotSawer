@@ -38,6 +38,7 @@ const achievementsRoutes = require('./src/api/routes/achievements');
 const withdrawalRoutes = require('./src/api/routes/withdrawal');
 const followRoutes = require('./src/api/routes/follow');
 const miscRoutes = require('./src/api/routes/misc');
+const directMessageRoutes = require('./src/api/routes/direct_message');
 
 const apiRouter = express.Router();
 apiRouter.use(contentRoutes);
@@ -49,6 +50,7 @@ apiRouter.use(adminRoutes);
 apiRouter.use(achievementsRoutes);
 apiRouter.use(withdrawalRoutes);
 apiRouter.use(followRoutes);
+apiRouter.use(directMessageRoutes);
 apiRouter.use(miscRoutes); // miscRoutes has /dashboard, /ecosystem, /config
 
 // Catch-all API 404 to return JSON instead of HTML

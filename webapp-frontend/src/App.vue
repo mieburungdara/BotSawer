@@ -8,6 +8,7 @@ import Settings from './components/Settings.vue'
 import Mutasi from './components/Mutasi.vue'
 import Library from './components/Library.vue'
 import Achievements from './components/Achievements.vue'
+import Messages from './components/Messages.vue'
 
 const activeTab = ref('dashboard')
 const isSidebarOpen = ref(false)
@@ -18,6 +19,9 @@ const isLoadingBalance = ref(true)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 const targetProfileId = ref(null)
+const targetDmUserId = ref(null)
+const unreadMessagesCount = ref(0)
+let unreadPollInterval = null
 
 const notifications = ref([
   { id: 1, type: 'donation', text: '💸 Anda menerima donasi Rp 50.000!', time: '5m ago', unread: true },
@@ -29,6 +33,7 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '⚡', color: 'bg-yellow-500' },
   { id: 'explore', label: 'Explore', icon: '🌍', color: 'bg-blue-500' },
   { id: 'profile', label: 'My Profile', icon: '👤', color: 'bg-purple-500' },
+  { id: 'messages', label: 'Messages', icon: '💬', color: 'bg-teal-500' },
   { id: 'wallet', label: 'Dompet', icon: '💰', color: 'bg-green-500' },
   { id: 'achievements', label: 'Awards', icon: '🏆', color: 'bg-yellow-500' },
   { id: 'library', label: 'Library', icon: '📚', color: 'bg-orange-500' },
@@ -53,6 +58,8 @@ onMounted(() => {
     }
     
     fetchBalance()
+    fetchUnreadCount()
+    unreadPollInterval = setInterval(fetchUnreadCount, 5000)
   }
 })
 
@@ -83,9 +90,36 @@ const fetchBalance = async () => {
   }
 }
 
+const fetchUnreadCount = async () => {
+  try {
+    const response = await fetch('/vesper/api/direct_message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            initData: tg?.initData,
+            botId: getBotId(),
+            action: 'get_unread_count'
+        })
+    });
+    const result = await response.json();
+    if (result.success) {
+      unreadMessagesCount.value = result.data.count;
+    }
+  } catch (e) {
+    console.error("Unread Count Fetch Error:", e);
+  }
+}
+
 const navigate = (id) => {
   if (id === 'profile' || id !== 'profile') targetProfileId.value = null
+  if (id !== 'messages') targetDmUserId.value = null
   activeTab.value = id
+  isSidebarOpen.value = false
+}
+
+const openDirectMessage = (userId) => {
+  targetDmUserId.value = userId
+  activeTab.value = 'messages'
   isSidebarOpen.value = false
 }
 
@@ -171,7 +205,12 @@ const handleTouchEnd = (e) => {
       </div>
       <nav class="flex-1 p-4 space-y-2 mt-4">
         <button v-for="item in menuItems" :key="item.id" @click="navigate(item.id)" :class="activeTab === item.id ? 'bg-tg-button/20 text-tg-button border-tg-button/30' : 'text-tg-hint hover:bg-white/5 border-transparent'" class="w-full flex items-center gap-4 p-3 rounded-2xl border transition-all duration-300 group">
-          <div :class="[item.color, activeTab === item.id ? 'scale-110' : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100']" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg transition-all">{{ item.icon }}</div>
+          <div :class="[item.color, activeTab === item.id ? 'scale-110' : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100']" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg transition-all relative">
+            {{ item.icon }}
+            <div v-if="item.id === 'messages' && unreadMessagesCount > 0" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] text-white font-black border border-tg-secondary">
+              {{ unreadMessagesCount > 9 ? '9+' : unreadMessagesCount }}
+            </div>
+          </div>
           <span class="font-bold text-sm">{{ item.label }}</span>
         </button>
       </nav>
@@ -214,7 +253,8 @@ const handleTouchEnd = (e) => {
       <main class="animate-in fade-in duration-700">
         <Dashboard v-if="activeTab === 'dashboard'" @navigate="navigate" />
         <Explore v-if="activeTab === 'explore'" @view-profile="(id) => { targetProfileId = id; activeTab = 'profile' }" />
-        <Profile v-if="activeTab === 'profile'" :targetId="targetProfileId" @nav="navigate" />
+        <Profile v-if="activeTab === 'profile'" :targetId="targetProfileId" @nav="navigate" @open-dm="openDirectMessage" />
+        <Messages v-if="activeTab === 'messages'" :initialTargetId="targetDmUserId" @view-profile="(id) => { targetProfileId = id; activeTab = 'profile' }" />
         <Wallet v-if="activeTab === 'wallet'" @mutasi="activeTab = 'mutasi'" />
         <Achievements v-if="activeTab === 'achievements'" />
         <Library v-if="activeTab === 'library'" />

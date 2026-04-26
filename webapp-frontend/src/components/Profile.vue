@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps(['targetId'])
+const emit = defineEmits(['nav', 'open-dm'])
 const { t } = useI18n()
 const isLoading = ref(true)
 const error = ref(null)
@@ -442,7 +443,7 @@ const openExternalLink = (url, type) => {
                         <span>{{ user.is_following ? '👤' : '➕' }}</span>
                         {{ user.is_following ? $t('profile.unfollow') : $t('profile.follow') }}
                     </button>
-                    <button class="flex-1 flex items-center justify-center gap-2 bg-tg-secondary/50 text-tg-text py-4 rounded-2xl text-xs font-black border border-white/5 active:scale-95 transition-all">
+                    <button @click="emit('open-dm', user.telegram_id)" class="flex-1 flex items-center justify-center gap-2 bg-tg-secondary/50 text-tg-text py-4 rounded-2xl text-xs font-black border border-white/5 active:scale-95 transition-all hover:border-tg-button/20">
                         <span>💬</span>
                         {{ $t('profile.message') }}
                     </button>
@@ -546,7 +547,6 @@ const openExternalLink = (url, type) => {
             <div class="p-4 bg-tg-secondary/30 rounded-2xl border border-white/5">
                 <p class="text-[10px] text-tg-hint font-medium truncate opacity-60">{{ getProfileLink() }}</p>
             </div>
-        </div>
         </div>
     </div>
 

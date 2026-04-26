@@ -19,10 +19,12 @@ async function migrate() {
             }
         });
         
-        process.exit(0);
+        console.log('Migration complete.');
     } catch (e) {
         console.error('Migration failed:', e);
         process.exit(1);
+    } finally {
+        await db.destroy();
     }
 }
 
