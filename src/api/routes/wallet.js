@@ -30,10 +30,10 @@ router.post('/wallet', async (req, res) => {
 
     // 3. PROCESS DONATION
     if (action === 'donate') {
-        const { receiverId, amount, contentId } = req.body;
+        const { receiverId, amount, contentId, message } = req.body;
         if (!receiverId || !amount) throw new Error('Receiver ID dan jumlah harus diisi');
         
-        await wallet.processDonation(user.telegram_id, receiverId, amount, contentId);
+        await wallet.processDonation(user.telegram_id, receiverId, amount, contentId, message);
         const newBalance = await wallet.getBalance(user.telegram_id);
         
         return res.json({ 

@@ -52,6 +52,10 @@ router.post('/profile', async (req, res) => {
         }
 
         const contents = await contentsQuery
+          .select(
+            'contents.*',
+            db.raw('(SELECT message FROM transactions WHERE media_id = contents.id AND type = "donation" AND message IS NOT NULL ORDER BY created_at DESC LIMIT 1) as latest_donation_message')
+          )
           .orderBy('created_at', 'desc')
           .limit(20);
 
@@ -78,6 +82,22 @@ router.post('/profile', async (req, res) => {
     if (action === 'update') {
         const success = await creator.updateProfile(user.telegram_id, profile_data || {});
         return res.json({ success: true, data: { success } });
+    }
+
+    // 3. UPDATE GOAL
+    if (action === 'update_goal') {
+        const { title, goal, reset } = req.body;
+        const updateData = {
+            donation_goal: goal,
+            donation_goal_title: title
+        };
+        
+        if (reset) {
+            updateData.donation_goal_current = 0;
+        }
+
+        await db('users').where('telegram_id', user.telegram_id).update(updateData);
+        return res.json({ success: true, message: 'Goal updated successfully' });
     }
 
     throw new Error('Action tidak dikenal');

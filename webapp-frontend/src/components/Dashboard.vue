@@ -147,6 +147,7 @@ const selectedPost = ref(null)
 const donationAmount = ref(5000)
 const isDonating = ref(false)
 const donationError = ref('')
+const donationMessage = ref('')
 
 const donationPresets = [2000, 5000, 10000, 25000, 50000]
 
@@ -156,6 +157,7 @@ const openDonationModal = (item) => {
   showDonationModal.value = true;
   donationError.value = '';
   donationAmount.value = 5000;
+  donationMessage.value = '';
 }
 
 const processDonation = async () => {
@@ -177,7 +179,8 @@ const processDonation = async () => {
         action: 'donate',
         receiverId: selectedPost.value.creator_id,
         amount: donationAmount.value,
-        contentId: selectedPost.value.id
+        contentId: selectedPost.value.id,
+        message: donationMessage.value
       })
     });
     
@@ -392,6 +395,14 @@ onUnmounted(() => {
             
             <p class="text-sm relative z-10">{{ item.caption }}</p>
             
+            <!-- Latest Donation Message -->
+            <div v-if="item.latest_donation_message" class="mt-3 p-3 bg-white/5 rounded-2xl border border-white/5 relative z-10 animate-in fade-in slide-in-from-top-2 duration-500">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-[10px] font-black uppercase tracking-widest text-tg-button">Latest Shoutout 💬</span>
+              </div>
+              <p class="text-xs italic text-tg-hint">"{{ item.latest_donation_message }}"</p>
+            </div>
+            
             <a v-if="item.is_sponsored && item.action_url" :href="item.action_url" target="_blank" class="block w-full py-2 bg-yellow-500 text-black text-center rounded-xl text-xs font-black uppercase tracking-wider transition-transform active:scale-95 relative z-10">
               Kunjungi Sponsor
             </a>
@@ -439,6 +450,18 @@ onUnmounted(() => {
               <input type="number" v-model="donationAmount" placeholder="Lainnya"
                      class="w-full py-3 px-3 bg-white/5 border border-white/5 rounded-xl text-xs font-black text-center focus:outline-none focus:border-tg-button transition-all">
             </div>
+          </div>
+
+          <!-- Custom Message -->
+          <div class="space-y-2">
+            <label class="text-xs font-black uppercase tracking-widest text-tg-hint">Pesan Personal (Opsional)</label>
+            <textarea 
+              v-model="donationMessage"
+              placeholder="Berikan pesan penyemangat..."
+              class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:border-tg-button outline-none transition-all resize-none"
+              rows="3"
+              maxlength="255"
+            ></textarea>
           </div>
         </div>
 

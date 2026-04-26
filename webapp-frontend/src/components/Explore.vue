@@ -178,6 +178,7 @@ const selectedPost = ref(null)
 const donationAmount = ref(5000)
 const isDonating = ref(false)
 const donationError = ref('')
+const donationMessage = ref('')
 const donationPresets = [2000, 5000, 10000, 25000, 50000]
 
 const openDonationModal = (item) => {
@@ -185,6 +186,7 @@ const openDonationModal = (item) => {
   showDonationModal.value = true;
   donationError.value = '';
   donationAmount.value = 5000;
+  donationMessage.value = '';
 }
 
 const processDonation = async () => {
@@ -206,7 +208,8 @@ const processDonation = async () => {
         action: 'donate',
         receiverId: selectedPost.value.creator_id,
         amount: donationAmount.value,
-        contentId: selectedPost.value.id || selectedPost.value.short_id
+        contentId: selectedPost.value.id || selectedPost.value.short_id,
+        message: donationMessage.value
       })
     });
     
@@ -271,6 +274,7 @@ const processDonation = async () => {
                     ✔
                 </div>
             </div>
+
             <div class="w-full">
                 <p class="text-xs font-black truncate w-full">{{ trend.display_name }}</p>
                 <p class="text-[9px] text-tg-hint font-bold truncate opacity-60">@{{ trend.username || 'user' }}</p>
@@ -404,6 +408,10 @@ const processDonation = async () => {
               <p class="text-[9px] text-tg-button font-bold mt-1 uppercase tracking-tighter">
                 {{ new Date(creator.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
               </p>
+              <!-- Latest Donation Message -->
+              <div v-if="creator.latest_donation_message" class="mt-2 p-2 bg-white/5 rounded-xl border border-white/5 relative z-10">
+                <p class="text-[10px] italic text-tg-hint line-clamp-1">"{{ creator.latest_donation_message }}"</p>
+              </div>
             </template>
             <template v-else>
               <h4 class="text-sm font-black truncate">Menfess Anonim</h4>

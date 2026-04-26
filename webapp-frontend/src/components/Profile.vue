@@ -26,7 +26,10 @@ const user = ref({
   facebook_url: null,
   portfolio_url: null,
   is_blocked: false,
-  donation_streak: 0
+  donation_streak: 0,
+  donation_goal: 0,
+  donation_goal_title: '',
+  donation_goal_current: 0
 })
 const systemConfig = ref({
   bot_username: 'VesperBot',
@@ -48,6 +51,16 @@ const editData = ref({
 const followModalTitle = ref('')
 const followList = ref([])
 const followLoading = ref(false)
+
+// Goal & Donation Logic
+const showGoalModal = ref(false)
+const goalData = ref({ title: '', amount: 0 })
+const showDonationModal = ref(false)
+const donationAmount = ref(5000)
+const donationMessage = ref('')
+const isDonating = ref(false)
+const donationError = ref('')
+const donationPresets = [2000, 5000, 10000, 25000, 50000]
 
 const fetchProfileData = async (targetId = null) => {
   isLoading.value = true
@@ -101,7 +114,10 @@ const fetchProfileData = async (targetId = null) => {
           facebook_url: data.facebook_url,
           portfolio_url: data.portfolio_url,
           is_blocked: data.is_blocked || false,
-          donation_streak: data.donation_streak || 0
+          donation_streak: data.donation_streak || 0,
+          donation_goal: data.donation_goal || 0,
+          donation_goal_title: data.donation_goal_title || '',
+          donation_goal_current: data.donation_goal_current || 0
       };
       
       // Fetch Follow Stats
@@ -384,6 +400,91 @@ const openExternalLink = (url, type) => {
         window.open(webUrl, '_blank');
     }
 }
+const openGoalModal = () => {
+    goalData.value = {
+        title: user.value.donation_goal_title || '',
+        amount: user.value.donation_goal || 0
+    };
+    showGoalModal.value = true;
+}
+
+const updateGoal = async (reset = false) => {
+    try {
+        const tg = window.Telegram?.WebApp;
+        const botId = localStorage.getItem('vesper_bot_id');
+        
+        const response = await fetch('/vesper/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                initData: tg?.initData,
+                botId: botId,
+                action: 'update_goal',
+                title: goalData.value.title,
+                goal: goalData.value.amount,
+                reset: reset
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showGoalModal.value = false;
+            fetchProfileData(user.value.telegram_id);
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } else {
+            tg?.showAlert(result.message || 'Gagal memperbarui goal');
+        }
+    } catch (e) {
+        console.error("Update Goal Error:", e);
+    }
+}
+
+const openDonationModal = () => {
+  showDonationModal.value = true;
+  donationError.value = '';
+  donationAmount.value = 5000;
+  donationMessage.value = '';
+}
+
+const processDonation = async () => {
+  if (donationAmount.value <= 0) return;
+  
+  isDonating.value = true;
+  donationError.value = '';
+  
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        action: 'donate',
+        receiverId: user.value.telegram_id,
+        amount: donationAmount.value,
+        message: donationMessage.value
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      showDonationModal.value = false;
+      fetchProfileData(user.value.telegram_id); // Refresh to see progress
+    } else {
+      donationError.value = result.message || 'Donasi gagal';
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    }
+  } catch (e) {
+    donationError.value = 'Terjadi kesalahan sistem';
+    console.error(e);
+  } finally {
+    isDonating.value = false;
+  }
+}
 </script>
 
 <template>
@@ -444,6 +545,23 @@ const openExternalLink = (url, type) => {
                     <p class="text-tg-hint text-xs mt-4 px-8 leading-relaxed font-medium italic opacity-80">
                         "{{ user.bio }}"
                     </p>
+
+                    <!-- Sawer Goal Progress Bar -->
+                    <div v-if="user.donation_goal > 0" class="w-full max-w-xs mt-6 px-4">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-tg-button">{{ user.donation_goal_title || 'Goal Progress' }}</span>
+                        <span class="text-[10px] font-black text-white">{{ ((user.donation_goal_current / user.donation_goal) * 100).toFixed(0) }}%</span>
+                      </div>
+                      <div class="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
+                        <div 
+                          class="h-full bg-gradient-to-r from-tg-button to-purple-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(36,161,222,0.5)]"
+                          :style="{ width: Math.min(100, (user.donation_goal_current / user.donation_goal) * 100) + '%' }"
+                        ></div>
+                      </div>
+                      <p class="text-[9px] text-tg-hint font-bold mt-2 uppercase tracking-tight">
+                        Rp {{ user.donation_goal_current.toLocaleString('id-ID') }} / Rp {{ user.donation_goal.toLocaleString('id-ID') }}
+                      </p>
+                    </div>
 
                     <!-- Social Links -->
                     <div v-if="user.instagram_url || user.tiktok_url || user.facebook_url || user.portfolio_url" class="flex justify-center gap-3 mt-4">
@@ -549,6 +667,20 @@ const openExternalLink = (url, type) => {
                         <span class="text-lg">🚫</span>
                     </button>
                 </template>
+                <button v-if="!user.is_own" @click="openDonationModal" class="w-14 h-14 flex items-center justify-center bg-yellow-500 text-black rounded-2xl shadow-lg shadow-yellow-500/20 active:scale-95 transition-all">
+                    <span class="text-lg">🎁</span>
+                </button>
+            </div>
+
+            <!-- Start New Goal (Owner Only) -->
+            <div v-if="user.is_own" class="px-1 mt-4">
+              <button 
+                @click="openGoalModal"
+                class="w-full py-4 glass border border-tg-button/20 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] text-tg-button hover:bg-tg-button/5 transition-all active:scale-95 flex items-center justify-center gap-3"
+              >
+                <span>🎯</span>
+                {{ user.donation_goal > 0 ? 'UPDATE SAWER GOAL' : 'START NEW GOAL' }}
+              </button>
             </div>
 
             <!-- Content Section -->
@@ -659,7 +791,7 @@ const openExternalLink = (url, type) => {
 
     <!-- Edit Profile Modal -->
     <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" @click.self="showEditModal = false">
-        <div class="w-full max-w-lg bg-tg-bg rounded-t-[2.5rem] p-6 space-y-6 shadow-2xl border-t border-white/10 animate-in slide-in-from-bottom duration-500 max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="w-full max-w-lg bg-tg-bg rounded-t-[2.5rem] p-6 space-y-6 shadow-2xl border-t border-white/10 animate-in slide-in-from-bottom duration-500 max-h-[90vh] flex flex-col overflow-hidden text-white">
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-black uppercase tracking-wider">{{ $t('profile.editProfile') }}</h3>
                 <button @click="showEditModal = false" class="w-10 h-10 glass rounded-full flex items-center justify-center text-xl">✕</button>
@@ -714,6 +846,95 @@ const openExternalLink = (url, type) => {
                 {{ $t('profile.saveChanges') }}
             </button>
         </div>
+    </div>
+
+    <!-- Donation Modal -->
+    <div v-if="showDonationModal" class="fixed inset-0 z-[110] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="w-full max-w-md glass rounded-[2.5rem] border border-white/10 p-6 space-y-6 animate-in slide-in-from-bottom-full duration-500 text-white">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-xl font-black">Kirim Saweran 🎁</h3>
+            <p class="text-xs text-tg-hint font-bold uppercase tracking-wider">Dukung {{ user.name }}!</p>
+          </div>
+          <button @click="showDonationModal = false" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl">✕</button>
+        </div>
+
+        <div class="space-y-3 text-left">
+          <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint px-1">Pilih Nominal</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button v-for="amount in donationPresets" :key="amount"
+                    @click="donationAmount = amount"
+                    :class="donationAmount === amount ? 'bg-tg-button border-tg-button text-white shadow-lg shadow-tg-button/30' : 'bg-white/5 border-white/5 text-tg-hint'"
+                    class="py-3 rounded-xl border text-xs font-black transition-all active:scale-90">
+              {{ (amount/1000).toFixed(0) }}K
+            </button>
+            <div class="relative group">
+              <input type="number" v-model="donationAmount" placeholder="Lainnya"
+                     class="w-full py-3 px-3 bg-white/10 border border-white/10 rounded-xl text-xs font-black text-center text-white focus:outline-none focus:border-tg-button transition-all">
+            </div>
+          </div>
+
+          <!-- Message -->
+          <div class="space-y-2 mt-4">
+            <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint px-1">Pesan Personal</label>
+            <textarea 
+              v-model="donationMessage"
+              placeholder="Berikan pesan penyemangat..."
+              class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:border-tg-button outline-none transition-all resize-none text-white"
+              rows="3"
+              maxlength="255"
+            ></textarea>
+          </div>
+        </div>
+
+        <div v-if="donationError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+          <p class="text-[10px] text-red-400 font-bold uppercase tracking-tight">{{ donationError }}</p>
+        </div>
+
+        <button @click="processDonation" 
+                :disabled="isDonating || donationAmount <= 0"
+                class="w-full py-4 bg-tg-button text-white rounded-2xl font-black text-sm shadow-xl shadow-tg-button/30 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2">
+          <span v-if="isDonating" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          {{ isDonating ? 'MEMPROSES...' : `KIRIM Rp ${donationAmount.toLocaleString('id-ID')}` }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Goal Management Modal -->
+    <div v-if="showGoalModal" class="fixed inset-0 z-[110] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="w-full max-w-md glass rounded-[2.5rem] border border-white/10 p-6 space-y-6 animate-in slide-in-from-bottom-full duration-500 text-white">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-xl font-black">🎯 {{ user.donation_goal > 0 ? 'Update Goal' : 'Start New Goal' }}</h3>
+            <p class="text-xs text-tg-hint font-bold uppercase tracking-wider">Tetapkan target dukungan Anda</p>
+          </div>
+          <button @click="showGoalModal = false" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl">✕</button>
+        </div>
+
+        <div class="space-y-5">
+          <div class="space-y-2 text-left">
+            <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint ml-2">Goal Title</label>
+            <input v-model="goalData.title" type="text" placeholder="Contoh: Dana Video Baru" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold focus:border-tg-button outline-none transition-all text-white" />
+          </div>
+
+          <div class="space-y-2 text-left">
+            <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint ml-2">Target Amount (Rp)</label>
+            <input v-model="goalData.amount" type="number" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold focus:border-tg-button outline-none transition-all text-white" />
+          </div>
+
+          <div v-if="user.donation_goal > 0" class="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl space-y-2 text-left">
+            <p class="text-[10px] text-yellow-500 font-black uppercase tracking-wider">Reset Progress?</p>
+            <p class="text-[9px] text-tg-hint font-medium">Mulai dari Rp 0 jika Anda memulai project baru.</p>
+            <div class="flex gap-2 mt-2">
+                <button @click="updateGoal(true)" class="flex-1 py-2 bg-yellow-500 text-black text-[10px] font-black rounded-lg">YA, RESET PROGRESS</button>
+                <button @click="updateGoal(false)" class="flex-1 py-2 bg-white/5 text-white text-[10px] font-black rounded-lg">TIDAK, TERUSKAN</button>
+            </div>
+          </div>
+          <button v-else @click="updateGoal(true)" class="w-full py-4 bg-tg-button text-white rounded-2xl font-black text-sm shadow-xl shadow-tg-button/30 active:scale-95 transition-all">
+            SIMPAN & MULAI GOAL
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
