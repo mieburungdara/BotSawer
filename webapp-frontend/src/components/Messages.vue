@@ -265,12 +265,12 @@ watch(() => props.initialTargetId, async (newId) => {
 </script>
 
 <template>
-  <div class="relative min-h-screen pb-6">
+  <div class="relative">
 
     <!-- ======================== -->
     <!-- VIEW: CONVERSATION LIST  -->
     <!-- ======================== -->
-    <div v-if="view === 'list'" class="space-y-4 animate-in fade-in duration-300 -mx-2">
+    <div v-if="view === 'list'" class="space-y-4 animate-in fade-in duration-300 -mx-2 pb-10">
       <!-- Header -->
       <div class="flex items-center justify-between px-3 pt-4 mb-2">
         <div>
@@ -361,7 +361,7 @@ watch(() => props.initialTargetId, async (newId) => {
     <!-- ======================== -->
     <!-- VIEW: CHAT               -->
     <!-- ======================== -->
-    <div v-if="view === 'chat'" class="flex flex-col h-screen animate-in fade-in zoom-in-95 duration-500 relative -mx-4" style="height: calc(100vh - 80px)">
+    <div v-if="view === 'chat'" class="flex flex-col animate-in fade-in zoom-in-95 duration-500 relative -mx-4" style="height: calc(100vh - 80px)">
       
       <!-- Dynamic Background Decoration -->
       <div class="absolute inset-0 bg-tg-bg overflow-hidden pointer-events-none z-0">
