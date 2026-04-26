@@ -25,6 +25,7 @@ const isFetchingMore = ref(false)
 const hasMoreMessages = ref(true)
 const messageInput = ref(null)
 const messagesContainer = ref(null)
+const isRefreshing = ref(false)
 
 // ===========================
 // API Helpers
@@ -210,8 +211,31 @@ const isSelf = (senderId) => {
 }
 
 // ===========================
-// Polling removed as per user request to save server resources.
-// Data is fetched on-demand when opening conversations or chat views.
+const handleRefresh = async () => {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+  
+  try {
+    if (view.value === 'list') {
+      await fetchConversations()
+    } else if (view.value === 'chat' && activeConversation.value) {
+      await fetchMessages()
+      await markRead()
+    }
+    
+    // Success feedback
+    if (tg?.HapticFeedback) {
+      tg.HapticFeedback.notificationOccurred('success')
+    }
+  } catch (e) {
+    console.error('Refresh error:', e)
+  } finally {
+    // Artificial delay for better UX and spam prevention
+    setTimeout(() => {
+      isRefreshing.value = false
+    }, 500)
+  }
+}
 
 // ===========================
 // Navigation
@@ -253,7 +277,17 @@ watch(() => props.initialTargetId, async (newId) => {
           <h1 class="text-2xl font-black tracking-tight">{{ $t('dm.title') }}</h1>
           <p class="text-[11px] text-tg-button font-bold uppercase tracking-[0.15em] mt-0.5">{{ $t('dm.subtitle') }}</p>
         </div>
-        <div class="w-11 h-11 bg-tg-button/10 text-tg-button rounded-full flex items-center justify-center text-xl shadow-inner">💬</div>
+        <div class="flex items-center gap-2">
+          <button 
+            @click="handleRefresh" 
+            :disabled="isRefreshing || isLoading"
+            class="w-10 h-10 glass rounded-full flex items-center justify-center text-lg active:scale-90 transition-all disabled:opacity-50"
+            :class="{ 'animate-spin': isRefreshing }"
+          >
+            🔄
+          </button>
+          <div class="w-11 h-11 bg-tg-button/10 text-tg-button rounded-full flex items-center justify-center text-xl shadow-inner">💬</div>
+        </div>
       </div>
 
       <!-- Loading -->
@@ -358,6 +392,15 @@ watch(() => props.initialTargetId, async (newId) => {
             </div>
             <p class="text-[11px] text-white/40 font-semibold truncate uppercase tracking-wider mt-0.5">@{{ activeConversation?.partner?.username || 'user' }}</p>
           </div>
+          <!-- Chat Refresh Button -->
+          <button 
+            @click="handleRefresh" 
+            :disabled="isRefreshing || isChatLoading"
+            class="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-lg active:scale-90 transition-all disabled:opacity-50"
+            :class="{ 'animate-spin': isRefreshing }"
+          >
+            🔄
+          </button>
         </div>
       </div>
 
