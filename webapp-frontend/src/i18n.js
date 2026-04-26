@@ -84,7 +84,6 @@ const messages = {
       submitFeedback: 'Submit Feedback',
       feedbackType: 'Type',
       feedbackContent: 'Message',
-      feedbackScreenshot: 'Screenshot (Optional)',
       feedbackSuccess: 'Feedback sent successfully!',
       feedbackError: 'Failed to send feedback',
       types: {
@@ -195,7 +194,6 @@ const messages = {
       submitFeedback: 'Kirim Feedback',
       feedbackType: 'Tipe',
       feedbackContent: 'Pesan',
-      feedbackScreenshot: 'Screenshot (Opsional)',
       feedbackSuccess: 'Feedback berhasil dikirim!',
       feedbackError: 'Gagal mengirim feedback',
       types: {

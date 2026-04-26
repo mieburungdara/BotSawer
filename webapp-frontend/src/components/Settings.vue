@@ -16,8 +16,7 @@ const isFeedbackOpen = ref(false)
 const isSubmittingFeedback = ref(false)
 const feedbackData = ref({
     type: 'suggestion',
-    content: '',
-    screenshot: null
+    content: ''
 })
 
 const updateFontSize = (size) => {
@@ -70,21 +69,6 @@ const updateAccent = (color) => {
   html.classList.add(`accent-${color}`)
 }
 
-const handleScreenshot = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (file.size > 2 * 1024 * 1024) {
-        alert("File too large. Max 2MB.");
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        feedbackData.value.screenshot = event.target.result;
-    };
-    reader.readAsDataURL(file);
-}
 
 const sendFeedback = async () => {
     if (!feedbackData.value.content) return;
@@ -97,15 +81,14 @@ const sendFeedback = async () => {
             body: JSON.stringify({ 
                 initData: tg?.initData,
                 type: feedbackData.value.type,
-                content: feedbackData.value.content,
-                screenshot_url: feedbackData.value.screenshot
+                content: feedbackData.value.content
             })
         });
         const result = await response.json();
         if (result.success) {
             alert(t('settings.feedbackSuccess'));
             isFeedbackOpen.value = false;
-            feedbackData.value = { type: 'suggestion', content: '', screenshot: null };
+            feedbackData.value = { type: 'suggestion', content: '' };
         } else {
             alert(result.message);
         }
@@ -410,18 +393,6 @@ const toggleSetting = async (item) => {
               ></textarea>
             </div>
 
-            <!-- Screenshot Attach -->
-            <div class="space-y-2">
-              <label class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.feedbackScreenshot') }}</label>
-              <div class="flex items-center gap-3">
-                <label class="flex-1 h-12 bg-white/5 border border-dashed border-white/10 rounded-2xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all">
-                  <span class="text-lg">🖼️</span>
-                  <span class="text-[10px] font-bold text-tg-hint">{{ feedbackData.screenshot ? 'File Selected' : 'Upload Image' }}</span>
-                  <input type="file" @change="handleScreenshot" accept="image/*" class="hidden">
-                </label>
-                <button v-if="feedbackData.screenshot" @click="feedbackData.screenshot = null" class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center">✕</button>
-              </div>
-            </div>
 
             <!-- Submit Button -->
             <button 

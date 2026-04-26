@@ -21,7 +21,6 @@ router.post('/feedback', async (req, res) => {
             user_id: String(user.telegram_id),
             type: type || 'suggestion',
             content,
-            screenshot_url: screenshot_url || null,
             created_at: new Date()
         });
 
@@ -30,9 +29,6 @@ router.post('/feedback', async (req, res) => {
             const conversation = await dmService.getOrCreateConversation(user.telegram_id, ADMIN_ID);
             
             let message = `📝 *FEEDBACK BARU (${(type || 'suggestion').toUpperCase()})*\n\n${content}`;
-            if (screenshot_url) {
-                message += `\n\n🖼️ [Ada Lampiran Screenshot]`;
-            }
             
             await dmService.sendMessage(conversation.id, user.telegram_id, message);
         } catch (dmError) {
