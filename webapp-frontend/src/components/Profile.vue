@@ -21,9 +21,14 @@ const user = ref({
   is_own: true,
   is_following: false
 })
+const systemConfig = ref({
+  bot_username: 'VesperBot',
+  app_name: 'app'
+})
 
 const gallery = ref([])
 const showFollowModal = ref(false)
+const showShareModal = ref(false)
 const followModalTitle = ref('')
 const followList = ref([])
 const followLoading = ref(false)
@@ -48,6 +53,18 @@ const fetchProfileData = async (targetId = null) => {
     });
     const result = await response.json();
     if (result.success) {
+      // Fetch Config for sharing
+      const configRes = await fetch('/vesper/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ botId: botId })
+      });
+      const configResult = await configRes.json();
+      if (configResult.success) {
+          systemConfig.value.bot_username = configResult.data.bot_username;
+          systemConfig.value.app_name = configResult.data.app_name.toLowerCase().replace(/\s/g, '');
+      }
+
       const data = result.data;
       user.value = {
           telegram_id: data.telegram_id,
@@ -175,6 +192,30 @@ const navigateToUser = (userId) => {
     fetchProfileData(userId);
 }
 
+const getProfileLink = () => {
+    return `https://t.me/${systemConfig.value.bot_username}/${systemConfig.value.app_name}?startapp=profile_${user.value.telegram_id}`;
+}
+
+const copyLink = () => {
+    navigator.clipboard.writeText(getProfileLink());
+    window.Telegram?.WebApp?.showAlert(t('profile.linkCopied'));
+    showShareModal.value = false;
+}
+
+const shareTelegram = () => {
+    const text = encodeURIComponent(`Check out ${user.value.name}'s profile on Vesper!`);
+    const url = `https://t.me/share/url?url=${encodeURIComponent(getProfileLink())}&text=${text}`;
+    window.Telegram?.WebApp?.openTelegramLink(url);
+    showShareModal.value = false;
+}
+
+const shareTwitter = () => {
+    const text = encodeURIComponent(`Check out ${user.value.name}'s profile on Vesper! #VesperApp`);
+    const url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(getProfileLink())}&text=${text}`;
+    window.open(url, '_blank');
+    showShareModal.value = false;
+}
+
 onMounted(() => fetchProfileData(props.targetId))
 watch(() => props.targetId, (newId) => fetchProfileData(newId))
 </script>
@@ -215,6 +256,11 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
                     <div v-if="user.verified" class="absolute -bottom-1 -right-1 w-9 h-9 bg-blue-500 rounded-full border-4 border-tg-bg flex items-center justify-center text-white text-[10px] shadow-lg">
                         ✔
                     </div>
+                    
+                    <!-- Share Button -->
+                    <button @click="showShareModal = true" class="absolute -top-1 -right-1 w-10 h-10 bg-tg-secondary/80 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center text-lg shadow-xl active:scale-90 transition-all">
+                        📤
+                    </button>
                 </div>
                 
                 <div class="text-center mt-5">
@@ -367,6 +413,35 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
                         <div class="text-[10px] text-tg-button font-black uppercase opacity-50">VIEW</div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div v-if="showShareModal" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" @click.self="showShareModal = false">
+        <div class="w-full max-w-lg bg-tg-bg rounded-t-[2.5rem] p-6 space-y-6 shadow-2xl border-t border-white/10 animate-in slide-in-from-bottom duration-500">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-black uppercase tracking-wider">{{ $t('profile.shareProfile') }}</h3>
+                <button @click="showShareModal = false" class="w-10 h-10 glass rounded-full flex items-center justify-center text-xl">✕</button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <button @click="shareTelegram" class="flex flex-col items-center gap-3 p-4 glass rounded-3xl border border-white/5 hover:border-blue-500/30 transition-all">
+                    <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-blue-500/20">✈️</div>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-tg-hint">Telegram</span>
+                </button>
+                <button @click="shareTwitter" class="flex flex-col items-center gap-3 p-4 glass rounded-3xl border border-white/5 hover:border-sky-400/30 transition-all">
+                    <div class="w-12 h-12 bg-sky-400 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-sky-400/20">🐦</div>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-tg-hint">Twitter</span>
+                </button>
+                <button @click="copyLink" class="flex flex-col items-center gap-3 p-4 glass rounded-3xl border border-white/5 hover:border-tg-button/30 transition-all">
+                    <div class="w-12 h-12 bg-tg-button rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-tg-button/20">🔗</div>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-tg-hint">Link</span>
+                </button>
+            </div>
+            
+            <div class="p-4 bg-tg-secondary/30 rounded-2xl border border-white/5">
+                <p class="text-[10px] text-tg-hint font-medium truncate opacity-60">{{ getProfileLink() }}</p>
             </div>
         </div>
     </div>

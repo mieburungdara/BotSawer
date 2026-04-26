@@ -27,6 +27,8 @@ const messages = {
       noFollowers: 'No followers yet.',
       noFollowing: 'Not following anyone yet.',
       message: 'Message',
+      shareProfile: 'Share Profile',
+      linkCopied: 'Link copied to clipboard!',
       badges: {
         title: 'Achievements',
         verified: 'Verified',
@@ -89,6 +91,8 @@ const messages = {
       noFollowers: 'Belum ada pengikut.',
       noFollowing: 'Belum mengikuti siapapun.',
       message: 'Pesan',
+      shareProfile: 'Bagikan Profil',
+      linkCopied: 'Tautan disalin ke papan klip!',
       badges: {
         title: 'Pencapaian',
         verified: 'Terverifikasi',
