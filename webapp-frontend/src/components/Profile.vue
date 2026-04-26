@@ -491,6 +491,9 @@ const openExternalLink = (url, type) => {
                         <span>📝</span>
                         {{ $t('profile.editProfile') }}
                     </button>
+                    <button @click="$emit('nav', 'settings')" class="w-14 h-14 glass flex items-center justify-center rounded-2xl border border-white/10 active:scale-95 transition-all">
+                        <span class="text-xl">⚙️</span>
+                    </button>
                 </template>
                 <template v-else>
                     <button 
@@ -510,10 +513,6 @@ const openExternalLink = (url, type) => {
                         <span class="text-lg">🚫</span>
                     </button>
                 </template>
-                
-                <button @click="$emit('nav', 'settings')" class="w-14 h-14 glass flex items-center justify-center rounded-2xl border border-white/10 active:scale-95 transition-all">
-                    <span class="text-xl">⚙️</span>
-                </button>
             </div>
 
             <!-- Content Section -->
