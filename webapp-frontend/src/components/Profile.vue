@@ -135,14 +135,29 @@ const fetchProfileData = async (targetId = null) => {
       fetchFollowStats(data.telegram_id);
 
       if (data.contents) {
-          gallery.value = data.contents.map(c => ({
-              id: c.id,
-              short_id: c.short_id,
-              privacy: c.privacy || 'public',
-              type: c.media && c.media[0] ? c.media[0].file_type : 'photo',
-              url: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.value.name || 'C') + '&background=random',
-              views: 'New'
-          }));
+          gallery.value = data.contents.map(c => {
+              const primaryMedia = c.media && c.media.length > 0 ? c.media[0] : null;
+              let url = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.value.name || 'C') + '&background=random';
+              
+              if (primaryMedia && primaryMedia.imagekit_url) {
+                  url = primaryMedia.imagekit_url;
+                  // Add blur if no access
+                  if (!c.has_access) {
+                      if (url.includes('?')) url += '&tr=bl-80';
+                      else url += '?tr=bl-80';
+                  }
+              }
+
+              return {
+                  id: c.id,
+                  short_id: c.short_id,
+                  privacy: c.privacy || 'public',
+                  type: primaryMedia ? primaryMedia.file_type : 'photo',
+                  url: url,
+                  views: c.views || 0,
+                  has_access: c.has_access
+              };
+          });
       }
     } else {
         error.value = result.message || 'Gagal memuat profil.';
@@ -351,7 +366,10 @@ const saveProfile = async () => {
 const togglePrivacy = async (item) => {
   if (!user.value.is_own) return;
   
-  const newPrivacy = item.privacy === 'public' ? 'followers_only' : 'public';
+  const privacyOrder = ['public', 'followers_only', 'subscribers_only', 'followed_only'];
+  const currentIndex = privacyOrder.indexOf(item.privacy);
+  const newPrivacy = privacyOrder[(currentIndex + 1) % privacyOrder.length];
+  
   try {
     const tg = window.Telegram?.WebApp;
     const botId = localStorage.getItem('vesper_bot_id');
@@ -371,7 +389,7 @@ const togglePrivacy = async (item) => {
     const result = await response.json();
     if (result.success) {
       item.privacy = newPrivacy;
-      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     }
   } catch (e) {
     console.error("Toggle Privacy Error:", e);
@@ -845,22 +863,53 @@ const cancelSub = async () => {
                 <!-- Media Grid -->
                 <div v-if="gallery.length > 0" class="grid grid-cols-3 gap-1 px-1">
                     <div v-for="item in gallery" :key="item.id" class="aspect-square relative group overflow-hidden rounded-xl bg-tg-secondary/30">
-                        <img :src="item.url" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
+                        <img :src="item.url" class="w-full h-full object-cover transition-transform duration-700" :class="{'group-hover:scale-110': item.has_access}" />
+                        
+                        <!-- Locked Overlay -->
+                        <div v-if="!item.has_access" class="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="text-2xl drop-shadow-lg">🔒</span>
+                                <span class="text-[8px] font-black uppercase text-white/80 tracking-widest bg-black/40 px-2 py-0.5 rounded-full">
+                                    {{ item.privacy.replace('_', ' ') }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div v-if="item.has_access" class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
                             <span class="text-white text-[9px] font-black tracking-widest uppercase">👁️ {{ item.views }}</span>
                         </div>
                         <div v-if="item.type === 'video'" class="absolute top-2 right-2 w-6 h-6 bg-black/40 backdrop-blur-md rounded-lg flex items-center justify-center text-[10px]">
                             📹
                         </div>
 
-                        <!-- Privacy Toggle for Owner -->
-                        <button v-if="user.is_own" 
+                        <!-- Privacy Indicators -->
+                        <div v-if="user.is_own" 
                                 @click.stop="togglePrivacy(item)"
-                                class="absolute top-2 left-2 w-8 h-8 glass rounded-lg flex items-center justify-center text-xs shadow-lg active:scale-110 transition-all z-10">
-                            {{ item.privacy === 'public' ? '🔓' : '🔒' }}
-                        </button>
-                        <div v-else-if="item.privacy === 'followers_only'" class="absolute top-2 left-2 w-6 h-6 bg-purple-500/80 backdrop-blur-md rounded-lg flex items-center justify-center text-[10px] z-10">
-                            🔒
+                                class="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                            <div class="w-8 h-8 glass rounded-lg flex items-center justify-center text-[10px] shadow-lg active:scale-110 transition-all"
+                                 :class="{
+                                     'border-tg-button/50 text-tg-button': item.privacy === 'public',
+                                     'border-purple-500/50 text-purple-400': item.privacy === 'followers_only',
+                                     'border-yellow-500/50 text-yellow-400': item.privacy === 'subscribers_only',
+                                     'border-blue-500/50 text-blue-400': item.privacy === 'followed_only'
+                                 }">
+                                {{ 
+                                    item.privacy === 'public' ? '🔓' : 
+                                    item.privacy === 'followers_only' ? '👥' : 
+                                    item.privacy === 'subscribers_only' ? '⭐' : '🤝' 
+                                }}
+                            </div>
+                            <div class="px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded-md text-[6px] font-black uppercase tracking-tighter text-white/70">
+                                {{ item.privacy.replace('_', ' ') }}
+                            </div>
+                        </div>
+                        <div v-else-if="item.privacy !== 'public'" class="absolute top-2 left-2 flex flex-col gap-1 z-10 pointer-events-none">
+                             <div class="w-6 h-6 bg-black/40 backdrop-blur-md rounded-lg flex items-center justify-center text-[10px]">
+                                {{ 
+                                    item.privacy === 'followers_only' ? '👥' : 
+                                    item.privacy === 'subscribers_only' ? '⭐' : '🤝' 
+                                }}
+                             </div>
                         </div>
                     </div>
                 </div>

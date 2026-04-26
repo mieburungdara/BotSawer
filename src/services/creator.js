@@ -262,9 +262,28 @@ class CreatorService {
       .leftJoin('bookmarks as b', function() {
         this.on('c.id', '=', 'b.content_id').andOn('b.user_id', '=', db.raw('?', [followerId]))
       })
+      .leftJoin('subscriptions as s', function() {
+          this.on('u.telegram_id', '=', 's.creator_uuid')
+              .andOn('s.subscriber_uuid', '=', db.raw('?', [followerId]))
+              .andOn('s.status', '=', db.raw("'active'"))
+      })
+      .leftJoin('follows as mf', function() {
+          this.on('f.follower_id', '=', 'mf.followed_id')
+              .andOn('f.followed_id', '=', 'mf.follower_id')
+      })
       .where('f.follower_id', followerId)
       .where('c.status', 'posted')
       .where('u.is_private', 0)
+      .where(function() {
+          this.where('c.privacy', 'public')
+              .orWhere('c.privacy', 'followers_only')
+              .orWhere(function() {
+                  this.where('c.privacy', 'subscribers_only').andWhereNot('s.id', null)
+              })
+              .orWhere(function() {
+                  this.where('c.privacy', 'followed_only').andWhereNot('mf.id', null)
+              })
+      })
       .select(
         'c.id',
         'c.short_id', 

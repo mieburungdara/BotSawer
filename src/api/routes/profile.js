@@ -42,14 +42,23 @@ router.post('/profile', async (req, res) => {
           .where('user_id', targetId)
           .whereNot('status', 'deleted');
 
-        // Privacy Filter
-        if (user.telegram_id !== targetId) {
-            if (isFollowing) {
-                contentsQuery.whereIn('privacy', ['public', 'followers_only']);
-            } else {
-                contentsQuery.where('privacy', 'public');
-            }
-        }
+        // Privacy Filter - Removed restriction, let's return all but flag access
+        const isSubscribed = await db('subscriptions')
+            .where('subscriber_uuid', user.telegram_id)
+            .where('creator_uuid', targetId)
+            .where('status', 'active')
+            .first();
+        
+        const theyFollowMe = await followService.isFollowing(targetId, user.telegram_id);
+        
+        const checkAccess = (p) => {
+            if (user.telegram_id === targetId) return true;
+            if (p === 'public') return true;
+            if (p === 'followers_only' && isFollowing) return true;
+            if (p === 'subscribers_only' && isSubscribed) return true;
+            if (p === 'followed_only' && theyFollowMe) return true;
+            return false;
+        };
 
         const contents = await contentsQuery
           .select(
@@ -61,7 +70,17 @@ router.post('/profile', async (req, res) => {
 
         contentsWithMedia = await Promise.all(contents.map(async (content) => {
           const media = await db('media_files_raw').where('content_id', content.id);
-          return { ...content, media };
+          const hasAccess = checkAccess(content.privacy);
+          
+          return { 
+              ...content, 
+              media: media.map(m => ({
+                  ...m,
+                  // If no access and it's a photo, we'll blur it on the frontend via ImageKit transform if possible
+                  // For now we just flag it
+              })),
+              has_access: hasAccess
+          };
         }));
       }
 

@@ -26,12 +26,30 @@ router.post('/content', async (req, res) => {
       const creator = await db('users').where('id', content.user_id).first();
       const mediaFiles = await db('media_files').where('content_id', content.id);
 
+      // ACCESS CHECK
+      let hasAccess = isOwner;
+      if (!isOwner) {
+          if (content.privacy === 'public') {
+              hasAccess = true;
+          } else if (content.privacy === 'followers_only') {
+              const follow = await db('follows').where('follower_id', user.telegram_id).where('followed_id', content.user_id).first();
+              if (follow) hasAccess = true;
+          } else if (content.privacy === 'subscribers_only') {
+              const sub = await db('subscriptions').where('subscriber_uuid', user.telegram_id).where('creator_uuid', content.user_id).where('status', 'active').first();
+              if (sub) hasAccess = true;
+          } else if (content.privacy === 'followed_only') {
+              // Author follows requester
+              const follow = await db('follows').where('follower_id', content.user_id).where('followed_id', user.telegram_id).first();
+              if (follow) hasAccess = true;
+          }
+      }
+
       const mediaList = await Promise.all(mediaFiles.map(async (media) => {
         let imagekitUrl = media.imagekit_url;
         if (imagekitUrl) {
           const transformations = [];
-          if (!isOwner) {
-            transformations.push({ blur: '30' });
+          if (!hasAccess) {
+            transformations.push({ blur: '80' }); // Stronger blur if no access
           }
           imagekitUrl = await ik.signUrl(imagekitUrl, transformations);
         }
@@ -40,6 +58,7 @@ router.post('/content', async (req, res) => {
           id: media.id,
           file_type: media.file_type,
           imagekit_url: imagekitUrl,
+          has_access: hasAccess,
           has_thumbnail_source: (media.file_type === 'photo' && media.telegram_file_id) || media.thumb_file_id
         };
       }));
@@ -115,7 +134,8 @@ router.post('/content', async (req, res) => {
     // 4. UPDATE PRIVACY
     if (action === 'update_privacy') {
         const { privacy } = req.body;
-        if (!['public', 'followers_only'].includes(privacy)) {
+        const allowed = ['public', 'followers_only', 'subscribers_only', 'followed_only'];
+        if (!allowed.includes(privacy)) {
             throw new Error('Tipe privacy tidak valid');
         }
         await db('contents').where('short_id', short_id).where('user_id', user.id).update({ privacy });
