@@ -74,24 +74,30 @@ const healthHandler = (req, res) => res.json({ status: 'ok', project: 'VesperApp
 app.get('/health', healthHandler);
 app.get('/vesper/health', healthHandler);
 
+// Static files (with subfolder support)
+app.use('/vesper', express.static(path.join(__dirname, 'public/webapp')));
+app.use(express.static(path.join(__dirname, 'public/webapp')));
+
 // WebApp Serving Logic
-app.get(['/', '/vesper', '/vesper/*', '/vesper/public/webapp*'], (req, res) => {
-  // 1. Skip API calls
-  if (req.url.startsWith('/api') || req.url.startsWith('/vesper/api')) return;
+app.get(['/', '/vesper', '/vesper/*', '/vesper/public/webapp*'], (req, res, next) => {
+  // 1. Skip API calls - let the API router handle them
+  if (req.url.startsWith('/api') || req.url.startsWith('/vesper/api')) {
+    return next();
+  }
   
   // 2. Skip actual assets to avoid serving HTML as JS/CSS (important for 404 assets)
   if (/\.(js|css|svg|png|jpg|jpeg|gif|ico|json|woff2?)$/.test(req.path)) {
-      return res.status(404).send('Asset not found');
+      return next();
   }
 
   // 3. Send index.html for everything else (SPA routing fallback)
   const indexPath = path.join(__dirname, 'public/webapp/index.html');
-  res.sendFile(indexPath);
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      next();
+    }
+  });
 });
-
-// Static files (with subfolder support)
-app.use('/vesper', express.static(path.join(__dirname, 'public/webapp')));
-app.use(express.static(path.join(__dirname, 'public/webapp')));
 
 
 // Bot Initialization
