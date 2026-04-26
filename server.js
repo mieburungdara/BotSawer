@@ -40,6 +40,7 @@ const followRoutes = require('./src/api/routes/follow');
 const miscRoutes = require('./src/api/routes/misc');
 const directMessageRoutes = require('./src/api/routes/direct_message');
 const blockRoutes = require('./src/api/routes/block');
+const feedbackRoutes = require('./src/api/routes/feedback');
 
 const apiRouter = express.Router();
 apiRouter.use(contentRoutes);
@@ -53,6 +54,7 @@ apiRouter.use(withdrawalRoutes);
 apiRouter.use(followRoutes);
 apiRouter.use(directMessageRoutes);
 apiRouter.use(blockRoutes);
+apiRouter.use(feedbackRoutes);
 apiRouter.use(miscRoutes); // miscRoutes has /dashboard, /ecosystem, /config
 
 // Catch-all API 404 to return JSON instead of HTML

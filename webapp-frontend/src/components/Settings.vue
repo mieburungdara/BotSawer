@@ -12,6 +12,14 @@ const isAppearanceExpanded = ref(false)
 const theme = ref(localStorage.getItem('vesper_theme') || 'auto')
 const accentColor = ref(localStorage.getItem('vesper_accent') || 'blue')
 
+const isFeedbackOpen = ref(false)
+const isSubmittingFeedback = ref(false)
+const feedbackData = ref({
+    type: 'suggestion',
+    content: '',
+    screenshot: null
+})
+
 const updateFontSize = (size) => {
   fontSize.value = size
   localStorage.setItem('vesper_font_size', size)
@@ -62,10 +70,58 @@ const updateAccent = (color) => {
   html.classList.add(`accent-${color}`)
 }
 
+const handleScreenshot = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 2 * 1024 * 1024) {
+        alert("File too large. Max 2MB.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        feedbackData.value.screenshot = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+const sendFeedback = async () => {
+    if (!feedbackData.value.content) return;
+    
+    isSubmittingFeedback.value = true;
+    try {
+        const response = await fetch('/vesper/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                initData: tg?.initData,
+                type: feedbackData.value.type,
+                content: feedbackData.value.content,
+                screenshot_url: feedbackData.value.screenshot
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(t('settings.feedbackSuccess'));
+            isFeedbackOpen.value = false;
+            feedbackData.value = { type: 'suggestion', content: '', screenshot: null };
+        } else {
+            alert(result.message);
+        }
+    } catch (e) {
+        console.error("Feedback error:", e);
+        alert(t('settings.feedbackError'));
+    } finally {
+        isSubmittingFeedback.value = false;
+    }
+}
+
 const settings = ref([
   { id: 'social', title: t('settings.socialLinks'), icon: '🔗', desc: t('settings.socialLinksDesc'), action: () => emit('nav', 'profile') },
   { id: 'notifications', title: t('settings.notifications'), icon: '🔔', desc: t('settings.notifDesc'), toggle: true, value: true, aria: t('settings.notifications') },
   { id: 'private', title: t('settings.privateMode'), icon: '🔒', desc: t('settings.privateDesc'), toggle: true, value: false, aria: t('settings.privateMode') },
+  { id: 'feedback', title: t('settings.feedback'), icon: '💬', desc: t('settings.feedbackDesc'), action: () => isFeedbackOpen.value = true },
   { id: 'payments', title: t('settings.payments'), icon: '💳', desc: t('settings.paymentsDesc'), toggle: false, aria: t('settings.payments') },
   { id: 'contact', title: t('settings.contactAdmin'), icon: '🎧', desc: t('settings.contactDesc'), toggle: false, action: () => emit('nav', 'help'), aria: t('settings.contactAdmin') },
 ])
@@ -306,7 +362,6 @@ const toggleSetting = async (item) => {
       </div>
     </div>
 
-    <!-- Footer Links -->
     <div class="pt-4 space-y-4 text-center">
        <button 
          @click="window.Telegram?.WebApp?.close()"
@@ -316,5 +371,70 @@ const toggleSetting = async (item) => {
          {{ $t('settings.closeApp') }}
        </button>
     </div>
+
+    <!-- Feedback Modal -->
+    <Teleport to="body">
+      <div v-if="isFeedbackOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div @click="isFeedbackOpen = false" class="absolute inset-0 bg-black/60 backdrop-blur-md"></div>
+        
+        <div class="glass w-full max-w-sm rounded-[2.5rem] border border-white/10 p-6 relative animate-in zoom-in duration-300 shadow-2xl">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-black">{{ $t('settings.feedback') }}</h3>
+            <button @click="isFeedbackOpen = false" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-tg-hint">✕</button>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Type Selector -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.feedbackType') }}</label>
+              <div class="bg-black/20 p-1 rounded-2xl flex gap-1 border border-white/5">
+                <button 
+                  v-for="type in ['bug', 'suggestion', 'other']" 
+                  :key="type"
+                  @click="feedbackData.type = type"
+                  :class="feedbackData.type === type ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+                  class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                >
+                  {{ $t(`settings.types.${type}`) }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.feedbackContent') }}</label>
+              <textarea 
+                v-model="feedbackData.content"
+                class="w-full h-32 bg-black/20 border border-white/5 rounded-2xl p-4 text-xs resize-none focus:outline-none focus:border-tg-button/50 transition-colors"
+                :placeholder="$t('settings.feedbackDesc')"
+              ></textarea>
+            </div>
+
+            <!-- Screenshot Attach -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.feedbackScreenshot') }}</label>
+              <div class="flex items-center gap-3">
+                <label class="flex-1 h-12 bg-white/5 border border-dashed border-white/10 rounded-2xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all">
+                  <span class="text-lg">🖼️</span>
+                  <span class="text-[10px] font-bold text-tg-hint">{{ feedbackData.screenshot ? 'File Selected' : 'Upload Image' }}</span>
+                  <input type="file" @change="handleScreenshot" accept="image/*" class="hidden">
+                </label>
+                <button v-if="feedbackData.screenshot" @click="feedbackData.screenshot = null" class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center">✕</button>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+              @click="sendFeedback"
+              :disabled="!feedbackData.content || isSubmittingFeedback"
+              class="w-full py-4 rounded-2xl bg-tg-button text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-tg-button/30 disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <span v-if="isSubmittingFeedback" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+              {{ isSubmittingFeedback ? 'Sending...' : $t('settings.submitFeedback') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

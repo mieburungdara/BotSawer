@@ -79,6 +79,19 @@ const messages = {
         light: 'Light',
         dark: 'Dark'
       },
+      feedback: 'Feedback & Bug Report',
+      feedbackDesc: 'Report bugs or share suggestions',
+      submitFeedback: 'Submit Feedback',
+      feedbackType: 'Type',
+      feedbackContent: 'Message',
+      feedbackScreenshot: 'Screenshot (Optional)',
+      feedbackSuccess: 'Feedback sent successfully!',
+      feedbackError: 'Failed to send feedback',
+      types: {
+        bug: 'Bug Report',
+        suggestion: 'Suggestion',
+        other: 'Other'
+      },
       closeApp: 'Close Vesper'
     },
     dm: {
@@ -176,6 +189,19 @@ const messages = {
         auto: 'Auto',
         light: 'Terang',
         dark: 'Gelap'
+      },
+      feedback: 'Feedback & Bug Report',
+      feedbackDesc: 'Laporkan bug atau beri saran',
+      submitFeedback: 'Kirim Feedback',
+      feedbackType: 'Tipe',
+      feedbackContent: 'Pesan',
+      feedbackScreenshot: 'Screenshot (Opsional)',
+      feedbackSuccess: 'Feedback berhasil dikirim!',
+      feedbackError: 'Gagal mengirim feedback',
+      types: {
+        bug: 'Laporan Bug',
+        suggestion: 'Saran',
+        other: 'Lainnya'
       },
       closeApp: 'Tutup Vesper',
       message: 'Pesan'
