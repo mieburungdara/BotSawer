@@ -19,7 +19,10 @@ const user = ref({
   telegram_id: null,
   badges: [],
   is_own: true,
-  is_following: false
+  is_following: false,
+  instagram_url: null,
+  tiktok_url: null,
+  portfolio_url: null
 })
 const systemConfig = ref({
   bot_username: 'VesperBot',
@@ -29,6 +32,14 @@ const systemConfig = ref({
 const gallery = ref([])
 const showFollowModal = ref(false)
 const showShareModal = ref(false)
+const showEditModal = ref(false)
+const editData = ref({
+    name: '',
+    bio: '',
+    instagram_url: '',
+    tiktok_url: '',
+    portfolio_url: ''
+})
 const followModalTitle = ref('')
 const followList = ref([])
 const followLoading = ref(false)
@@ -79,7 +90,10 @@ const fetchProfileData = async (targetId = null) => {
           photo_url: data.photo_url,
           badges: data.stats.badges || [],
           is_own: data.is_own,
-          is_following: data.is_following
+          is_following: data.is_following,
+          instagram_url: data.instagram_url,
+          tiktok_url: data.tiktok_url,
+          portfolio_url: data.portfolio_url
       };
       
       // Fetch Follow Stats
@@ -216,8 +230,51 @@ const shareTwitter = () => {
     showShareModal.value = false;
 }
 
+const openEditModal = () => {
+    editData.value = {
+        name: user.value.name,
+        bio: user.value.bio,
+        instagram_url: user.value.instagram_url || '',
+        tiktok_url: user.value.tiktok_url || '',
+        portfolio_url: user.value.portfolio_url || ''
+    }
+    showEditModal.value = true
+}
+
+const saveProfile = async () => {
+    try {
+        const response = await fetch('/vesper/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                initData: window.Telegram?.WebApp?.initData,
+                botId: botId,
+                action: 'update',
+                profile_data: editData.value
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            showEditModal.value = false;
+            fetchProfileData(user.value.telegram_id);
+            window.Telegram?.WebApp?.showScanQrPopup({ text: t('profile.updated') }); // Using simple alert/toast would be better but this works as a quick feedback
+            // Actually let's use HapticFeedback if available
+            window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+        } else {
+            alert(result.message || 'Gagal memperbarui profil');
+        }
+    } catch (e) {
+        console.error("Save Profile Error:", e);
+    }
+}
+
 onMounted(() => fetchProfileData(props.targetId))
 watch(() => props.targetId, (newId) => fetchProfileData(newId))
+const openExternalLink = (url) => {
+    if (!url) return;
+    const finalUrl = url.startsWith('http') ? url : `https://${url}`;
+    window.open(finalUrl, '_blank');
+}
 </script>
 
 <template>
@@ -273,6 +330,19 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
                     <p class="text-tg-hint text-xs mt-4 px-8 leading-relaxed font-medium italic opacity-80">
                         "{{ user.bio }}"
                     </p>
+
+                    <!-- Social Links -->
+                    <div v-if="user.instagram_url || user.tiktok_url || user.portfolio_url" class="flex justify-center gap-3 mt-4">
+                        <button v-if="user.instagram_url" @click="openExternalLink(user.instagram_url)" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-pink-500/30 transition-all">
+                            <span class="text-lg">📸</span>
+                        </button>
+                        <button v-if="user.tiktok_url" @click="openExternalLink(user.tiktok_url)" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-white/30 transition-all">
+                            <span class="text-lg">🎵</span>
+                        </button>
+                        <button v-if="user.portfolio_url" @click="openExternalLink(user.portfolio_url)" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-blue-500/30 transition-all">
+                            <span class="text-lg">🌐</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -325,7 +395,7 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
             <!-- Action Buttons -->
             <div class="flex gap-3 px-1">
                 <template v-if="user.is_own">
-                    <button class="flex-1 flex items-center justify-center gap-2 bg-tg-button text-white py-4 rounded-2xl text-xs font-black shadow-xl shadow-tg-button/20 active:scale-95 transition-all">
+                    <button @click="openEditModal" class="flex-1 flex items-center justify-center gap-2 bg-tg-button text-white py-4 rounded-2xl text-xs font-black shadow-xl shadow-tg-button/20 active:scale-95 transition-all">
                         <span>📝</span>
                         {{ $t('profile.editProfile') }}
                     </button>
@@ -443,6 +513,60 @@ watch(() => props.targetId, (newId) => fetchProfileData(newId))
             <div class="p-4 bg-tg-secondary/30 rounded-2xl border border-white/5">
                 <p class="text-[10px] text-tg-hint font-medium truncate opacity-60">{{ getProfileLink() }}</p>
             </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" @click.self="showEditModal = false">
+        <div class="w-full max-w-lg bg-tg-bg rounded-t-[2.5rem] p-6 space-y-6 shadow-2xl border-t border-white/10 animate-in slide-in-from-bottom duration-500 max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-black uppercase tracking-wider">{{ $t('profile.editProfile') }}</h3>
+                <button @click="showEditModal = false" class="w-10 h-10 glass rounded-full flex items-center justify-center text-xl">✕</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-5">
+                <!-- Name -->
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint ml-2">Name</label>
+                    <input v-model="editData.name" type="text" class="w-full bg-tg-secondary/50 border border-white/5 rounded-2xl p-4 text-sm font-bold focus:border-tg-button/50 outline-none transition-all" placeholder="Enter your name" />
+                </div>
+
+                <!-- Bio -->
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint ml-2">Bio</label>
+                    <textarea v-model="editData.bio" rows="3" class="w-full bg-tg-secondary/50 border border-white/5 rounded-2xl p-4 text-sm font-bold focus:border-tg-button/50 outline-none transition-all resize-none" placeholder="Tell us about yourself"></textarea>
+                </div>
+
+                <div class="pt-2 border-t border-white/5">
+                    <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-tg-button mb-4">Social Links</h4>
+                    
+                    <div class="space-y-4">
+                        <!-- Instagram -->
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl shrink-0">📸</div>
+                            <input v-model="editData.instagram_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-pink-500/30 outline-none transition-all" placeholder="Instagram URL or @username" />
+                        </div>
+
+                        <!-- TikTok -->
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl shrink-0">🎵</div>
+                            <input v-model="editData.tiktok_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-white/30 outline-none transition-all" placeholder="TikTok URL or @username" />
+                        </div>
+
+                        <!-- Portfolio -->
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl shrink-0">🌐</div>
+                            <input v-model="editData.portfolio_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-blue-500/30 outline-none transition-all" placeholder="Portfolio or Website URL" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button @click="saveProfile" class="w-full bg-tg-button text-white py-5 rounded-[2rem] text-sm font-black shadow-xl shadow-tg-button/20 active:scale-95 transition-all mt-4 flex items-center justify-center gap-2">
+                <span>💾</span>
+                {{ $t('profile.saveChanges') }}
+            </button>
         </div>
     </div>
   </div>

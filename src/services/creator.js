@@ -31,6 +31,9 @@ class CreatorService {
     if (data.ewallet_type !== undefined) updateData.ewallet_type = data.ewallet_type;
     if (data.ewallet_number !== undefined) updateData.ewallet_number = data.ewallet_number;
     if (data.ewallet_name !== undefined) updateData.ewallet_name = data.ewallet_name;
+    if (data.instagram_url !== undefined) updateData.instagram_url = data.instagram_url;
+    if (data.tiktok_url !== undefined) updateData.tiktok_url = data.tiktok_url;
+    if (data.portfolio_url !== undefined) updateData.portfolio_url = data.portfolio_url;
 
     if (Object.keys(updateData).length === 0) return true;
 
