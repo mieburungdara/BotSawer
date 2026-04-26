@@ -208,12 +208,14 @@ class CreatorService {
     const totalResult = await db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
+      .where('u.is_private', 0)
       .count('c.id as total')
       .first();
 
     const list = await db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
+      .where('u.is_private', 0)
       .select(
         'c.short_id', 
         'c.caption', 
@@ -238,6 +240,7 @@ class CreatorService {
     const baseQuery = db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
+      .where('u.is_private', 0)
       .andWhere('c.caption', 'like', searchTerm);
 
     const totalResult = await baseQuery.clone().count('c.id as total').first();

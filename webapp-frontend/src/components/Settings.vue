@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const emit = defineEmits(['nav'])
@@ -37,12 +37,64 @@ const updateLocale = (lang) => {
 }
 
 const settings = ref([
-  { title: t('settings.socialLinks'), icon: '🔗', desc: t('settings.socialLinksDesc'), action: () => emit('nav', 'profile') },
-  { title: t('settings.notifications'), icon: '🔔', desc: t('settings.notifDesc'), toggle: true, value: true, aria: t('settings.notifications') },
-  { title: t('settings.privateMode'), icon: '🔒', desc: t('settings.privateDesc'), toggle: true, value: false, aria: t('settings.privateMode') },
-  { title: t('settings.payments'), icon: '💳', desc: t('settings.paymentsDesc'), toggle: false, aria: t('settings.payments') },
-  { title: t('settings.contactAdmin'), icon: '🎧', desc: t('settings.contactDesc'), toggle: false, action: () => emit('nav', 'help'), aria: t('settings.contactAdmin') },
+  { id: 'social', title: t('settings.socialLinks'), icon: '🔗', desc: t('settings.socialLinksDesc'), action: () => emit('nav', 'profile') },
+  { id: 'notifications', title: t('settings.notifications'), icon: '🔔', desc: t('settings.notifDesc'), toggle: true, value: true, aria: t('settings.notifications') },
+  { id: 'private', title: t('settings.privateMode'), icon: '🔒', desc: t('settings.privateDesc'), toggle: true, value: false, aria: t('settings.privateMode') },
+  { id: 'payments', title: t('settings.payments'), icon: '💳', desc: t('settings.paymentsDesc'), toggle: false, aria: t('settings.payments') },
+  { id: 'contact', title: t('settings.contactAdmin'), icon: '🎧', desc: t('settings.contactDesc'), toggle: false, action: () => emit('nav', 'help'), aria: t('settings.contactAdmin') },
 ])
+
+const tg = window.Telegram?.WebApp
+
+onMounted(() => {
+    fetchProfile()
+})
+
+const fetchProfile = async () => {
+    try {
+        const response = await fetch('/vesper/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                initData: tg?.initData,
+                action: 'get'
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            // Sync toggles
+            const privateItem = settings.value.find(s => s.id === 'private');
+            if (privateItem) privateItem.value = result.data.is_private === 1;
+        }
+    } catch (e) {
+        console.error("Fetch Settings Error:", e);
+    }
+}
+
+const toggleSetting = async (item) => {
+    if (!item.toggle) return;
+    
+    // Optimistic UI update
+    item.value = !item.value;
+    
+    if (item.id === 'private') {
+        try {
+            await fetch('/vesper/api/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    initData: tg?.initData,
+                    action: 'update',
+                    profile_data: { is_private: item.value ? 1 : 0 }
+                })
+            });
+        } catch (e) {
+            console.error("Update Setting Error:", e);
+            // Revert on error
+            item.value = !item.value;
+        }
+    }
+}
 </script>
 
 <template>
@@ -165,7 +217,7 @@ const settings = ref([
       <div 
         v-for="(item, index) in settings" 
         :key="index" 
-        @click="item.toggle ? item.value = !item.value : (item.action ? item.action() : null)"
+        @click="item.toggle ? toggleSetting(item) : (item.action ? item.action() : null)"
         :aria-label="item.aria"
         role="listitem"
         class="glass p-4 rounded-2xl flex items-center gap-4 border border-white/5 active:bg-white/5 transition-all cursor-pointer"
