@@ -175,6 +175,9 @@ const handleTouchEnd = (e) => {
           <span class="font-bold text-sm">{{ item.label }}</span>
         </button>
       </nav>
+      <div class="p-6 text-[8px] text-tg-hint opacity-50 font-black uppercase tracking-[0.2em] mt-auto">
+        Vesper v1.1.3
+      </div>
     </aside>
 
     <!-- Header Content -->
