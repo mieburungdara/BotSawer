@@ -79,6 +79,8 @@ onMounted(() => {
             const profileId = startParam.replace('profile_', '');
             targetProfileId.value = profileId;
             activeTab.value = 'profile';
+        } else if (startParam === 'wallet') {
+            activeTab.value = 'wallet';
         }
     }
 

@@ -52,10 +52,15 @@ class NotificationService {
    */
   async notifyCreatorDonation(telegramId, amount, shortId, donorName = 'Anonymous', donorMessage = '') {
     const formattedAmount = new Intl.NumberFormat('id-ID').format(amount);
+    
+    // Get bot username for link
+    const bot = await db('bots').where('is_active', 1).first();
+    const botUsername = bot ? bot.username : 'VesperAppBot';
+
     let message = `🎉 <b>Anda Menerima Donasi!</b>\n\n` +
                   `💰 Jumlah: <b>Rp ${formattedAmount}</b>\n` +
                   `👤 Dari: <i>${donorName}</i>\n` +
-                  `📱 Content ID: #${shortId}\n`;
+                  (shortId ? `📱 Content ID: #${shortId}\n` : '');
 
     if (donorMessage) {
       message += `\n💬 <b>Pesan:</b>\n<i>"${donorMessage}"</i>\n`;
@@ -64,7 +69,22 @@ class NotificationService {
     message += `\n📅 Waktu: ${new Date().toLocaleString('id-ID')}\n\n` +
                `Terima kasih atas konten Anda! 🎨`;
 
-    await this.sendToUser(telegramId, message);
+    const keyboard = {
+      inline_keyboard: [[{ text: '💰 Buka Dompet', url: `https://t.me/${botUsername}/webapp?startapp=wallet` }]]
+    };
+
+    try {
+      await this.init();
+      if (!this.telegram) return false;
+      await this.telegram.sendMessage(telegramId, message, { 
+        parse_mode: 'HTML',
+        reply_markup: keyboard
+      });
+      return true;
+    } catch (error) {
+      console.error(`Failed to send donation notification to ${telegramId}:`, error.message);
+      return false;
+    }
   }
 
   /**

@@ -1,4 +1,5 @@
 const db = require('./database');
+const notifications = require('./notifications');
 
 class WalletService {
   /**
@@ -123,6 +124,27 @@ class WalletService {
       await this.updateDonationStreak(trx, senderId);
 
       return true;
+    }).then(async (success) => {
+      if (success) {
+        try {
+          // Fetch Donor Info
+          const donor = await db('users').where('telegram_id', senderId).first();
+          const donorName = donor ? (donor.first_name + (donor.last_name ? ' ' + donor.last_name : '')) : 'Anonymous';
+
+          // Fetch Content Short ID if applicable
+          let shortId = null;
+          if (contentId) {
+            const content = await db('contents').where('id', contentId).first();
+            if (content) shortId = content.short_id;
+          }
+
+          // Send Notification
+          await notifications.notifyCreatorDonation(receiverId, amount, shortId, donorName, message);
+        } catch (notifErr) {
+          console.error('Failed to send donation notification:', notifErr.message);
+        }
+      }
+      return success;
     });
   }
 
