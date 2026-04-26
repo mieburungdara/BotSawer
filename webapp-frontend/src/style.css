@@ -13,6 +13,7 @@
 
 :root {
   --base-font-size: 16px;
+  --base-font-family: 'Inter', sans-serif;
 }
 
 @layer base {
@@ -26,7 +27,7 @@
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
     overflow-x: hidden;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--base-font-family);
   }
 }
 
@@ -34,10 +35,10 @@
 .font-size-medium { --base-font-size: 16px; }
 .font-size-large { --base-font-size: 18px; }
 
-.font-family-inter { font-family: 'Inter', sans-serif; }
-.font-family-roboto { font-family: 'Roboto', sans-serif; }
-.font-family-outfit { font-family: 'Outfit', sans-serif; }
-.font-family-montserrat { font-family: 'Montserrat', sans-serif; }
+.font-family-inter { --base-font-family: 'Inter', sans-serif; }
+.font-family-roboto { --base-font-family: 'Roboto', sans-serif; }
+.font-family-outfit { --base-font-family: 'Outfit', sans-serif; }
+.font-family-montserrat { --base-font-family: 'Montserrat', sans-serif; }
 
 .glass {
   background-color: rgba(23, 33, 43, 0.6);
