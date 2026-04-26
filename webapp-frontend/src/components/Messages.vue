@@ -25,7 +25,6 @@ const isFetchingMore = ref(false)
 const hasMoreMessages = ref(true)
 const messageInput = ref(null)
 const messagesContainer = ref(null)
-let pollInterval = null
 
 // ===========================
 // API Helpers
@@ -77,7 +76,6 @@ const openChat = async (conversationId, partner) => {
   isChatLoading.value = true
   messages.value = []
   hasMoreMessages.value = true
-  startPolling()
   await fetchMessages()
   await markRead()
   isChatLoading.value = false
@@ -97,7 +95,6 @@ const openChatWithTarget = async (targetId) => {
         partner: conv?.partner || { display_name: 'User', photo_url: null, username: '' }
       }
       hasMoreMessages.value = true
-      startPolling()
       await fetchMessages()
       await markRead()
     }
@@ -213,50 +210,17 @@ const isSelf = (senderId) => {
 }
 
 // ===========================
-// Polling
-// ===========================
-const startPolling = () => {
-  stopPolling()
-  pollInterval = setInterval(async () => {
-    if (view.value === 'chat' && activeConversation.value) {
-      // Polling new messages logic
-      const result = await apiCall({
-        action: 'get_messages',
-        conversationId: activeConversation.value.id,
-        limit: 50,
-        offset: 0
-      })
-      if (result.success) {
-        const newMsgs = result.data.filter(nm => !messages.value.find(m => m.id === nm.id))
-        if (newMsgs.length > 0) {
-          messages.value = [...messages.value, ...newMsgs]
-          await scrollToBottom()
-          await markRead()
-        }
-      }
-    } else if (view.value === 'list') {
-      await fetchConversations()
-    }
-  }, 3000)
-}
-
-const stopPolling = () => {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-    pollInterval = null
-  }
-}
+// Polling removed as per user request to save server resources.
+// Data is fetched on-demand when opening conversations or chat views.
 
 // ===========================
 // Navigation
 // ===========================
 const goBack = () => {
-  stopPolling()
   view.value = 'list'
   activeConversation.value = null
   messages.value = []
   fetchConversations()
-  startPolling()
 }
 
 // ===========================
@@ -266,12 +230,10 @@ onMounted(async () => {
   await fetchConversations()
   if (props.initialTargetId) {
     await openChatWithTarget(props.initialTargetId)
-  } else {
-    startPolling()
   }
 })
 
-onUnmounted(() => stopPolling())
+onUnmounted(() => {})
 
 watch(() => props.initialTargetId, async (newId) => {
   if (newId) await openChatWithTarget(newId)
