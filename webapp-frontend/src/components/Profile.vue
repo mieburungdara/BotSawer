@@ -299,13 +299,8 @@ const openExternalLink = (url, type) => {
     }
 
     if (deepLink) {
-        // Attempt to trigger the native app
+        // Trigger the native app only (no fallback to web)
         window.location.href = deepLink;
-        
-        // Fallback to web after 2 seconds if the app didn't open
-        setTimeout(() => {
-            window.open(webUrl, '_blank');
-        }, 2000);
     } else {
         window.open(webUrl, '_blank');
     }
