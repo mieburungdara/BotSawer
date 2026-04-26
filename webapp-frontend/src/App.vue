@@ -59,6 +59,16 @@ onMounted(() => {
         localStorage.setItem('vesper_bot_id', botIdParam);
     }
     
+    // Handle Deep Links (startapp)
+    const startParam = tg.initDataUnsafe?.start_param;
+    if (startParam) {
+        if (startParam.startsWith('profile_')) {
+            const profileId = startParam.replace('profile_', '');
+            targetProfileId.value = profileId;
+            activeTab.value = 'profile';
+        }
+    }
+
     fetchBalance()
     fetchUnreadCount()
     unreadPollInterval = setInterval(fetchUnreadCount, 5000)
