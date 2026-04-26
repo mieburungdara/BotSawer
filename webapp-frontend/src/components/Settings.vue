@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+const emit = defineEmits(['nav'])
 const { t, locale } = useI18n()
 
 const fontSize = ref(localStorage.getItem('vesper_font_size') || 'medium')
@@ -24,6 +25,7 @@ const updateLocale = (lang) => {
 }
 
 const settings = ref([
+  { title: t('settings.socialLinks'), icon: '🔗', desc: t('settings.socialLinksDesc'), action: () => emit('nav', 'profile') },
   { title: t('settings.notifications'), icon: '🔔', desc: t('settings.notifDesc'), toggle: true, value: true, aria: t('settings.notifications') },
   { title: t('settings.privateMode'), icon: '🔒', desc: t('settings.privateDesc'), toggle: true, value: false, aria: t('settings.privateMode') },
   { title: t('settings.payments'), icon: '💳', desc: t('settings.paymentsDesc'), toggle: false, aria: t('settings.payments') },
@@ -47,7 +49,7 @@ const settings = ref([
         <h3 class="text-sm font-bold">Admin Vesper</h3>
         <p class="text-[10px] text-tg-hint">{{ $t('settings.verifiedSince') }} 2024</p>
       </div>
-      <button class="text-tg-button text-xs font-bold" :aria-label="$t('settings.change')">{{ $t('settings.change') }}</button>
+      <button @click="emit('nav', 'profile')" class="text-tg-button text-xs font-bold" :aria-label="$t('settings.change')">{{ $t('settings.change') }}</button>
     </div>
 
     <!-- Accessibility: Font Size & Language -->
@@ -103,7 +105,7 @@ const settings = ref([
       <div 
         v-for="(item, index) in settings" 
         :key="index" 
-        @click="item.toggle ? item.value = !item.value : null"
+        @click="item.toggle ? item.value = !item.value : (item.action ? item.action() : null)"
         :aria-label="item.aria"
         role="listitem"
         class="glass p-4 rounded-2xl flex items-center gap-4 border border-white/5 active:bg-white/5 transition-all cursor-pointer"

@@ -84,7 +84,7 @@ const fetchBalance = async () => {
 }
 
 const navigate = (id) => {
-  if (id !== 'profile') targetProfileId.value = null
+  if (id === 'profile' || id !== 'profile') targetProfileId.value = null
   activeTab.value = id
   isSidebarOpen.value = false
 }
