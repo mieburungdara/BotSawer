@@ -233,6 +233,41 @@ class CreatorService {
   }
 
   /**
+   * Get contents from followed creators (Personalized Feed)
+   */
+  async getFollowedContents(followerId, limit = 20, offset = 0) {
+    const totalResult = await db('contents as c')
+      .join('users as u', 'c.user_id', 'u.telegram_id')
+      .join('follows as f', 'u.telegram_id', 'f.followed_id')
+      .where('f.follower_id', followerId)
+      .where('c.status', 'posted')
+      .where('u.is_private', 0)
+      .count('c.id as total')
+      .first();
+
+    const list = await db('contents as c')
+      .join('users as u', 'c.user_id', 'u.telegram_id')
+      .join('follows as f', 'u.telegram_id', 'f.followed_id')
+      .where('f.follower_id', followerId)
+      .where('c.status', 'posted')
+      .where('u.is_private', 0)
+      .select(
+        'c.short_id', 
+        'c.caption', 
+        'c.created_at', 
+        'u.display_name', 
+        'u.username', 
+        'u.photo_url',
+        'u.is_verified'
+      )
+      .orderBy('c.created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    return { list, total: parseInt(totalResult.total || 0) };
+  }
+
+  /**
    * Search public contents
    */
   async searchContents(query, limit = 20, offset = 0) {

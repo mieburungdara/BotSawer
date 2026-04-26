@@ -4,6 +4,13 @@ import { ref, onMounted } from 'vue'
 const isLoading = ref(true)
 const emit = defineEmits(['navigate'])
 
+// Feed State
+const feedItems = ref([])
+const isFeedLoading = ref(false)
+const hasMoreFeed = ref(true)
+const currentFeedOffset = ref(0)
+const feedLimit = 10
+
 const quickLinks = [
   { id: 'explore', label: 'Explore', icon: '🌍', color: 'bg-blue-500/10 text-blue-500' },
   { id: 'profile', label: 'Profile', icon: '👤', color: 'bg-purple-500/10 text-purple-500' },
@@ -45,7 +52,65 @@ const fetchDashboardData = async () => {
   }
 }
 
-onMounted(fetchDashboardData)
+const fetchFeed = async (reset = false) => {
+  if (isFeedLoading.value || (!hasMoreFeed.value && !reset)) return;
+  
+  if (reset) {
+    feedItems.value = [];
+    currentFeedOffset.value = 0;
+    hasMoreFeed.value = true;
+  }
+
+  isFeedLoading.value = true;
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            initData: tg?.initData,
+            botId: botId,
+            offset: currentFeedOffset.value,
+            limit: feedLimit
+        })
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      const items = result.data.list;
+      if (items.length < feedLimit) {
+        hasMoreFeed.value = false;
+      }
+      feedItems.value = [...feedItems.value, ...items];
+      currentFeedOffset.value += items.length;
+    }
+  } catch (e) {
+    console.error("Feed Fetch Error:", e);
+  } finally {
+    isFeedLoading.value = false;
+  }
+}
+
+// Infinite Scroll logic
+const handleScroll = () => {
+  const scrollBottom = document.documentElement.scrollTop + window.innerHeight >= document.documentElement.scrollHeight - 200;
+  if (scrollBottom) {
+    fetchFeed();
+  }
+}
+
+onMounted(() => {
+  fetchDashboardData();
+  fetchFeed(true);
+  window.addEventListener('scroll', handleScroll);
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+})
 </script>
 
 <template>
@@ -121,6 +186,45 @@ onMounted(fetchDashboardData)
           </div>
         </div>
       </section>
+
+      <!-- Personalized Feed Section -->
+      <section class="mt-8">
+        <div class="flex justify-between items-center mb-4 px-1">
+          <h3 class="font-black text-sm uppercase tracking-wider text-tg-hint">🌟 Timeline</h3>
+          <div class="h-px flex-1 bg-white/5 mx-4"></div>
+        </div>
+
+        <div class="space-y-4">
+          <div v-if="feedItems.length === 0 && !isFeedLoading" class="glass p-8 rounded-3xl text-center border border-white/5">
+            <div class="text-4xl mb-3 opacity-50">👀</div>
+            <p class="text-sm font-bold text-tg-hint">Belum ada post terbaru</p>
+            <p class="text-[10px] mt-1 text-tg-hint opacity-70">Ikuti lebih banyak kreator untuk melihat timeline yang seru!</p>
+            <button @click="$emit('navigate', 'explore')" class="mt-4 px-4 py-2 bg-tg-button text-white rounded-xl text-xs font-black uppercase tracking-wider">Cari Kreator</button>
+          </div>
+
+          <!-- Feed Items -->
+          <div v-for="item in feedItems" :key="item.short_id" class="glass p-4 rounded-3xl border border-white/5 space-y-3">
+            <div class="flex items-center gap-3">
+              <img :src="item.photo_url || `https://ui-avatars.com/api/?name=${item.display_name}&background=random`" class="w-10 h-10 rounded-full border border-white/10">
+              <div class="flex-1">
+                <div class="flex items-center gap-1">
+                  <h4 class="text-sm font-bold">{{ item.display_name }}</h4>
+                  <span v-if="item.is_verified" class="text-blue-400 text-xs">✓</span>
+                </div>
+                <p class="text-[10px] text-tg-hint">@{{ item.username }} • {{ new Date(item.created_at).toLocaleDateString('id-ID') }}</p>
+              </div>
+            </div>
+            <p class="text-sm">{{ item.caption }}</p>
+            <button class="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-tg-button transition-colors">Lihat Post</button>
+          </div>
+
+          <!-- Loading Indicator -->
+          <div v-if="isFeedLoading" class="py-4 text-center">
+            <div class="inline-block w-6 h-6 border-2 border-tg-hint border-t-tg-button rounded-full animate-spin"></div>
+          </div>
+        </div>
+      </section>
+
     </template>
 
   </div>
