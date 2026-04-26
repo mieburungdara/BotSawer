@@ -109,7 +109,42 @@ class WalletService {
         description: `Donasi masuk dari user ${senderId}`
       });
 
+      // 7. Update Donation Streak
+      await this.updateDonationStreak(trx, senderId);
+
       return true;
+    });
+  }
+
+  /**
+   * Update donation streak for a user
+   */
+  async updateDonationStreak(trx, userId) {
+    const user = await trx('users').where('telegram_id', userId).first();
+    if (!user) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    let newStreak = user.donation_streak || 0;
+    const lastDate = user.last_donation_date ? new Date(user.last_donation_date).toISOString().split('T')[0] : null;
+
+    if (lastDate === today) {
+      // Already donated today, streak stays the same
+      return;
+    }
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    if (lastDate === yesterdayStr) {
+      newStreak += 1;
+    } else {
+      newStreak = 1;
+    }
+
+    await trx('users').where('telegram_id', userId).update({
+      donation_streak: newStreak,
+      last_donation_date: today
     });
   }
 

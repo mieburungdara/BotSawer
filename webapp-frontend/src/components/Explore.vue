@@ -383,14 +383,24 @@ const processDonation = async () => {
           <!-- Info -->
           <div class="flex-1 min-w-0">
             <template v-if="selectedCategory === 'User'">
-              <h4 class="text-sm font-black truncate">{{ creator.display_name }}</h4>
+              <div class="flex items-center gap-1.5">
+                <h4 class="text-sm font-black truncate">{{ creator.display_name }}</h4>
+                <span v-if="creator.donation_streak > 0" class="flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-500/10 text-orange-500 rounded-full border border-orange-500/20 text-[8px] font-black uppercase tracking-tighter">
+                  🔥 {{ creator.donation_streak }}
+                </span>
+              </div>
               <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">@{{ creator.username }}</p>
               <p class="text-[11px] text-white/60 line-clamp-1 mt-1 italic font-medium">
                 {{ creator.bio || $t('explore.defaultBio') }}
               </p>
             </template>
             <template v-else-if="selectedCategory === 'Content' || selectedCategory === 'Post'">
-              <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">Oleh {{ creator.display_name }}</p>
+              <div class="flex items-center gap-1.5">
+                <p class="text-[10px] text-tg-hint font-bold uppercase tracking-wider truncate">Oleh {{ creator.display_name }}</p>
+                <span v-if="creator.donation_streak > 0" class="flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-500/10 text-orange-500 rounded-full border border-orange-500/20 text-[7px] font-black uppercase tracking-tighter">
+                  🔥 {{ creator.donation_streak }}
+                </span>
+              </div>
               <p class="text-[9px] text-tg-button font-bold mt-1 uppercase tracking-tighter">
                 {{ new Date(creator.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
               </p>

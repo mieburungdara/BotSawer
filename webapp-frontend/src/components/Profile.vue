@@ -25,7 +25,8 @@ const user = ref({
   tiktok_url: null,
   facebook_url: null,
   portfolio_url: null,
-  is_blocked: false
+  is_blocked: false,
+  donation_streak: 0
 })
 const systemConfig = ref({
   bot_username: 'VesperBot',
@@ -99,7 +100,8 @@ const fetchProfileData = async (targetId = null) => {
           tiktok_url: data.tiktok_url,
           facebook_url: data.facebook_url,
           portfolio_url: data.portfolio_url,
-          is_blocked: data.is_blocked || false
+          is_blocked: data.is_blocked || false,
+          donation_streak: data.donation_streak || 0
       };
       
       // Fetch Follow Stats
@@ -419,6 +421,11 @@ const openExternalLink = (url, type) => {
                     </div>
                     <div v-if="user.verified" class="absolute -bottom-1 -right-1 w-9 h-9 bg-blue-500 rounded-full border-4 border-tg-bg flex items-center justify-center text-white text-[10px] shadow-lg">
                         ✔
+                    </div>
+                    
+                    <!-- Donation Streak Badge -->
+                    <div v-if="user.donation_streak > 0" class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-xl border-4 border-tg-bg z-10 animate-bounce">
+                        🔥 {{ user.donation_streak }} DAY STREAK
                     </div>
                     
                     <!-- Share Button -->

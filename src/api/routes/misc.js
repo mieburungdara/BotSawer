@@ -29,6 +29,13 @@ router.post('/dashboard', async (req, res) => {
         .count('id as total')
         .first();
 
+    const donations = await db('transactions')
+        .where('user_id', user.telegram_id)
+        .where('type', 'donation')
+        .where('status', 'success')
+        .count('id as total')
+        .first();
+
     return res.json({
         success: true,
         data: {
@@ -36,7 +43,9 @@ router.post('/dashboard', async (req, res) => {
             stats: {
                 balance: parseFloat(wallet ? wallet.balance : 0),
                 total_earnings: parseFloat(earnings.total || 0),
-                active_contents: parseInt(contents.total || 0)
+                active_contents: parseInt(contents.total || 0),
+                total_donations: parseInt(donations.total || 0),
+                donation_streak: user.donation_streak || 0
             }
         }
     });

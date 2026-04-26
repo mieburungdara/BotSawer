@@ -23,7 +23,8 @@ const balance = ref(0)
 const stats = ref({
   total_earnings: 0,
   active_contents: 0,
-  total_donations: 0
+  total_donations: 0,
+  donation_streak: 0
 })
 
 const fetchDashboardData = async () => {
@@ -115,6 +116,25 @@ const handleScroll = () => {
   }
 }
 
+const toggleBookmark = async (item) => {
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/bookmarks/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        content_id: item.id
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      item.is_bookmarked = result.is_bookmarked;
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     }
   } catch (e) {
     console.error("Toggle Bookmark Error:", e);
@@ -267,9 +287,12 @@ onUnmounted(() => {
           <p class="text-tg-hint text-[10px] font-bold uppercase mb-1">Media</p>
           <p class="text-sm font-black">{{ stats.active_contents }}</p>
         </div>
-        <div class="glass p-3 rounded-2xl text-center border border-white/5">
+        <div class="glass p-3 rounded-2xl text-center border border-white/5 relative overflow-hidden">
           <p class="text-tg-hint text-[10px] font-bold uppercase mb-1">Sawer</p>
           <p class="text-sm font-black">{{ stats.total_donations }}</p>
+          <div v-if="stats.donation_streak > 0" class="absolute -bottom-1 -right-1 bg-orange-500 text-white text-[8px] font-black px-2 py-0.5 rounded-tl-lg shadow-lg">
+            🔥 {{ stats.donation_streak }}
+          </div>
         </div>
       </div>
 
@@ -326,6 +349,10 @@ onUnmounted(() => {
                 <div class="flex items-center gap-1">
                   <h4 class="text-sm font-bold">{{ item.display_name }}</h4>
                   <span v-if="item.is_verified" class="text-blue-400 text-xs">✓</span>
+                  <!-- Donation Streak Badge -->
+                  <span v-if="item.donation_streak > 0" class="flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-500/10 text-orange-500 rounded-full border border-orange-500/20 text-[8px] font-black uppercase tracking-tighter shadow-sm">
+                    🔥 {{ item.donation_streak }}
+                  </span>
                 </div>
                 <p v-if="!item.is_sponsored" class="text-[10px] text-tg-hint">@{{ item.username }} • {{ new Date(item.created_at).toLocaleDateString('id-ID') }}</p>
                 <p v-else class="text-[10px] text-yellow-500/70 font-bold uppercase tracking-wider">Promoted</p>

@@ -90,7 +90,7 @@ class CreatorService {
    * Get Creator Stats
    */
   async getStats(telegramId) {
-    const user = await db('users').where('telegram_id', telegramId).select('is_verified').first();
+    const user = await db('users').where('telegram_id', telegramId).select('is_verified', 'donation_streak').first();
     
     const stats = await db('contents')
         .where('user_id', telegramId)
@@ -124,6 +124,7 @@ class CreatorService {
       total_media: parseInt(stats.total_media || 0),
       total_earnings: totalEarnings,
       total_donations: totalDonations,
+      donation_streak: user.donation_streak || 0,
       badges,
       ...streakData
     };
@@ -228,6 +229,7 @@ class CreatorService {
         'u.username', 
         'u.photo_url',
         'u.is_verified',
+        'u.donation_streak',
         'c.privacy'
       )
       .orderBy('c.created_at', 'desc')
@@ -269,6 +271,7 @@ class CreatorService {
         'u.username', 
         'u.photo_url',
         'u.is_verified',
+        'u.donation_streak',
         'c.privacy',
         db.raw('CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as is_bookmarked')
       )
@@ -302,6 +305,7 @@ class CreatorService {
         'u.username', 
         'u.photo_url',
         'u.is_verified',
+        'u.donation_streak',
         'c.privacy'
       )
       .orderBy('c.created_at', 'desc')
