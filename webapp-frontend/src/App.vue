@@ -20,6 +20,7 @@ const isLoadingBalance = ref(true)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 const targetProfileId = ref(null)
+const targetContentId = ref(null)
 const targetDmUserId = ref(null)
 const unreadMessagesCount = ref(0)
 let unreadPollInterval = null
@@ -81,6 +82,10 @@ onMounted(() => {
             activeTab.value = 'profile';
         } else if (startParam === 'wallet') {
             activeTab.value = 'wallet';
+        } else if (startParam.startsWith('content_')) {
+            const contentId = startParam.replace('content_', '');
+            targetContentId.value = contentId;
+            activeTab.value = 'dashboard';
         }
     }
 
@@ -278,7 +283,11 @@ const handleTouchEnd = (e) => {
 
       <!-- Main Content Area -->
       <main class="animate-in fade-in duration-700">
-        <Dashboard v-if="activeTab === 'dashboard'" @navigate="navigate" />
+        <Dashboard 
+          v-if="activeTab === 'dashboard'" 
+          :target-content-id="targetContentId"
+          @navigate="(tab) => { navigate(tab); targetContentId = null; }" 
+        />
         <Explore v-if="activeTab === 'explore'" @view-profile="(id) => { targetProfileId = id; activeTab = 'profile' }" />
         <Profile v-if="activeTab === 'profile'" :targetId="targetProfileId" @nav="navigate" @open-dm="openDirectMessage" />
         <Messages v-if="activeTab === 'messages'" :initialTargetId="targetDmUserId" @view-profile="(id) => { targetProfileId = id; activeTab = 'profile' }" />

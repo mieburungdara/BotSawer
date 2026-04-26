@@ -69,8 +69,11 @@ class NotificationService {
     message += `\n📅 Waktu: ${new Date().toLocaleString('id-ID')}\n\n` +
                `Terima kasih atas konten Anda! 🎨`;
 
+    const buttonText = shortId ? '🖼️ Lihat Konten' : '💰 Buka Dompet';
+    const startParam = shortId ? `content_${shortId}` : 'wallet';
+
     const keyboard = {
-      inline_keyboard: [[{ text: '💰 Buka Dompet', url: `https://t.me/${botUsername}/webapp?startapp=wallet` }]]
+      inline_keyboard: [[{ text: buttonText, url: `https://t.me/${botUsername}/webapp?startapp=${startParam}` }]]
     };
 
     try {

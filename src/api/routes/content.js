@@ -54,6 +54,9 @@ router.post('/content', async (req, res) => {
           caption: content.caption,
           created_at: content.created_at,
           creator_id: creator.uuid || 'Anonim',
+          creator_name: creator.display_name,
+          creator_username: creator.username,
+          creator_photo: creator.photo_url,
           media_list: mediaList,
           total_donations: isOwner ? parseFloat(content.total_donations || 0) : undefined,
           donation_count: isOwner ? parseInt(content.donation_count || 0) : undefined

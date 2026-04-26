@@ -2,6 +2,13 @@
 import { ref, onMounted } from 'vue'
 
 const isLoading = ref(true)
+const props = defineProps({
+  targetContentId: {
+    type: String,
+    default: null
+  }
+})
+
 const emit = defineEmits(['navigate'])
 
 // Feed State
@@ -10,6 +17,33 @@ const isFeedLoading = ref(false)
 const hasMoreFeed = ref(true)
 const currentFeedOffset = ref(0)
 const feedLimit = 10
+const targetContent = ref(null)
+
+const fetchTargetContent = async () => {
+  if (!props.targetContentId) return;
+  
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            initData: tg?.initData,
+            botId: botId,
+            action: 'get',
+            short_id: props.targetContentId
+        })
+    });
+    const result = await response.json();
+    if (result.success) {
+      targetContent.value = result.data;
+    }
+  } catch (e) {
+    console.error("Fetch Target Content Error:", e);
+  }
+}
 
 const quickLinks = [
   { id: 'explore', label: 'Explore', icon: '🌍', color: 'bg-blue-500/10 text-blue-500' },
@@ -234,6 +268,7 @@ const togglePrivacy = async (item) => {
 
 onMounted(() => {
   fetchDashboardData();
+  fetchTargetContent();
   fetchFeed(true);
   window.addEventListener('scroll', handleScroll);
 })
@@ -329,7 +364,38 @@ onUnmounted(() => {
         </div>
 
         <div class="space-y-4">
-          <div v-if="feedItems.length === 0 && !isFeedLoading" class="glass p-8 rounded-3xl text-center border border-white/5">
+          <!-- Targeted Content (from Deep Link) -->
+          <div v-if="targetContent" 
+               class="glass p-5 rounded-3xl border-2 border-tg-button/30 bg-tg-button/5 space-y-4 relative overflow-hidden animate-in zoom-in-95 duration-500">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[10px] font-black uppercase tracking-[0.2em] text-tg-button">🎯 Targeted Content</span>
+              <button @click="targetContent = null" class="text-tg-hint text-lg">✕</button>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <img :src="targetContent.creator_photo || `https://ui-avatars.com/api/?name=${targetContent.creator_name}&background=random`" class="w-10 h-10 rounded-full border border-white/10">
+              <div class="flex-1">
+                <h4 class="text-sm font-bold">{{ targetContent.creator_name }}</h4>
+                <p class="text-[10px] text-tg-hint">@{{ targetContent.creator_username }} • {{ new Date(targetContent.created_at).toLocaleDateString('id-ID') }}</p>
+              </div>
+            </div>
+            
+            <p class="text-sm">{{ targetContent.caption }}</p>
+
+            <div class="grid grid-cols-2 gap-2 mt-2" v-if="targetContent.media_list && targetContent.media_list.length > 0">
+                <div v-for="media in targetContent.media_list" :key="media.id" class="aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/5">
+                    <img v-if="media.imagekit_url" :src="media.imagekit_url" class="w-full h-full object-cover">
+                    <div v-else class="w-full h-full flex items-center justify-center text-2xl">🔒</div>
+                </div>
+            </div>
+            
+            <button @click="openDonationModal({ ...targetContent, creator_id: targetContent.creator_id, display_name: targetContent.creator_name, username: targetContent.creator_username, photo_url: targetContent.creator_photo, id: targetContent.short_id })" 
+                    class="w-full py-3 bg-tg-button text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-tg-button/30">
+              Kirim Saweran 🎁
+            </button>
+          </div>
+
+          <div v-if="feedItems.length === 0 && !isFeedLoading && !targetContent" class="glass p-8 rounded-3xl text-center border border-white/5">
             <div class="text-4xl mb-3 opacity-50">👀</div>
             <p class="text-sm font-bold text-tg-hint">Belum ada post terbaru</p>
             <p class="text-[10px] mt-1 text-tg-hint opacity-70">Ikuti lebih banyak kreator untuk melihat timeline yang seru!</p>
