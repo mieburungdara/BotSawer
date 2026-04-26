@@ -70,6 +70,15 @@ const messages = {
       paymentsDesc: 'Manage bank & e-wallets',
       contactAdmin: 'Contact Admin',
       contactDesc: 'Help & Questions',
+      appearance: 'Appearance',
+      theme: 'Theme',
+      themeDesc: 'Personalize your visual experience',
+      accentColor: 'Accent Color',
+      themeModes: {
+        auto: 'Auto',
+        light: 'Light',
+        dark: 'Dark'
+      },
       closeApp: 'Close Vesper'
     },
     dm: {
@@ -159,6 +168,15 @@ const messages = {
       paymentsDesc: 'Kelola rekening bank & e-wallet',
       contactAdmin: 'Hubungi Admin',
       contactDesc: 'Bantuan & Pertanyaan',
+      appearance: 'Tampilan',
+      theme: 'Tema',
+      themeDesc: 'Personalisasi tampilan visual Anda',
+      accentColor: 'Warna Aksen',
+      themeModes: {
+        auto: 'Auto',
+        light: 'Terang',
+        dark: 'Gelap'
+      },
       closeApp: 'Tutup Vesper',
       message: 'Pesan'
     },

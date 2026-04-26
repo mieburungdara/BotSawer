@@ -9,6 +9,8 @@ const fontSize = ref(localStorage.getItem('vesper_font_size') || 'medium')
 const fontFamily = ref(localStorage.getItem('vesper_font_family') || 'inter')
 const currentLocale = ref(locale.value)
 const isAppearanceExpanded = ref(false)
+const theme = ref(localStorage.getItem('vesper_theme') || 'auto')
+const accentColor = ref(localStorage.getItem('vesper_accent') || 'blue')
 
 const updateFontSize = (size) => {
   fontSize.value = size
@@ -34,6 +36,30 @@ const updateLocale = (lang) => {
   currentLocale.value = lang
   locale.value = lang
   localStorage.setItem('vesper_locale', lang)
+}
+
+const updateTheme = (newTheme) => {
+  theme.value = newTheme
+  localStorage.setItem('vesper_theme', newTheme)
+  
+  const html = document.documentElement
+  html.classList.remove('theme-dark', 'theme-light')
+  
+  if (newTheme === 'auto') {
+    const isDark = window.Telegram?.WebApp?.colorScheme === 'dark'
+    html.classList.add(isDark ? 'theme-dark' : 'theme-light')
+  } else {
+    html.classList.add(`theme-${newTheme}`)
+  }
+}
+
+const updateAccent = (color) => {
+  accentColor.value = color
+  localStorage.setItem('vesper_accent', color)
+  
+  const html = document.documentElement
+  html.classList.remove('accent-blue', 'accent-purple', 'accent-pink', 'accent-orange', 'accent-green')
+  html.classList.add(`accent-${color}`)
 }
 
 const settings = ref([
@@ -179,6 +205,48 @@ const toggleSetting = async (item) => {
                 :style="{ fontFamily: family === 'inter' ? 'Inter' : family === 'roboto' ? 'Roboto' : family === 'outfit' ? 'Outfit' : 'Montserrat' }"
               >
                 {{ family }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Theme Selector -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.theme') }}</h3>
+            </div>
+            <div class="bg-black/20 p-1 rounded-2xl flex gap-1 border border-white/5" role="radiogroup">
+              <button 
+                v-for="mode in ['auto', 'light', 'dark']" 
+                :key="mode"
+                @click="updateTheme(mode)"
+                :class="theme === mode ? 'bg-tg-button text-white shadow-lg' : 'text-tg-hint hover:bg-white/5'"
+                class="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+              >
+                {{ $t(`settings.themeModes.${mode}`) }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Accent Color -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="text-[10px] font-black text-tg-hint uppercase tracking-widest">{{ $t('settings.accentColor') }}</h3>
+            </div>
+            <div class="flex justify-between items-center bg-black/20 p-3 rounded-2xl border border-white/5">
+              <button 
+                v-for="color in ['blue', 'purple', 'pink', 'orange', 'green']" 
+                :key="color"
+                @click="updateAccent(color)"
+                class="w-8 h-8 rounded-full border-2 transition-all relative"
+                :class="[
+                  `bg-accent-${color}`,
+                  accentColor === color ? 'border-white scale-125 z-10 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100 hover:scale-110'
+                ]"
+                :style="{ 
+                  backgroundColor: color === 'blue' ? '#24a1de' : color === 'purple' ? '#8b5cf6' : color === 'pink' ? '#ec4899' : color === 'orange' ? '#f97316' : '#22c55e'
+                }"
+              >
+                <span v-if="accentColor === color" class="absolute inset-0 flex items-center justify-center text-[10px] text-white">✓</span>
               </button>
             </div>
           </div>

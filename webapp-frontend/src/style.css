@@ -1,19 +1,48 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Montserrat:wght@400;700;900&family=Outfit:wght@400;700;900&family=Roboto:wght@400;700;900&display=swap');
 
-@theme {
-  --color-tg-bg: var(--tg-theme-bg-color, #0e1621);
-  --color-tg-secondary: var(--tg-theme-secondary-bg-color, #17212b);
-  --color-tg-text: var(--tg-theme-text-color, #ffffff);
-  --color-tg-hint: var(--tg-theme-hint-color, #708499);
-  --color-tg-link: var(--tg-theme-link-color, #24a1de);
-  --color-tg-button: var(--tg-theme-button-color, #24a1de);
-  --color-tg-button-text: var(--tg-theme-button-text-color, #ffffff);
-}
-
 :root {
   --base-font-size: 16px;
   --base-font-family: 'Inter', sans-serif;
+  --tg-button-color: var(--tg-theme-button-color, #24a1de);
+  --glass-bg: rgba(23, 33, 43, 0.6);
+  --tg-theme-bg-color: var(--tg-theme-bg-color, #0e1621);
+  --tg-theme-secondary-bg-color: var(--tg-theme-secondary-bg-color, #17212b);
+  --tg-theme-text-color: var(--tg-theme-text-color, #ffffff);
+  --tg-theme-hint-color: var(--tg-theme-hint-color, #708499);
+}
+
+.theme-dark {
+  --tg-theme-bg-color: #0e1621;
+  --tg-theme-secondary-bg-color: #17212b;
+  --tg-theme-text-color: #ffffff;
+  --tg-theme-hint-color: #708499;
+  --glass-bg: rgba(23, 33, 43, 0.6);
+}
+
+.theme-light {
+  --tg-theme-bg-color: #f4f4f4;
+  --tg-theme-secondary-bg-color: #ffffff;
+  --tg-theme-text-color: #000000;
+  --tg-theme-hint-color: #888888;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+}
+
+/* Custom Accents */
+.accent-blue { --tg-button-color: #24a1de; }
+.accent-purple { --tg-button-color: #8b5cf6; }
+.accent-pink { --tg-button-color: #ec4899; }
+.accent-orange { --tg-button-color: #f97316; }
+.accent-green { --tg-button-color: #22c55e; }
+
+@theme {
+  --color-tg-bg: var(--tg-theme-bg-color);
+  --color-tg-secondary: var(--tg-theme-secondary-bg-color);
+  --color-tg-text: var(--tg-theme-text-color);
+  --color-tg-hint: var(--tg-theme-hint-color);
+  --color-tg-link: var(--tg-button-color);
+  --color-tg-button: var(--tg-button-color);
+  --color-tg-button-text: var(--tg-theme-button-text-color, #ffffff);
 }
 
 @layer base {
@@ -41,7 +70,7 @@
 .font-family-montserrat { --base-font-family: 'Montserrat', sans-serif; }
 
 .glass {
-  background-color: rgba(23, 33, 43, 0.6);
+  background-color: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);

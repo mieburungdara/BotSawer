@@ -54,6 +54,16 @@ onMounted(() => {
     
     const savedFontFamily = localStorage.getItem('vesper_font_family') || 'inter'
     document.documentElement.classList.add(`font-family-${savedFontFamily}`)
+
+    const savedTheme = localStorage.getItem('vesper_theme') || 'auto'
+    if (savedTheme === 'auto') {
+        document.documentElement.classList.add(tg.colorScheme === 'dark' ? 'theme-dark' : 'theme-light')
+    } else {
+        document.documentElement.classList.add(`theme-${savedTheme}`)
+    }
+
+    const savedAccent = localStorage.getItem('vesper_accent') || 'blue'
+    document.documentElement.classList.add(`accent-${savedAccent}`)
     
     // Get botId from URL if possible
     const urlParams = new URLSearchParams(window.location.search);
