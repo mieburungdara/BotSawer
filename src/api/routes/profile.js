@@ -38,9 +38,20 @@ router.post('/profile', async (req, res) => {
       let contentsWithMedia = [];
       if (!blockStatus.blockedByMe) {
         // Get recent contents with media
-        const contents = await db('contents')
+        const contentsQuery = db('contents')
           .where('user_id', targetId)
-          .whereNot('status', 'deleted')
+          .whereNot('status', 'deleted');
+
+        // Privacy Filter
+        if (user.telegram_id !== targetId) {
+            if (isFollowing) {
+                contentsQuery.whereIn('privacy', ['public', 'followers_only']);
+            } else {
+                contentsQuery.where('privacy', 'public');
+            }
+        }
+
+        const contents = await contentsQuery
           .orderBy('created_at', 'desc')
           .limit(20);
 

@@ -11,8 +11,15 @@ router.post('/feed', async (req, res) => {
     const user = await auth.authenticate(req.body);
     const { offset } = req.body;
 
-    const list = await creator.getFollowedContents(user.telegram_id, 20, offset || 0);
-    return res.json({ success: true, data: list });
+    const result = await creator.getFollowedContents(user.telegram_id, 20, offset || 0);
+    
+    // Mark as owner
+    result.list = result.list.map(item => ({
+        ...item,
+        is_owner: parseInt(item.creator_id) === parseInt(user.telegram_id)
+    }));
+
+    return res.json({ success: true, data: result });
 
   } catch (error) {
     res.json({ success: false, message: error.message });

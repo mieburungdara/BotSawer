@@ -50,6 +50,7 @@ router.post('/content', async (req, res) => {
           is_owner: isOwner,
           short_id: content.short_id,
           status: content.status,
+          privacy: content.privacy,
           caption: content.caption,
           created_at: content.created_at,
           creator_id: creator.uuid || 'Anonim',
@@ -106,6 +107,16 @@ router.post('/content', async (req, res) => {
     if (action === 'delete_content') {
         await db('contents').where('short_id', short_id).where('user_id', user.id).update({ status: 'deleted' });
         return res.json({ success: true, data: { message: 'Konten berhasil dihapus' } });
+    }
+
+    // 4. UPDATE PRIVACY
+    if (action === 'update_privacy') {
+        const { privacy } = req.body;
+        if (!['public', 'followers_only'].includes(privacy)) {
+            throw new Error('Tipe privacy tidak valid');
+        }
+        await db('contents').where('short_id', short_id).where('user_id', user.id).update({ privacy });
+        return res.json({ success: true, data: { message: 'Privacy konten berhasil diperbarui' } });
     }
 
     throw new Error('Action tidak dikenal');

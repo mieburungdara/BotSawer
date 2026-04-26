@@ -179,6 +179,36 @@ const processDonation = async () => {
   }
 }
 
+const togglePrivacy = async (item) => {
+  if (!item.is_owner) return;
+  
+  const newPrivacy = item.privacy === 'public' ? 'followers_only' : 'public';
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        action: 'update_privacy',
+        short_id: item.short_id,
+        privacy: newPrivacy
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      item.privacy = newPrivacy;
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+  } catch (e) {
+    console.error("Toggle Privacy Error:", e);
+  }
+}
+
 onMounted(() => {
   fetchDashboardData();
   fetchFeed(true);
@@ -299,8 +329,22 @@ onUnmounted(() => {
                 </div>
                 <p v-if="!item.is_sponsored" class="text-[10px] text-tg-hint">@{{ item.username }} • {{ new Date(item.created_at).toLocaleDateString('id-ID') }}</p>
                 <p v-else class="text-[10px] text-yellow-500/70 font-bold uppercase tracking-wider">Promoted</p>
+                <!-- Privacy Indicator -->
+                <div v-if="!item.is_sponsored && item.privacy === 'followers_only'" class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-purple-500/10 text-purple-400 rounded-md border border-purple-500/20">
+                  <span class="text-[8px]">🔒</span>
+                  <span class="text-[8px] font-black uppercase tracking-widest">Followers Only</span>
+                </div>
               </div>
               <div class="flex items-center gap-1">
+                <!-- Privacy Toggle for Owner -->
+                <button v-if="item.is_owner" 
+                        @click.stop="togglePrivacy(item)"
+                        class="p-2 active:scale-125 transition-transform"
+                        :title="item.privacy === 'public' ? 'Set to Followers Only' : 'Set to Public'">
+                  <span class="text-lg opacity-60 hover:opacity-100 transition-opacity">
+                    {{ item.privacy === 'public' ? '🔓' : '🔒' }}
+                  </span>
+                </button>
                 <!-- Tip Button -->
                 <button v-if="!item.is_sponsored" 
                         @click.stop="openDonationModal(item)"

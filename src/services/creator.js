@@ -208,6 +208,7 @@ class CreatorService {
     const totalResult = await db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
+      .where('c.privacy', 'public')
       .where('u.is_private', 0)
       .count('c.id as total')
       .first();
@@ -215,8 +216,10 @@ class CreatorService {
     const list = await db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
+      .where('c.privacy', 'public')
       .where('u.is_private', 0)
       .select(
+        'c.id',
         'c.short_id', 
         'c.caption', 
         'c.created_at', 
@@ -224,7 +227,8 @@ class CreatorService {
         'u.display_name', 
         'u.username', 
         'u.photo_url',
-        'u.is_verified'
+        'u.is_verified',
+        'c.privacy'
       )
       .orderBy('c.created_at', 'desc')
       .limit(limit)
@@ -265,6 +269,7 @@ class CreatorService {
         'u.username', 
         'u.photo_url',
         'u.is_verified',
+        'c.privacy',
         db.raw('CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as is_bookmarked')
       )
       .orderBy('c.created_at', 'desc')
@@ -282,11 +287,13 @@ class CreatorService {
     const baseQuery = db('contents as c')
       .join('users as u', 'c.user_id', 'u.telegram_id')
       .where('c.status', 'posted')
+      .where('c.privacy', 'public')
       .where('u.is_private', 0)
       .andWhere('c.caption', 'like', searchTerm);
 
     const totalResult = await baseQuery.clone().count('c.id as total').first();
     const list = await baseQuery.select(
+        'c.id',
         'c.short_id', 
         'c.caption', 
         'c.created_at', 
@@ -294,7 +301,8 @@ class CreatorService {
         'u.display_name', 
         'u.username', 
         'u.photo_url',
-        'u.is_verified'
+        'u.is_verified',
+        'c.privacy'
       )
       .orderBy('c.created_at', 'desc')
       .limit(limit)

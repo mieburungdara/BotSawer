@@ -108,6 +108,8 @@ const fetchProfileData = async (targetId = null) => {
       if (data.contents) {
           gallery.value = data.contents.map(c => ({
               id: c.id,
+              short_id: c.short_id,
+              privacy: c.privacy || 'public',
               type: c.media && c.media[0] ? c.media[0].file_type : 'photo',
               url: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.value.name || 'C') + '&background=random',
               views: 'New'
@@ -315,6 +317,36 @@ const saveProfile = async () => {
     } catch (e) {
         console.error("Save Profile Error:", e);
     }
+}
+
+const togglePrivacy = async (item) => {
+  if (!user.value.is_own) return;
+  
+  const newPrivacy = item.privacy === 'public' ? 'followers_only' : 'public';
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        action: 'update_privacy',
+        short_id: item.short_id,
+        privacy: newPrivacy
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      item.privacy = newPrivacy;
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+  } catch (e) {
+    console.error("Toggle Privacy Error:", e);
+  }
 }
 
 onMounted(() => fetchProfileData(props.targetId))
@@ -530,6 +562,16 @@ const openExternalLink = (url, type) => {
                         </div>
                         <div v-if="item.type === 'video'" class="absolute top-2 right-2 w-6 h-6 bg-black/40 backdrop-blur-md rounded-lg flex items-center justify-center text-[10px]">
                             📹
+                        </div>
+
+                        <!-- Privacy Toggle for Owner -->
+                        <button v-if="user.is_own" 
+                                @click.stop="togglePrivacy(item)"
+                                class="absolute top-2 left-2 w-8 h-8 glass rounded-lg flex items-center justify-center text-xs shadow-lg active:scale-110 transition-all z-10">
+                            {{ item.privacy === 'public' ? '🔓' : '🔒' }}
+                        </button>
+                        <div v-else-if="item.privacy === 'followers_only'" class="absolute top-2 left-2 w-6 h-6 bg-purple-500/80 backdrop-blur-md rounded-lg flex items-center justify-center text-[10px] z-10">
+                            🔒
                         </div>
                     </div>
                 </div>
