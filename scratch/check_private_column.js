@@ -1,26 +1,26 @@
-const db = require('./src/services/database');
+const db = require('../src/services/database');
 
-async function checkSchema() {
+async function migrate() {
+    console.log('Starting migration: Add Private Mode to Users...');
     try {
-        const columns = await db.raw("PRAGMA table_info(users)");
-        console.log("Users Table Columns:");
-        columns.forEach(col => {
-            console.log(`- ${col.name} (${col.type})`);
-        });
+        const hasPrivate = await db.schema.hasColumn('users', 'is_private');
         
-        const hasPrivate = columns.find(c => c.name === 'is_private');
         if (!hasPrivate) {
-            console.log("\nColumn 'is_private' NOT found. Creating migration...");
-            await db.raw("ALTER TABLE users ADD COLUMN is_private INTEGER DEFAULT 0");
-            console.log("Column 'is_private' added successfully.");
+            await db.schema.alterTable('users', table => {
+                table.integer('is_private').defaultTo(0);
+            });
+            console.log('Added is_private column to users table.');
         } else {
-            console.log("\nColumn 'is_private' already exists.");
+            console.log('Column is_private already exists.');
         }
-    } catch (err) {
-        console.error("Error checking schema:", err);
+        
+        console.log('Migration complete.');
+    } catch (e) {
+        console.error('Migration failed:', e);
+        process.exit(1);
     } finally {
-        process.exit();
+        await db.destroy();
     }
 }
 
-checkSchema();
+migrate();
