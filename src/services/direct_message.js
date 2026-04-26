@@ -1,4 +1,5 @@
 const db = require('./database');
+const blockService = require('./block');
 
 class DirectMessageService {
 
@@ -12,6 +13,12 @@ class DirectMessageService {
     }
 
     const [id1, id2] = [String(userIdA), String(userIdB)].sort();
+
+    // Check block status
+    const blockStatus = await blockService.getBlockStatus(userIdA, userIdB);
+    if (blockStatus.isAnyBlocked) {
+      throw new Error('Tidak bisa memulai percakapan karena ada blokir aktif.');
+    }
 
     let conversation = await db('direct_conversations')
       .where({ user1_id: id1, user2_id: id2 })
@@ -38,6 +45,16 @@ class DirectMessageService {
     }
     if (content.length > 2000) {
       throw new Error('Pesan terlalu panjang (maksimal 2000 karakter).');
+    }
+
+    // Check block status before sending
+    const conv = await db('direct_conversations').where('id', conversationId).first();
+    if (!conv) throw new Error('Percakapan tidak ditemukan.');
+
+    const partnerId = String(conv.user1_id) === String(senderId) ? conv.user2_id : conv.user1_id;
+    const canInteract = await blockService.canInteract(senderId, partnerId);
+    if (!canInteract) {
+      throw new Error('Gagal mengirim pesan. Pengguna ini telah memblokir Anda atau Anda telah memblokir mereka.');
     }
 
     const [newId] = await db('direct_messages').insert({

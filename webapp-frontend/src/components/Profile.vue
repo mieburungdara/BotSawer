@@ -24,7 +24,8 @@ const user = ref({
   instagram_url: null,
   tiktok_url: null,
   facebook_url: null,
-  portfolio_url: null
+  portfolio_url: null,
+  is_blocked: false
 })
 const systemConfig = ref({
   bot_username: 'VesperBot',
@@ -97,7 +98,8 @@ const fetchProfileData = async (targetId = null) => {
           instagram_url: data.instagram_url,
           tiktok_url: data.tiktok_url,
           facebook_url: data.facebook_url,
-          portfolio_url: data.portfolio_url
+          portfolio_url: data.portfolio_url,
+          is_blocked: data.is_blocked || false
       };
       
       // Fetch Follow Stats
@@ -246,6 +248,48 @@ const openEditModal = () => {
     showEditModal.value = true
 }
 
+const toggleBlock = async () => {
+    try {
+        const tg = window.Telegram?.WebApp;
+        const botId = localStorage.getItem('vesper_bot_id');
+        const action = user.value.is_blocked ? 'unblock' : 'block';
+        
+        // Confirm block
+        if (!user.value.is_blocked) {
+            const confirmed = await new Promise(resolve => {
+                tg?.showConfirm(`Apakah Anda yakin ingin memblokir ${user.value.name}? Mereka tidak akan bisa mengirim pesan atau melihat profil Anda.`, (ok) => resolve(ok));
+            });
+            if (!confirmed) return;
+        }
+
+        const response = await fetch('/vesper/api/block', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                initData: tg?.initData,
+                action: action,
+                targetId: user.value.telegram_id
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            user.value.is_blocked = !user.value.is_blocked;
+            // Refresh follow stats as block causes auto-unfollow
+            fetchFollowStats(user.value.telegram_id);
+            tg?.showAlert(result.message);
+            
+            // If just blocked, we might want to refresh to hide contents
+            if (user.value.is_blocked) {
+                fetchProfileData(user.value.telegram_id);
+            }
+        } else {
+            tg?.showAlert(result.message || 'Gagal mengubah status blokir');
+        }
+    } catch (e) {
+        console.error("Toggle Block Error:", e);
+    }
+}
+
 const saveProfile = async () => {
     try {
         const response = await fetch('/vesper/api/profile', {
@@ -380,8 +424,22 @@ const openExternalLink = (url, type) => {
                 </div>
             </div>
 
+            <!-- Blocked Placeholder -->
+            <div v-if="user.is_blocked" class="mx-1 p-8 glass rounded-[2.5rem] border border-red-500/20 bg-red-500/5 text-center space-y-4">
+                <div class="text-4xl opacity-50">🚫</div>
+                <div class="space-y-1">
+                    <h3 class="text-sm font-black uppercase text-red-500">PENGGUNA DIBLOKIR</h3>
+                    <p class="text-[10px] text-tg-hint leading-relaxed">
+                        Anda telah memblokir pengguna ini. Buka blokir untuk melihat konten dan berinteraksi kembali.
+                    </p>
+                </div>
+                <button @click="toggleBlock" class="w-full bg-white/5 hover:bg-white/10 text-tg-text py-3 rounded-2xl text-[10px] font-black border border-white/5 transition-all">
+                    BUKA BLOKIR
+                </button>
+            </div>
+
             <!-- Stats Grid -->
-            <div class="grid grid-cols-4 gap-2 px-1">
+            <div v-if="!user.is_blocked" class="grid grid-cols-4 gap-2 px-1">
                 <div @click="openFollowList('followers')" class="glass py-4 rounded-3xl border border-white/5 text-center group hover:border-tg-button/30 transition-colors cursor-pointer">
                     <p class="text-lg font-black group-hover:text-tg-button transition-colors">{{ user.followers }}</p>
                     <p class="text-[8px] text-tg-hint font-bold uppercase tracking-tighter">{{ $t('profile.followers') }}</p>
@@ -403,7 +461,7 @@ const openExternalLink = (url, type) => {
             </div>
 
             <!-- Badges Section -->
-            <div v-if="user.badges && user.badges.length > 0" class="px-1">
+            <div v-if="!user.is_blocked && user.badges && user.badges.length > 0" class="px-1">
                 <div class="glass p-4 rounded-[2.5rem] border border-white/5 bg-gradient-to-r from-tg-button/10 to-transparent">
                     <div class="flex items-center justify-between mb-4 px-2">
                         <h3 class="text-[10px] font-black uppercase tracking-widest text-tg-button">{{ $t('profile.badges.title') }}</h3>
@@ -446,6 +504,10 @@ const openExternalLink = (url, type) => {
                     <button @click="emit('open-dm', user.telegram_id)" class="flex-1 flex items-center justify-center gap-2 bg-tg-secondary/50 text-tg-text py-4 rounded-2xl text-xs font-black border border-white/5 active:scale-95 transition-all hover:border-tg-button/20">
                         <span>💬</span>
                         {{ $t('profile.message') }}
+                    </button>
+                    <!-- Block Button -->
+                    <button v-if="!user.is_blocked" @click="toggleBlock" class="w-14 h-14 flex items-center justify-center bg-red-500/10 text-red-500 rounded-2xl border border-red-500/20 active:scale-95 transition-all">
+                        <span class="text-lg">🚫</span>
                     </button>
                 </template>
                 

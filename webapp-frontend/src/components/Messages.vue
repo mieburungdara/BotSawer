@@ -318,14 +318,14 @@ watch(() => props.initialTargetId, async (newId) => {
           v-for="conv in conversations"
           :key="conv.conversation_id"
           @click="openChat(conv.conversation_id, conv.partner)"
-          class="flex items-center gap-4 p-3.5 bg-white/70 dark:bg-[#1c1c1e]/70 backdrop-blur-xl border border-white/40 dark:border-white/5 rounded-[1.8rem] hover:border-tg-button/40 hover:bg-white/90 dark:hover:bg-[#252528]/90 hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.12)] active:scale-[0.97] transition-all duration-300 cursor-pointer group shadow-[0_4px_15px_-5px_rgba(0,0,0,0.05)] relative overflow-hidden"
+          class="flex items-center gap-4 p-3.5 bg-[#121215]/80 backdrop-blur-xl border border-white/5 rounded-[1.8rem] hover:border-white/10 hover:bg-[#1a1a1f]/90 hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] active:scale-[0.97] transition-all duration-300 cursor-pointer group shadow-[0_4px_15px_-5px_rgba(0,0,0,0.3)] relative overflow-hidden"
         >
           <!-- Subtle glow indicator for unread -->
           <div v-if="conv.unread_count > 0" class="absolute -left-8 top-1/2 -translate-y-1/2 w-16 h-16 bg-tg-button/30 rounded-full blur-[20px] pointer-events-none transition-opacity duration-500"></div>
 
           <!-- Avatar -->
           <div class="relative shrink-0 z-10">
-            <div class="w-[3.5rem] h-[3.5rem] rounded-[1.2rem] bg-gradient-to-tr from-gray-200 to-white dark:from-gray-800 dark:to-[#2c2c2e] p-[2px] shadow-sm overflow-hidden group-hover:shadow-md transition-shadow">
+            <div class="w-[3.5rem] h-[3.5rem] rounded-[1.2rem] bg-gradient-to-tr from-[#1a1a1f] to-[#2a2a30] p-[2px] shadow-sm overflow-hidden group-hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] transition-shadow">
               <img
                 :src="conv.partner?.photo_url || 'https://ui-avatars.com/api/?name=' + (conv.partner?.display_name || 'U') + '&background=random'"
                 class="w-full h-full object-cover rounded-[1rem]"
@@ -334,7 +334,7 @@ watch(() => props.initialTargetId, async (newId) => {
             <!-- Unread Badge -->
             <div
               v-if="conv.unread_count > 0"
-              class="absolute -top-1.5 -right-1.5 min-w-[24px] h-[24px] bg-gradient-to-tr from-red-500 to-pink-500 rounded-full flex items-center justify-center px-1.5 border-2 border-white dark:border-[#1c1c1e] shadow-[0_2px_8px_rgba(239,68,68,0.5)] z-20"
+              class="absolute -top-1.5 -right-1.5 min-w-[24px] h-[24px] bg-gradient-to-tr from-red-600 to-rose-400 rounded-full flex items-center justify-center px-1.5 border-2 border-[#121215] shadow-[0_0_10px_rgba(225,29,72,0.6)] z-20"
             >
               <span class="text-[10px] font-black text-white">{{ conv.unread_count > 99 ? '99+' : conv.unread_count }}</span>
             </div>
@@ -344,14 +344,14 @@ watch(() => props.initialTargetId, async (newId) => {
           <div class="flex-1 min-w-0 py-0.5">
             <div class="flex items-center justify-between gap-2 mb-1">
               <div class="flex items-center gap-1.5 min-w-0">
-                <span class="font-bold text-[15px] truncate group-hover:text-tg-button transition-colors">
+                <span class="font-bold text-[15px] truncate text-white/90 group-hover:text-white transition-colors">
                   {{ conv.partner?.display_name || 'User' }}
                 </span>
-                <span v-if="conv.partner?.is_verified" class="text-blue-400 text-[11px] shrink-0 mt-0.5">✔</span>
+                <span v-if="conv.partner?.is_verified" class="text-blue-500 text-[11px] shrink-0 mt-0.5" style="text-shadow: 0 0 5px rgba(59,130,246,0.5)">✔</span>
               </div>
-              <span :class="conv.unread_count > 0 ? 'text-tg-button font-bold' : 'text-tg-hint font-medium'" class="text-[11px] shrink-0">{{ formatTime(conv.last_message_at) }}</span>
+              <span :class="conv.unread_count > 0 ? 'text-rose-400 font-bold' : 'text-white/40 font-medium'" class="text-[11px] shrink-0">{{ formatTime(conv.last_message_at) }}</span>
             </div>
-            <p :class="conv.unread_count > 0 ? 'text-tg-text font-semibold' : 'text-tg-hint font-medium'" class="text-[13px] truncate opacity-90">
+            <p :class="conv.unread_count > 0 ? 'text-white/90 font-semibold' : 'text-white/50 font-medium'" class="text-[13px] truncate">
               <span v-if="conv.last_message">
                 {{ conv.last_message.sender_id === String($tg?.initDataUnsafe?.user?.id) ? $t('dm.you') + ': ' : '' }}{{ conv.last_message.content }}
               </span>
@@ -369,32 +369,32 @@ watch(() => props.initialTargetId, async (newId) => {
       
       <!-- Dynamic Background Decoration -->
       <div class="absolute inset-0 bg-tg-bg overflow-hidden pointer-events-none z-0">
-        <div class="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-tg-button/10 rounded-full blur-[80px] mix-blend-screen animate-pulse"></div>
-        <div class="absolute bottom-[20%] left-[-10%] w-[60vw] h-[60vw] bg-purple-500/10 rounded-full blur-[100px] mix-blend-screen"></div>
+        <div class="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-[#0088cc]/10 rounded-full blur-[100px] animate-pulse"></div>
+        <div class="absolute bottom-[10%] left-[-20%] w-[70vw] h-[70vw] bg-[#6b21a8]/10 rounded-full blur-[120px]"></div>
         <!-- Noise Overlay -->
         <div class="absolute inset-0 opacity-[0.015]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
       </div>
 
       <!-- Floating Chat Header -->
       <div class="px-3 pt-3 pb-1 z-20 shrink-0">
-        <div class="flex items-center gap-3 px-3 py-2.5 bg-white/70 dark:bg-[#1a1a1a]/70 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[2rem]">
-          <button @click="goBack" class="w-10 h-10 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 rounded-full flex items-center justify-center text-2xl active:scale-90 transition-transform shrink-0">
+        <div class="flex items-center gap-3 px-3 py-2.5 bg-[#121215]/80 backdrop-blur-2xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.5)] rounded-[2rem]">
+          <button @click="goBack" class="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-2xl text-white/80 active:scale-90 transition-transform shrink-0">
             ‹
           </button>
-          <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-tg-button to-purple-500 p-[2px] shrink-0 shadow-md">
+          <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-[#0088cc] to-[#6b21a8] p-[2px] shrink-0 shadow-[0_0_15px_rgba(107,33,168,0.3)]">
             <img
               :src="activeConversation?.partner?.photo_url || 'https://ui-avatars.com/api/?name=' + (activeConversation?.partner?.display_name || 'U') + '&background=random'"
-              class="w-full h-full object-cover rounded-full border-2 border-white dark:border-[#1a1a1a]"
+              class="w-full h-full object-cover rounded-full border-2 border-[#121215]"
             />
           </div>
           <div class="flex-1 min-w-0" @click="emit('view-profile', activeConversation?.partner?.telegram_id)">
             <div class="flex items-center gap-1.5">
-              <p class="font-extrabold text-[15px] truncate cursor-pointer hover:text-tg-button transition-colors tracking-tight">
+              <p class="font-extrabold text-[15px] truncate cursor-pointer text-white/90 hover:text-white transition-colors tracking-tight">
                 {{ activeConversation?.partner?.display_name || 'User' }}
               </p>
-              <span v-if="activeConversation?.partner?.is_verified" class="text-blue-500 text-[11px] drop-shadow-sm mt-0.5">✔</span>
+              <span v-if="activeConversation?.partner?.is_verified" class="text-[#00aaff] text-[11px] drop-shadow-[0_0_5px_rgba(0,170,255,0.5)] mt-0.5">✔</span>
             </div>
-            <p class="text-[11px] text-tg-hint font-semibold truncate opacity-80 uppercase tracking-wider mt-0.5">@{{ activeConversation?.partner?.username || 'user' }}</p>
+            <p class="text-[11px] text-white/40 font-semibold truncate uppercase tracking-wider mt-0.5">@{{ activeConversation?.partner?.username || 'user' }}</p>
           </div>
         </div>
       </div>
@@ -408,19 +408,19 @@ watch(() => props.initialTargetId, async (newId) => {
       >
         <!-- Loading More History -->
         <div v-if="isFetchingMore" class="flex justify-center py-4">
-          <div class="w-6 h-6 border-[3px] border-tg-button border-t-transparent rounded-full animate-spin shadow-[0_0_10px_rgba(var(--tg-theme-button-color-rgb),0.5)]"></div>
+          <div class="w-6 h-6 border-[3px] border-[#00aaff] border-t-transparent rounded-full animate-spin shadow-[0_0_10px_rgba(0,170,255,0.5)]"></div>
         </div>
         <!-- Loading -->
         <div v-if="isChatLoading" class="flex justify-center py-12">
-          <div class="text-tg-button text-xs font-black tracking-widest uppercase animate-pulse">Memuat...</div>
+          <div class="text-[#00aaff] text-xs font-black tracking-widest uppercase animate-pulse">Memuat...</div>
         </div>
 
         <!-- Empty chat -->
         <div v-else-if="messages.length === 0" class="flex flex-col items-center justify-center py-20 text-center space-y-4 px-8">
-          <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-tg-button/20 to-purple-500/20 flex items-center justify-center text-5xl shadow-[inset_0_0_20px_rgba(0,0,0,0.1)]">👋</div>
-          <p class="text-sm font-bold text-tg-text">Kirim pesan pertama!</p>
-          <p class="text-xs text-tg-hint font-medium leading-relaxed opacity-70">
-            Mulai obrolan dengan <span class="text-tg-button font-bold">{{ activeConversation?.partner?.display_name || 'pengguna ini' }}</span> sekarang.
+          <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-[#0088cc]/10 to-[#6b21a8]/10 flex items-center justify-center text-5xl border border-white/5 shadow-[inset_0_0_30px_rgba(0,0,0,0.5)]">👋</div>
+          <p class="text-sm font-bold text-white/90">Kirim pesan pertama!</p>
+          <p class="text-xs text-white/50 font-medium leading-relaxed">
+            Mulai obrolan dengan <span class="text-[#00aaff] font-bold">{{ activeConversation?.partner?.display_name || 'pengguna ini' }}</span> sekarang.
           </p>
         </div>
 
@@ -433,25 +433,25 @@ watch(() => props.initialTargetId, async (newId) => {
             class="flex items-end gap-3"
           >
             <!-- Partner Avatar (only on received messages) -->
-            <div v-if="!isSelf(msg.sender_id)" class="w-8 h-8 rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 dark:from-indigo-400/20 dark:to-purple-400/20 shrink-0 mb-0.5 shadow-sm">
+            <div v-if="!isSelf(msg.sender_id)" class="w-8 h-8 rounded-full p-[1.5px] bg-gradient-to-tr from-[#1a1a1f] to-[#2a2a30] shrink-0 mb-0.5 shadow-sm">
               <img
                 :src="msg.sender_photo || 'https://ui-avatars.com/api/?name=' + (msg.sender_name || 'U') + '&background=random'"
-                class="w-full h-full object-cover rounded-full border border-white/50 dark:border-white/10"
+                class="w-full h-full object-cover rounded-full border border-white/10"
               />
             </div>
 
             <!-- Bubble -->
             <div
               :class="isSelf(msg.sender_id)
-                ? 'bg-gradient-to-br from-[#0088cc] via-[#00aaff] to-[#00d4ff] text-white rounded-[1.6rem] rounded-br-[0.4rem] ml-12 shadow-[0_8px_16px_-6px_rgba(0,170,255,0.4)]'
-                : 'bg-white/95 dark:bg-[#1c1c1e]/95 backdrop-blur-2xl border border-white/60 dark:border-white/10 text-tg-text rounded-[1.6rem] rounded-bl-[0.4rem] mr-12 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_4px_15px_-3px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_4px_15px_-3px_rgba(0,0,0,0.3)] relative overflow-hidden'"
+                ? 'bg-gradient-to-br from-[#0066cc] via-[#0088ff] to-[#00aaff] text-white rounded-[1.6rem] rounded-br-[0.4rem] ml-12 shadow-[0_4px_20px_-5px_rgba(0,136,255,0.4)]'
+                : 'bg-[#16161a]/95 backdrop-blur-2xl border border-white/5 text-white/90 rounded-[1.6rem] rounded-bl-[0.4rem] mr-12 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.5)] relative overflow-hidden'"
               class="px-5 py-3 max-w-[85%] group"
             >
               <!-- Subtle inner highlight for partner bubble -->
-              <div v-if="!isSelf(msg.sender_id)" class="absolute inset-0 bg-gradient-to-br from-indigo-50/30 to-purple-50/30 dark:from-indigo-500/5 dark:to-purple-500/5 pointer-events-none rounded-[1.6rem] rounded-bl-[0.4rem]"></div>
+              <div v-if="!isSelf(msg.sender_id)" class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-[1.6rem] rounded-bl-[0.4rem]"></div>
               
               <p :class="isSelf(msg.sender_id) ? 'text-white drop-shadow-sm' : 'relative z-10'" class="text-[14.5px] leading-[1.5] font-medium break-words">{{ msg.content }}</p>
-              <div :class="isSelf(msg.sender_id) ? 'text-white/80 justify-end' : 'text-tg-hint justify-start opacity-80 relative z-10'" class="flex items-center gap-1.5 mt-1.5 -mb-1">
+              <div :class="isSelf(msg.sender_id) ? 'text-white/80 justify-end' : 'text-white/40 justify-start relative z-10'" class="flex items-center gap-1.5 mt-1.5 -mb-1">
                 <span class="text-[10px] font-bold tracking-[0.05em]">
                   {{ new Date(msg.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}
                 </span>
@@ -465,20 +465,20 @@ watch(() => props.initialTargetId, async (newId) => {
 
       <!-- Floating Input Area -->
       <div class="shrink-0 px-3 pb-3 pt-1 z-20">
-        <div class="flex items-end gap-2 relative bg-white/70 dark:bg-[#1a1a1a]/70 backdrop-blur-2xl border border-black/5 dark:border-white/10 p-2 rounded-[2rem] shadow-[0_-10px_40px_rgb(0,0,0,0.05)]">
+        <div class="flex items-end gap-2 relative bg-[#121215]/80 backdrop-blur-2xl border border-white/5 p-2 rounded-[2rem] shadow-[0_-10px_40px_rgb(0,0,0,0.5)]">
           <textarea
             ref="messageInput"
             v-model="newMessage"
             @keydown="handleKeydown"
             :placeholder="$t('dm.typeMessage')"
             rows="1"
-            class="flex-1 bg-transparent dark:text-white rounded-[1.5rem] pl-4 pr-2 py-3.5 text-[15px] font-medium focus:outline-none transition-all resize-none max-h-32 custom-scrollbar placeholder:text-black/30 dark:placeholder:text-white/30"
+            class="flex-1 bg-[#0a0a0c] text-white/90 border border-white/5 rounded-[1.5rem] pl-4 pr-2 py-3.5 text-[15px] font-medium focus:outline-none focus:border-white/10 transition-all resize-none max-h-32 custom-scrollbar placeholder:text-white/30"
             style="field-sizing: content;"
           ></textarea>
           <button
             @click="sendMessage"
             :disabled="!newMessage.trim() || isSending"
-            class="w-12 h-12 bg-gradient-to-tr from-[#0088cc] to-[#00d4ff] rounded-full flex items-center justify-center text-white shadow-[0_4px_15px_rgba(0,170,255,0.4)] active:scale-90 active:shadow-none transition-all disabled:opacity-40 disabled:grayscale shrink-0"
+            class="w-12 h-12 bg-gradient-to-tr from-[#0066cc] to-[#00aaff] rounded-full flex items-center justify-center text-white shadow-[0_0_15px_rgba(0,170,255,0.4)] active:scale-90 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale shrink-0"
           >
             <span class="text-xl -ml-0.5 mt-0.5" style="text-shadow: 0 2px 5px rgba(0,0,0,0.2);">{{ isSending ? '⏳' : '➤' }}</span>
           </button>

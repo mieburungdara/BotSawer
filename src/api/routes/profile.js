@@ -5,6 +5,7 @@ const auth = require('../../services/auth');
 const db = require('../../services/database');
 
 const followService = require('../../services/follow');
+const blockService = require('../../services/block');
 
 /**
  * Profile API
@@ -27,17 +28,27 @@ router.post('/profile', async (req, res) => {
       const stats = await creator.getStats(targetId);
       const isFollowing = await followService.isFollowing(user.telegram_id, targetId);
       
-      // Get recent contents with media
-      const contents = await db('contents')
-        .where('user_id', targetId)
-        .whereNot('status', 'deleted')
-        .orderBy('created_at', 'desc')
-        .limit(20);
+      // BLOCK CHECK
+      const blockStatus = await blockService.getBlockStatus(user.telegram_id, targetId);
+      
+      if (blockStatus.blockedByThem && user.telegram_id !== targetId) {
+          throw new Error('Profil tidak tersedia.');
+      }
 
-      const contentsWithMedia = await Promise.all(contents.map(async (content) => {
-        const media = await db('media_files_raw').where('content_id', content.id);
-        return { ...content, media };
-      }));
+      let contentsWithMedia = [];
+      if (!blockStatus.blockedByMe) {
+        // Get recent contents with media
+        const contents = await db('contents')
+          .where('user_id', targetId)
+          .whereNot('status', 'deleted')
+          .orderBy('created_at', 'desc')
+          .limit(20);
+
+        contentsWithMedia = await Promise.all(contents.map(async (content) => {
+          const media = await db('media_files_raw').where('content_id', content.id);
+          return { ...content, media };
+        }));
+      }
 
       return res.json({ 
         success: true, 
@@ -46,7 +57,8 @@ router.post('/profile', async (req, res) => {
           stats,
           contents: contentsWithMedia,
           is_own: user.telegram_id === targetId,
-          is_following: isFollowing
+          is_following: isFollowing,
+          is_blocked: blockStatus.blockedByMe
         } 
       });
     }
