@@ -49,7 +49,7 @@ const settings = ref([
         <h3 class="text-sm font-bold">Admin Vesper</h3>
         <p class="text-[10px] text-tg-hint">{{ $t('settings.verifiedSince') }} 2024</p>
       </div>
-      <button @click="emit('nav', 'profile')" class="text-tg-button text-xs font-bold" :aria-label="$t('settings.change')">{{ $t('settings.change') }}</button>
+      <button @click="emit('nav', 'profile')" class="text-tg-button text-xs font-bold" :aria-label="$t('settings.editSocial')">{{ $t('settings.editSocial') }}</button>
     </div>
 
     <!-- Accessibility: Font Size & Language -->
