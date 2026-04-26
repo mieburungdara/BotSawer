@@ -75,7 +75,10 @@ app.get('/health', healthHandler);
 app.get('/vesper/health', healthHandler);
 
 // WebApp Serving Logic
-app.get(['/', '/vesper', '/vesper/'], (req, res) => {
+app.get(['/', '/vesper', '/vesper/*', '/botsawer/public/webapp*'], (req, res) => {
+  // If it's an API request, let the API router handle it (this is a fallback)
+  if (req.url.startsWith('/api') || req.url.startsWith('/vesper/api')) return;
+  
   const indexPath = path.join(__dirname, 'public/webapp/index.html');
   res.sendFile(indexPath);
 });
