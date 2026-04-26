@@ -39,6 +39,14 @@ const messages = {
         rising_star: 'Rising Star',
         superstar: 'Superstar',
         active_creator: 'Active Creator'
+      },
+      placeholders: {
+        name: 'Enter your name',
+        bio: 'Tell us about yourself',
+        instagram: 'Instagram URL or @username',
+        tiktok: 'TikTok URL or @username',
+        facebook: 'Facebook URL or username',
+        portfolio: 'Portfolio or Website URL'
       }
     },
     settings: {
@@ -105,6 +113,14 @@ const messages = {
         rising_star: 'Rising Star',
         superstar: 'Superstar',
         active_creator: 'Kreator Aktif'
+      },
+      placeholders: {
+        name: 'Masukkan nama Anda',
+        bio: 'Ceritakan tentang diri Anda',
+        instagram: 'URL Instagram atau @username',
+        tiktok: 'URL TikTok atau @username',
+        facebook: 'URL Facebook atau username',
+        portfolio: 'URL Portfolio atau Website'
       }
     },
     settings: {

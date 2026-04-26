@@ -22,6 +22,7 @@ const user = ref({
   is_following: false,
   instagram_url: null,
   tiktok_url: null,
+  facebook_url: null,
   portfolio_url: null
 })
 const systemConfig = ref({
@@ -38,6 +39,7 @@ const editData = ref({
     bio: '',
     instagram_url: '',
     tiktok_url: '',
+    facebook_url: '',
     portfolio_url: ''
 })
 const followModalTitle = ref('')
@@ -93,6 +95,7 @@ const fetchProfileData = async (targetId = null) => {
           is_following: data.is_following,
           instagram_url: data.instagram_url,
           tiktok_url: data.tiktok_url,
+          facebook_url: data.facebook_url,
           portfolio_url: data.portfolio_url
       };
       
@@ -236,6 +239,7 @@ const openEditModal = () => {
         bio: user.value.bio,
         instagram_url: user.value.instagram_url || '',
         tiktok_url: user.value.tiktok_url || '',
+        facebook_url: user.value.facebook_url || '',
         portfolio_url: user.value.portfolio_url || ''
     }
     showEditModal.value = true
@@ -270,10 +274,41 @@ const saveProfile = async () => {
 
 onMounted(() => fetchProfileData(props.targetId))
 watch(() => props.targetId, (newId) => fetchProfileData(newId))
-const openExternalLink = (url) => {
+
+const openExternalLink = (url, type) => {
     if (!url) return;
-    const finalUrl = url.startsWith('http') ? url : `https://${url}`;
-    window.open(finalUrl, '_blank');
+    
+    // Clean input to get username/slug
+    let cleanVal = url.replace(/https?:\/\/(www\.)?(instagram|tiktok|facebook|fb)\.com\//, '')
+                      .replace(/\/$/, '')
+                      .replace(/^@/, '');
+
+    let deepLink = '';
+    let webUrl = url.startsWith('http') ? url : `https://${url}`;
+
+    if (type === 'instagram') {
+        deepLink = `instagram://user?username=${cleanVal}`;
+        if (!url.includes('instagram.com')) webUrl = `https://instagram.com/${cleanVal}`;
+    } else if (type === 'tiktok') {
+        deepLink = `tiktok://user/@${cleanVal}`;
+        if (!url.includes('tiktok.com')) webUrl = `https://tiktok.com/@${cleanVal}`;
+    } else if (type === 'facebook') {
+        const fullFbUrl = url.includes('facebook.com') ? url : `https://facebook.com/${cleanVal}`;
+        deepLink = `fb://facewebmodal/f?href=${encodeURIComponent(fullFbUrl)}`;
+        webUrl = fullFbUrl;
+    }
+
+    if (deepLink) {
+        // Attempt to trigger the native app
+        window.location.href = deepLink;
+        
+        // Fallback to web after 2 seconds if the app didn't open
+        setTimeout(() => {
+            window.open(webUrl, '_blank');
+        }, 2000);
+    } else {
+        window.open(webUrl, '_blank');
+    }
 }
 </script>
 
@@ -332,14 +367,17 @@ const openExternalLink = (url) => {
                     </p>
 
                     <!-- Social Links -->
-                    <div v-if="user.instagram_url || user.tiktok_url || user.portfolio_url" class="flex justify-center gap-3 mt-4">
-                        <button v-if="user.instagram_url" @click="openExternalLink(user.instagram_url)" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-pink-500/30 transition-all">
+                    <div v-if="user.instagram_url || user.tiktok_url || user.facebook_url || user.portfolio_url" class="flex justify-center gap-3 mt-4">
+                        <button v-if="user.instagram_url" @click="openExternalLink(user.instagram_url, 'instagram')" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-pink-500/30 transition-all">
                             <span class="text-lg">📸</span>
                         </button>
-                        <button v-if="user.tiktok_url" @click="openExternalLink(user.tiktok_url)" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-white/30 transition-all">
+                        <button v-if="user.tiktok_url" @click="openExternalLink(user.tiktok_url, 'tiktok')" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-white/30 transition-all">
                             <span class="text-lg">🎵</span>
                         </button>
-                        <button v-if="user.portfolio_url" @click="openExternalLink(user.portfolio_url)" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-blue-500/30 transition-all">
+                        <button v-if="user.facebook_url" @click="openExternalLink(user.facebook_url, 'facebook')" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-blue-600/30 transition-all">
+                            <span class="text-lg">👥</span>
+                        </button>
+                        <button v-if="user.portfolio_url" @click="openExternalLink(user.portfolio_url, 'portfolio')" class="w-10 h-10 glass rounded-xl border border-white/5 flex items-center justify-center grayscale hover:grayscale-0 hover:border-blue-500/30 transition-all">
                             <span class="text-lg">🌐</span>
                         </button>
                     </div>
@@ -529,13 +567,13 @@ const openExternalLink = (url) => {
                 <!-- Name -->
                 <div class="space-y-2">
                     <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint ml-2">Name</label>
-                    <input v-model="editData.name" type="text" class="w-full bg-tg-secondary/50 border border-white/5 rounded-2xl p-4 text-sm font-bold focus:border-tg-button/50 outline-none transition-all" placeholder="Enter your name" />
+                    <input v-model="editData.name" type="text" class="w-full bg-tg-secondary/50 border border-white/5 rounded-2xl p-4 text-sm font-bold focus:border-tg-button/50 outline-none transition-all" :placeholder="$t('profile.placeholders.name')" />
                 </div>
 
                 <!-- Bio -->
                 <div class="space-y-2">
                     <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint ml-2">Bio</label>
-                    <textarea v-model="editData.bio" rows="3" class="w-full bg-tg-secondary/50 border border-white/5 rounded-2xl p-4 text-sm font-bold focus:border-tg-button/50 outline-none transition-all resize-none" placeholder="Tell us about yourself"></textarea>
+                    <textarea v-model="editData.bio" rows="3" class="w-full bg-tg-secondary/50 border border-white/5 rounded-2xl p-4 text-sm font-bold focus:border-tg-button/50 outline-none transition-all resize-none" :placeholder="$t('profile.placeholders.bio')"></textarea>
                 </div>
 
                 <div class="pt-2 border-t border-white/5">
@@ -545,19 +583,25 @@ const openExternalLink = (url) => {
                         <!-- Instagram -->
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl shrink-0">📸</div>
-                            <input v-model="editData.instagram_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-pink-500/30 outline-none transition-all" placeholder="Instagram URL or @username" />
+                            <input v-model="editData.instagram_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-pink-500/30 outline-none transition-all" :placeholder="$t('profile.placeholders.instagram')" />
                         </div>
 
                         <!-- TikTok -->
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl shrink-0">🎵</div>
-                            <input v-model="editData.tiktok_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-white/30 outline-none transition-all" placeholder="TikTok URL or @username" />
+                            <input v-model="editData.tiktok_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-white/30 outline-none transition-all" :placeholder="$t('profile.placeholders.tiktok')" />
+                        </div>
+
+                        <!-- Facebook -->
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl shrink-0">👥</div>
+                            <input v-model="editData.facebook_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-blue-600/30 outline-none transition-all" :placeholder="$t('profile.placeholders.facebook')" />
                         </div>
 
                         <!-- Portfolio -->
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl shrink-0">🌐</div>
-                            <input v-model="editData.portfolio_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-blue-500/30 outline-none transition-all" placeholder="Portfolio or Website URL" />
+                            <input v-model="editData.portfolio_url" type="text" class="flex-1 bg-tg-secondary/50 border border-white/5 rounded-xl p-3 text-xs font-bold focus:border-blue-500/30 outline-none transition-all" :placeholder="$t('profile.placeholders.portfolio')" />
                         </div>
                     </div>
                 </div>
