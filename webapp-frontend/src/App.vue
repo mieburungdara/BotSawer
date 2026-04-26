@@ -9,6 +9,7 @@ import Mutasi from './components/Mutasi.vue'
 import Library from './components/Library.vue'
 import Achievements from './components/Achievements.vue'
 import Messages from './components/Messages.vue'
+import Help from './components/Help.vue'
 
 const activeTab = ref('dashboard')
 const isSidebarOpen = ref(false)
@@ -37,6 +38,7 @@ const menuItems = [
   { id: 'wallet', label: 'Dompet', icon: '💰', color: 'bg-green-500' },
   { id: 'achievements', label: 'Awards', icon: '🏆', color: 'bg-yellow-500' },
   { id: 'library', label: 'Library', icon: '📚', color: 'bg-orange-500' },
+  { id: 'help', label: 'Bantuan', icon: '❓', color: 'bg-indigo-500' },
   { id: 'settings', label: 'Settings', icon: '⚙️', color: 'bg-gray-500' },
 ]
 
@@ -258,6 +260,7 @@ const handleTouchEnd = (e) => {
         <Wallet v-if="activeTab === 'wallet'" @mutasi="activeTab = 'mutasi'" />
         <Achievements v-if="activeTab === 'achievements'" />
         <Library v-if="activeTab === 'library'" />
+        <Help v-if="activeTab === 'help'" />
         <Settings v-if="activeTab === 'settings'" />
         <Mutasi v-if="activeTab === 'mutasi'" @back="activeTab = 'wallet'" />
       </main>

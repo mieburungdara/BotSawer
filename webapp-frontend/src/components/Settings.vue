@@ -29,7 +29,7 @@ const settings = ref([
   { title: t('settings.notifications'), icon: '🔔', desc: t('settings.notifDesc'), toggle: true, value: true, aria: t('settings.notifications') },
   { title: t('settings.privateMode'), icon: '🔒', desc: t('settings.privateDesc'), toggle: true, value: false, aria: t('settings.privateMode') },
   { title: t('settings.payments'), icon: '💳', desc: t('settings.paymentsDesc'), toggle: false, aria: t('settings.payments') },
-  { title: t('settings.contactAdmin'), icon: '🎧', desc: t('settings.contactDesc'), toggle: false, aria: t('settings.contactAdmin') },
+  { title: t('settings.contactAdmin'), icon: '🎧', desc: t('settings.contactDesc'), toggle: false, action: () => emit('nav', 'help'), aria: t('settings.contactAdmin') },
 ])
 </script>
 
