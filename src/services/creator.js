@@ -251,6 +251,8 @@ class CreatorService {
       .offset(offset);
 
     return { list, total: parseInt(totalResult.total || 0) };
+  }
+
   /**
    * Get Trending Creators (Explore)
    */
