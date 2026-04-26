@@ -75,10 +75,16 @@ app.get('/health', healthHandler);
 app.get('/vesper/health', healthHandler);
 
 // WebApp Serving Logic
-app.get(['/', '/vesper', '/vesper/*', '/botsawer/public/webapp*'], (req, res) => {
-  // If it's an API request, let the API router handle it (this is a fallback)
+app.get(['/', '/vesper', '/vesper/*', '/vesper/public/webapp*'], (req, res) => {
+  // 1. Skip API calls
   if (req.url.startsWith('/api') || req.url.startsWith('/vesper/api')) return;
   
+  // 2. Skip actual assets to avoid serving HTML as JS/CSS (important for 404 assets)
+  if (/\.(js|css|svg|png|jpg|jpeg|gif|ico|json|woff2?)$/.test(req.path)) {
+      return res.status(404).send('Asset not found');
+  }
+
+  // 3. Send index.html for everything else (SPA routing fallback)
   const indexPath = path.join(__dirname, 'public/webapp/index.html');
   res.sendFile(indexPath);
 });
