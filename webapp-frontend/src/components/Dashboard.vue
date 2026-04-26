@@ -115,30 +115,67 @@ const handleScroll = () => {
   }
 }
 
-const toggleBookmark = async (item) => {
-  if (item.is_sponsored) return;
-  
-  try {
-    const tg = window.Telegram?.WebApp;
-    const response = await fetch('/vesper/api/bookmarks/toggle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initData: tg?.initData,
-        content_id: item.id
-      })
-    });
-    const result = await response.json();
-    if (result.success) {
-      item.is_bookmarked = result.is_bookmarked ? 1 : 0;
-      
-      // Haptic feedback
-      if (tg?.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
-      }
     }
   } catch (e) {
     console.error("Toggle Bookmark Error:", e);
+  }
+}
+
+// Donation Logic
+const showDonationModal = ref(false)
+const selectedPost = ref(null)
+const donationAmount = ref(5000)
+const isDonating = ref(false)
+const donationError = ref('')
+
+const donationPresets = [2000, 5000, 10000, 25000, 50000]
+
+const openDonationModal = (item) => {
+  if (item.is_sponsored) return;
+  selectedPost.value = item;
+  showDonationModal.value = true;
+  donationError.value = '';
+  donationAmount.value = 5000;
+}
+
+const processDonation = async () => {
+  if (!selectedPost.value || donationAmount.value <= 0) return;
+  
+  isDonating.value = true;
+  donationError.value = '';
+  
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        action: 'donate',
+        receiverId: selectedPost.value.creator_id,
+        amount: donationAmount.value,
+        contentId: selectedPost.value.id
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      showDonationModal.value = false;
+      // Refresh stats to show new donation count/balance if needed
+      fetchDashboardData();
+    } else {
+      donationError.value = result.message || 'Donasi gagal';
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    }
+  } catch (e) {
+    donationError.value = 'Terjadi kesalahan sistem';
+    console.error(e);
+  } finally {
+    isDonating.value = false;
   }
 }
 
@@ -263,16 +300,23 @@ onUnmounted(() => {
                 <p v-if="!item.is_sponsored" class="text-[10px] text-tg-hint">@{{ item.username }} • {{ new Date(item.created_at).toLocaleDateString('id-ID') }}</p>
                 <p v-else class="text-[10px] text-yellow-500/70 font-bold uppercase tracking-wider">Promoted</p>
               </div>
-              <!-- Bookmark Button -->
-              <button v-if="!item.is_sponsored" 
-                      @click.stop="toggleBookmark(item)"
-                      class="p-2 active:scale-125 transition-transform">
-                <span :class="item.is_bookmarked ? 'text-yellow-500' : 'text-tg-hint'" class="text-lg">
-                  {{ item.is_bookmarked ? '🔖' : '🔖' }}
-                  <span v-if="item.is_bookmarked" class="opacity-100"></span>
-                  <span v-else class="opacity-40"></span>
-                </span>
-              </button>
+              <div class="flex items-center gap-1">
+                <!-- Tip Button -->
+                <button v-if="!item.is_sponsored" 
+                        @click.stop="openDonationModal(item)"
+                        class="p-2 active:scale-125 transition-transform">
+                  <span class="text-lg opacity-60 hover:opacity-100 transition-opacity">🎁</span>
+                </button>
+
+                <!-- Bookmark Button -->
+                <button v-if="!item.is_sponsored" 
+                        @click.stop="toggleBookmark(item)"
+                        class="p-2 active:scale-125 transition-transform">
+                  <span :class="item.is_bookmarked ? 'text-yellow-500' : 'text-tg-hint'" class="text-lg">
+                    🔖
+                  </span>
+                </button>
+              </div>
             </div>
             
             <p class="text-sm relative z-10">{{ item.caption }}</p>
@@ -291,6 +335,54 @@ onUnmounted(() => {
       </section>
 
     </template>
+
+    <!-- Donation Modal -->
+    <div v-if="showDonationModal" class="fixed inset-0 z-[100] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="w-full max-w-md glass rounded-[2.5rem] border border-white/10 p-6 space-y-6 animate-in slide-in-from-bottom-full duration-500">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-xl font-black">Kirim Saweran 🎁</h3>
+            <p class="text-xs text-tg-hint font-bold">Dukung kreator favorit Anda!</p>
+          </div>
+          <button @click="showDonationModal = false" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl">✕</button>
+        </div>
+
+        <div v-if="selectedPost" class="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5">
+          <img :src="selectedPost.photo_url || `https://ui-avatars.com/api/?name=${selectedPost.display_name}&background=random`" class="w-10 h-10 rounded-full">
+          <div>
+            <p class="text-sm font-bold">{{ selectedPost.display_name }}</p>
+            <p class="text-[10px] text-tg-hint">@{{ selectedPost.username }}</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint px-1">Pilih Nominal</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button v-for="amount in donationPresets" :key="amount"
+                    @click="donationAmount = amount"
+                    :class="donationAmount === amount ? 'bg-tg-button border-tg-button text-white shadow-lg shadow-tg-button/30' : 'bg-white/5 border-white/5 text-tg-hint'"
+                    class="py-3 rounded-xl border text-xs font-black transition-all active:scale-90">
+              {{ (amount/1000).toFixed(0) }}K
+            </button>
+            <div class="relative group">
+              <input type="number" v-model="donationAmount" placeholder="Lainnya"
+                     class="w-full py-3 px-3 bg-white/5 border border-white/5 rounded-xl text-xs font-black text-center focus:outline-none focus:border-tg-button transition-all">
+            </div>
+          </div>
+        </div>
+
+        <div v-if="donationError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+          <p class="text-[10px] text-red-400 font-bold uppercase tracking-tight">{{ donationError }}</p>
+        </div>
+
+        <button @click="processDonation" 
+                :disabled="isDonating || donationAmount <= 0"
+                class="w-full py-4 bg-tg-button text-white rounded-2xl font-black text-sm shadow-xl shadow-tg-button/30 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2">
+          <span v-if="isDonating" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          {{ isDonating ? 'MEMPROSES...' : `KIRIM Rp ${donationAmount.toLocaleString('id-ID')}` }}
+        </button>
+      </div>
+    </div>
 
   </div>
 </template>

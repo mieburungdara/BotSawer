@@ -60,6 +60,60 @@ class WalletService {
   }
 
   /**
+   * Process donation from one user to another
+   */
+  async processDonation(senderId, receiverId, amount, contentId = null) {
+    if (amount <= 0) throw new Error('Jumlah nominal harus lebih besar dari 0');
+    if (String(senderId) === String(receiverId)) throw new Error('Anda tidak bisa memberikan donasi kepada diri sendiri');
+
+    return await db.transaction(async (trx) => {
+      // 1. Check sender balance
+      const senderWallet = await trx('wallets').where('user_id', senderId).forUpdate().first();
+      if (!senderWallet || parseFloat(senderWallet.balance) < amount) {
+        throw new Error('Saldo Anda tidak mencukupi untuk memberikan donasi ini');
+      }
+
+      // 2. Check receiver wallet
+      const receiverWallet = await trx('wallets').where('user_id', receiverId).forUpdate().first();
+      if (!receiverWallet) throw new Error('Wallet kreator tujuan tidak ditemukan');
+
+      // 3. Deduct from sender
+      await trx('wallets').where('user_id', senderId).update({
+        balance: db.raw('balance - ?', [amount])
+      });
+
+      // 4. Add to receiver
+      await trx('wallets').where('user_id', receiverId).update({
+        balance: db.raw('balance + ?', [amount]),
+        total_earning: db.raw('total_earning + ?', [amount])
+      });
+
+      // 5. Record Transaction for sender
+      await trx('transactions').insert({
+        user_id: senderId,
+        media_id: contentId,
+        type: 'donation_sent',
+        amount: -amount,
+        status: 'success',
+        description: `Donasi untuk kreator${contentId ? ' (Post #' + contentId + ')' : ''}`
+      });
+
+      // 6. Record Transaction for receiver
+      await trx('transactions').insert({
+        user_id: receiverId,
+        from_user_id: senderId,
+        media_id: contentId,
+        type: 'donation',
+        amount: amount,
+        status: 'success',
+        description: `Donasi masuk dari user ${senderId}`
+      });
+
+      return true;
+    });
+  }
+
+  /**
    * Get current balance
    */
   async getBalance(telegramId) {

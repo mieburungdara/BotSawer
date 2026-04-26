@@ -170,12 +170,61 @@ const getAvatarColor = (name) => {
   return colors[index]
 }
 
-const getInitials = (name) => {
-  if (!name) return '??';
-  return name.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase().substring(0, 2)
+const emit = defineEmits(['view-profile'])
+
+// Donation Logic
+const showDonationModal = ref(false)
+const selectedPost = ref(null)
+const donationAmount = ref(5000)
+const isDonating = ref(false)
+const donationError = ref('')
+const donationPresets = [2000, 5000, 10000, 25000, 50000]
+
+const openDonationModal = (item) => {
+  selectedPost.value = item;
+  showDonationModal.value = true;
+  donationError.value = '';
+  donationAmount.value = 5000;
 }
 
-const emit = defineEmits(['view-profile'])
+const processDonation = async () => {
+  if (!selectedPost.value || donationAmount.value <= 0) return;
+  
+  isDonating.value = true;
+  donationError.value = '';
+  
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        action: 'donate',
+        receiverId: selectedPost.value.creator_id,
+        amount: donationAmount.value,
+        contentId: selectedPost.value.id || selectedPost.value.short_id
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      showDonationModal.value = false;
+    } else {
+      donationError.value = result.message || 'Donasi gagal';
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    }
+  } catch (e) {
+    donationError.value = 'Terjadi kesalahan sistem';
+    console.error(e);
+  } finally {
+    isDonating.value = false;
+  }
+}
 </script>
 
 <template>
@@ -355,9 +404,16 @@ const emit = defineEmits(['view-profile'])
           </div>
 
           <!-- Action -->
-          <button @click="emit('view-profile', creator.telegram_id)" class="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-lg hover:bg-tg-button hover:text-white transition-all shadow-lg active:scale-90">
-            ➔
-          </button>
+          <div class="flex items-center gap-2">
+            <button v-if="selectedCategory === 'Content' || selectedCategory === 'Post'" 
+                    @click.stop="openDonationModal(creator)"
+                    class="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-lg active:scale-90 transition-all">
+              🎁
+            </button>
+            <button @click="emit('view-profile', creator.telegram_id)" class="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-lg hover:bg-tg-button hover:text-white transition-all shadow-lg active:scale-90">
+              ➔
+            </button>
+          </div>
         </div>
       </template>
 
@@ -400,6 +456,57 @@ const emit = defineEmits(['view-profile'])
         <p class="text-[10px] text-tg-hint font-bold uppercase tracking-widest">
             Halaman {{ currentPage }} dari {{ totalPages }}
         </p>
+      </div>
+    </div>
+
+    <!-- Donation Modal -->
+    <div v-if="showDonationModal" class="fixed inset-0 z-[100] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="w-full max-w-md glass rounded-[2.5rem] border border-white/10 p-6 space-y-6 animate-in slide-in-from-bottom-full duration-500 text-white">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-xl font-black text-white">Kirim Saweran 🎁</h3>
+            <p class="text-xs text-tg-hint font-bold uppercase tracking-wider">Dukung kreator favorit Anda!</p>
+          </div>
+          <button @click="showDonationModal = false" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl">✕</button>
+        </div>
+
+        <div v-if="selectedPost" class="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5">
+          <div :class="getAvatarColor(selectedPost.display_name)" class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs overflow-hidden">
+            <img v-if="selectedPost.photo_url" :src="selectedPost.photo_url" class="w-full h-full object-cover">
+            <span v-else>{{ getInitials(selectedPost.display_name) }}</span>
+          </div>
+          <div>
+            <p class="text-sm font-bold text-white">{{ selectedPost.display_name }}</p>
+            <p class="text-[10px] text-tg-hint">@{{ selectedPost.username }}</p>
+          </div>
+        </div>
+
+        <div class="space-y-3 text-left">
+          <label class="text-[10px] font-black uppercase tracking-widest text-tg-hint px-1">Pilih Nominal</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button v-for="amount in donationPresets" :key="amount"
+                    @click="donationAmount = amount"
+                    :class="donationAmount === amount ? 'bg-tg-button border-tg-button text-white shadow-lg shadow-tg-button/30' : 'bg-white/5 border-white/5 text-tg-hint'"
+                    class="py-3 rounded-xl border text-xs font-black transition-all active:scale-90">
+              {{ (amount/1000).toFixed(0) }}K
+            </button>
+            <div class="relative group">
+              <input type="number" v-model="donationAmount" placeholder="Lainnya"
+                     class="w-full py-3 px-3 bg-white/10 border border-white/10 rounded-xl text-xs font-black text-center text-white focus:outline-none focus:border-tg-button transition-all">
+            </div>
+          </div>
+        </div>
+
+        <div v-if="donationError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+          <p class="text-[10px] text-red-400 font-bold uppercase tracking-tight">{{ donationError }}</p>
+        </div>
+
+        <button @click="processDonation" 
+                :disabled="isDonating || donationAmount <= 0"
+                class="w-full py-4 bg-tg-button text-white rounded-2xl font-black text-sm shadow-xl shadow-tg-button/30 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2">
+          <span v-if="isDonating" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          {{ isDonating ? 'MEMPROSES...' : `KIRIM Rp ${donationAmount.toLocaleString('id-ID')}` }}
+        </button>
       </div>
     </div>
   </div>
