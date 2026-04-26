@@ -487,12 +487,9 @@ const openExternalLink = (url, type) => {
             <!-- Action Buttons -->
             <div class="flex gap-3 px-1">
                 <template v-if="user.is_own">
-                    <button @click="openEditModal" class="flex-1 flex items-center justify-center gap-2 bg-tg-button text-white py-4 rounded-2xl text-xs font-black shadow-xl shadow-tg-button/20 active:scale-95 transition-all">
+                    <button @click="openEditModal" class="w-full flex items-center justify-center gap-2 bg-tg-button text-white py-4 rounded-2xl text-xs font-black shadow-xl shadow-tg-button/20 active:scale-95 transition-all">
                         <span>📝</span>
                         {{ $t('profile.editProfile') }}
-                    </button>
-                    <button @click="$emit('nav', 'settings')" class="w-14 h-14 glass flex items-center justify-center rounded-2xl border border-white/10 active:scale-95 transition-all">
-                        <span class="text-xl">⚙️</span>
                     </button>
                 </template>
                 <template v-else>
