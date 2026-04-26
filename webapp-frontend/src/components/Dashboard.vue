@@ -83,8 +83,22 @@ const fetchFeed = async (reset = false) => {
       if (items.length < feedLimit) {
         hasMoreFeed.value = false;
       }
+      
+      // Attempt to fetch and insert a random ad
+      try {
+          const adResponse = await fetch('/vesper/api/ads/random');
+          const adResult = await adResponse.json();
+          if (adResult.success && adResult.data) {
+              // Insert randomly inside the fetched chunk
+              const insertIndex = Math.floor(Math.random() * (items.length + 1));
+              items.splice(insertIndex, 0, adResult.data);
+          }
+      } catch (adError) {
+          console.error("Failed to fetch Ad:", adError);
+      }
+
       feedItems.value = [...feedItems.value, ...items];
-      currentFeedOffset.value += items.length;
+      currentFeedOffset.value += items.filter(item => !item.is_sponsored).length;
     }
   } catch (e) {
     console.error("Feed Fetch Error:", e);
@@ -203,19 +217,33 @@ onUnmounted(() => {
           </div>
 
           <!-- Feed Items -->
-          <div v-for="item in feedItems" :key="item.short_id" class="glass p-4 rounded-3xl border border-white/5 space-y-3">
-            <div class="flex items-center gap-3">
-              <img :src="item.photo_url || `https://ui-avatars.com/api/?name=${item.display_name}&background=random`" class="w-10 h-10 rounded-full border border-white/10">
+          <div v-for="item in feedItems" :key="item.short_id" 
+               class="glass p-4 rounded-3xl border space-y-3 relative overflow-hidden"
+               :class="item.is_sponsored ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-white/5'">
+            
+            <!-- Sponsored Label -->
+            <div v-if="item.is_sponsored" class="absolute top-0 right-0 bg-yellow-500 text-black text-[8px] font-black uppercase px-2 py-1 rounded-bl-xl z-10">
+              Sponsored
+            </div>
+
+            <div class="flex items-center gap-3 relative z-10">
+              <img :src="item.photo_url || `https://ui-avatars.com/api/?name=${item.display_name}&background=random`" class="w-10 h-10 rounded-full border" :class="item.is_sponsored ? 'border-yellow-500/50' : 'border-white/10'">
               <div class="flex-1">
                 <div class="flex items-center gap-1">
                   <h4 class="text-sm font-bold">{{ item.display_name }}</h4>
                   <span v-if="item.is_verified" class="text-blue-400 text-xs">✓</span>
                 </div>
-                <p class="text-[10px] text-tg-hint">@{{ item.username }} • {{ new Date(item.created_at).toLocaleDateString('id-ID') }}</p>
+                <p v-if="!item.is_sponsored" class="text-[10px] text-tg-hint">@{{ item.username }} • {{ new Date(item.created_at).toLocaleDateString('id-ID') }}</p>
+                <p v-else class="text-[10px] text-yellow-500/70 font-bold uppercase tracking-wider">Promoted</p>
               </div>
             </div>
-            <p class="text-sm">{{ item.caption }}</p>
-            <button class="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-tg-button transition-colors">Lihat Post</button>
+            
+            <p class="text-sm relative z-10">{{ item.caption }}</p>
+            
+            <a v-if="item.is_sponsored && item.action_url" :href="item.action_url" target="_blank" class="block w-full py-2 bg-yellow-500 text-black text-center rounded-xl text-xs font-black uppercase tracking-wider transition-transform active:scale-95 relative z-10">
+              Kunjungi Sponsor
+            </a>
+            <button v-else-if="!item.is_sponsored" class="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-tg-button transition-colors relative z-10">Lihat Post</button>
           </div>
 
           <!-- Loading Indicator -->
