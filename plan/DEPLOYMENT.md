@@ -277,7 +277,7 @@ sudo mv composer.phar /usr/local/bin/composer
 
 # Clone and setup
 cd /var/www
-sudo git clone https://github.com/fernathan/VesperApp.git
+sudo git clone https://github.com/mieburungdara/VesperApp.git
 sudo chown -R www-data:www-data VesperApp
 cd VesperApp
 
