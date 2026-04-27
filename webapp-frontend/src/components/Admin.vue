@@ -355,11 +355,4 @@ const changeTab = (tab) => {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
 </style>

@@ -259,7 +259,7 @@ const handleTouchEnd = (e) => {
           </div>
         </div>
       </div>
-      <nav class="flex-1 p-4 space-y-1 mt-2">
+      <nav class="flex-1 p-4 space-y-1 mt-2 overflow-y-auto scrollbar-hide">
         <button v-for="item in menuItems" :key="item.id" @click="navigate(item.id)" :class="activeTab === item.id ? 'bg-tg-button/20 text-tg-button border-tg-button/30' : 'text-tg-hint hover:bg-white/5 border-transparent'" class="w-full flex items-center gap-3 p-2 rounded-xl border transition-all duration-300 group">
           <div :class="[item.color, activeTab === item.id ? 'scale-110' : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100']" class="w-8 h-8 rounded-lg flex items-center justify-center text-base shadow-lg transition-all relative">
             {{ item.icon }}
