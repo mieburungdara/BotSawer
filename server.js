@@ -105,9 +105,17 @@ const initBots = async () => {
     if (domain && process.env.APP_ENV === 'production') {
       const webhookPath = `/webhook/${botData.token}`;
       
-      // Register webhook routes
-      app.use(webhookPath, bot.webhookCallback(webhookPath));
-      app.use(`/vesper${webhookPath}`, bot.webhookCallback(webhookPath));
+      const fullWebhookPath = `/vesper${webhookPath}`;
+      
+      // Register webhook routes with normalization for Telegraf
+      const handleWebhook = (req, res, next) => {
+        req.url = webhookPath;
+        bot.webhookCallback(webhookPath)(req, res, next);
+      };
+
+      app.post(webhookPath, handleWebhook);
+      app.post(fullWebhookPath, handleWebhook);
+      
       logger.info(`[BOT] Webhook routes registered for: ${webhookPath}`);
     } else {
       logger.info(`[BOT] Starting Polling for ${botData.username}...`);
