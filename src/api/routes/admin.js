@@ -164,6 +164,22 @@ router.post('/admin', async (req, res) => {
         return res.json({ success: true, data: admins });
     }
 
+    // 6. CHANNEL MANAGEMENT
+    if (action === 'get_channels') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const channels = await db('channels').orderBy('created_at', 'desc');
+        return res.json({ success: true, data: channels });
+    }
+
+    if (action === 'toggle_channel') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { channel_id, is_active } = req.body;
+        await db('channels').where('id', channel_id).update({ is_active: is_active ? 1 : 0 });
+        
+        await audit.logAdminAction('toggle_channel', { channel_id, is_active }, user.telegram_id, 'channel', channel_id);
+        return res.json({ success: true, message: `Channel berhasil ${is_active ? 'diaktifkan' : 'dinonaktifkan'}` });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {

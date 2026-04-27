@@ -6,6 +6,7 @@ const isAdmin = ref(false)
 const activeSubTab = ref('stats') // stats, bots, payments, admins
 const stats = ref({})
 const bots = ref([])
+const channels = ref([])
 const pendingPayments = ref([])
 const admins = ref([])
 
@@ -70,6 +71,13 @@ const loadPayments = async () => {
     }
 }
 
+const loadChannels = async () => {
+    const result = await fetchAdminData('get_channels');
+    if (result.success) {
+        channels.value = result.data;
+    }
+}
+
 const loadAdmins = async () => {
     const result = await fetchAdminData('get_admins');
     if (result.success) {
@@ -95,6 +103,17 @@ const toggleBot = async (botId, currentStatus) => {
     const result = await fetchAdminData('toggle_bot', { bot_id: botId, is_active: newStatus });
     if (result.success) {
         loadBots();
+    } else {
+        tg.showAlert('Gagal ubah status: ' + result.message);
+    }
+}
+
+const toggleChannel = async (channelId, currentStatus) => {
+    const isActiveBool = Boolean(Number(currentStatus));
+    const newStatus = !isActiveBool;
+    const result = await fetchAdminData('toggle_channel', { channel_id: channelId, is_active: newStatus });
+    if (result.success) {
+        loadChannels();
     } else {
         tg.showAlert('Gagal ubah status: ' + result.message);
     }
@@ -141,6 +160,7 @@ onMounted(() => {
 const changeTab = (tab) => {
     activeSubTab.value = tab;
     if (tab === 'bots') loadBots();
+    if (tab === 'channels') loadChannels();
     if (tab === 'payments') loadPayments();
     if (tab === 'admins') loadAdmins();
 }
@@ -171,7 +191,7 @@ const changeTab = (tab) => {
         <!-- Sub Tabs -->
         <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button 
-                v-for="tab in ['stats', 'bots', 'payments', 'admins']" 
+                v-for="tab in ['stats', 'bots', 'channels', 'payments', 'admins']" 
                 :key="tab"
                 @click="changeTab(tab)"
                 :class="activeSubTab === tab ? 'bg-tg-button text-white' : 'glass text-tg-hint'"
@@ -269,6 +289,46 @@ const changeTab = (tab) => {
                         <pre class="text-[10px] text-tg-hint font-mono">{{ JSON.stringify(selectedWebhookInfo, null, 2) }}</pre>
                     </div>
                     <button @click="showWebhookInfo = false" class="w-full py-4 bg-tg-button text-white rounded-2xl font-black text-sm">Tutup</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHANNELS TAB -->
+        <div v-if="activeSubTab === 'channels'" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-sm text-tg-hint uppercase tracking-wider">Channel List</h3>
+            </div>
+
+            <div v-if="channels.length === 0" class="py-12 text-center glass rounded-3xl border border-white/5 opacity-50">
+                <p class="text-sm font-bold">Belum ada channel terdaftar</p>
+            </div>
+
+            <div v-for="channel in channels" :key="channel.id" class="glass p-4 rounded-3xl border border-white/5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-tg-secondary flex items-center justify-center text-lg relative">
+                            📺
+                            <div :class="channel.is_active ? 'bg-green-500' : 'bg-red-500'" class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-tg-secondary"></div>
+                        </div>
+                        <div>
+                            <p class="font-bold text-sm">{{ channel.name }}</p>
+                            <p class="text-[10px] text-tg-hint">{{ channel.username }}</p>
+                        </div>
+                    </div>
+                    <button 
+                        @click="toggleChannel(channel.id, channel.is_active)"
+                        :class="channel.is_active ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-red-500/20 text-red-500 border-red-500/30'" 
+                        class="px-3 py-1 rounded-lg text-[8px] font-black uppercase border transition-all active:scale-95"
+                    >
+                        {{ channel.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                    </button>
+                </div>
+                <div v-if="channel.description" class="p-3 bg-white/5 rounded-2xl text-[10px] text-tg-hint italic">
+                    {{ channel.description }}
+                </div>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 bg-white/5 rounded-md text-[8px] font-bold uppercase">{{ channel.category || 'NO CATEGORY' }}</span>
+                    <span class="px-2 py-1 bg-white/5 rounded-md text-[8px] font-bold uppercase">{{ channel.type }}</span>
                 </div>
             </div>
         </div>
