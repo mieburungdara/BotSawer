@@ -266,6 +266,72 @@ const togglePrivacy = async (item) => {
   }
 }
 
+const publishContent = async (item) => {
+  if (!item.is_owner || item.status !== 'draft') return;
+  
+  if (!confirm('Apakah Anda yakin ingin mempublikasikan konten ini?')) return;
+
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        action: 'publish_content',
+        short_id: item.short_id
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      item.status = 'posted';
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      alert('Konten berhasil dipublikasikan!');
+    } else {
+      alert('Gagal mempublikasikan: ' + result.message);
+    }
+  } catch (e) {
+    console.error("Publish Error:", e);
+  }
+}
+
+const deleteContent = async (item) => {
+  if (!item.is_owner) return;
+  
+  if (!confirm('Konten akan dihapus permanen. Lanjutkan?')) return;
+
+  try {
+    const tg = window.Telegram?.WebApp;
+    const botId = localStorage.getItem('vesper_bot_id');
+
+    const response = await fetch('/vesper/api/content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        initData: tg?.initData,
+        botId: botId,
+        action: 'delete_content',
+        short_id: item.short_id
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      alert('Konten berhasil dihapus.');
+      if (targetContent.value && targetContent.value.short_id === item.short_id) {
+        targetContent.value = null;
+      }
+    }
+  } catch (e) {
+    console.error("Delete Error:", e);
+  }
+}
+
 onMounted(() => {
   fetchDashboardData();
   fetchTargetContent();
@@ -383,13 +449,26 @@ onUnmounted(() => {
             <p class="text-sm">{{ targetContent.caption }}</p>
 
             <div class="grid grid-cols-2 gap-2 mt-2" v-if="targetContent.media_list && targetContent.media_list.length > 0">
-                <div v-for="media in targetContent.media_list" :key="media.id" class="aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/5">
+                <div v-for="media in targetContent.media_list" :key="media.id" class="aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/5 relative">
                     <img v-if="media.imagekit_url" :src="media.imagekit_url" class="w-full h-full object-cover">
                     <div v-else class="w-full h-full flex items-center justify-center text-2xl">🔒</div>
                 </div>
             </div>
             
-            <button @click="openDonationModal({ ...targetContent, creator_id: targetContent.creator_id, display_name: targetContent.creator_name, username: targetContent.creator_username, photo_url: targetContent.creator_photo, id: targetContent.short_id })" 
+            <div v-if="targetContent.is_owner" class="flex flex-col gap-2 mt-2">
+              <div class="flex gap-2">
+                <button v-if="targetContent.status === 'draft'" @click="publishContent(targetContent)" class="flex-1 py-3 bg-green-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-green-500/30">
+                  Publikasikan 🚀
+                </button>
+                <button v-else @click="togglePrivacy(targetContent)" class="flex-1 py-3 bg-white/10 text-white rounded-2xl text-xs font-black uppercase tracking-wider">
+                  {{ targetContent.privacy === 'public' ? '🔓 Buat Private' : '🔒 Buat Public' }}
+                </button>
+              </div>
+              <button @click="deleteContent(targetContent)" class="w-full py-3 bg-red-500/10 text-red-500 border border-red-500/30 rounded-2xl text-xs font-black uppercase tracking-wider">
+                Hapus Konten 🗑️
+              </button>
+            </div>
+            <button v-else @click="openDonationModal({ ...targetContent, creator_id: targetContent.creator_id, display_name: targetContent.creator_name, username: targetContent.creator_username, photo_url: targetContent.creator_photo, id: targetContent.short_id })" 
                     class="w-full py-3 bg-tg-button text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-tg-button/30">
               Kirim Saweran 🎁
             </button>

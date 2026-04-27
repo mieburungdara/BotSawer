@@ -174,6 +174,19 @@ router.post('/content', async (req, res) => {
         return res.json({ success: true, data: { message: 'Privacy konten berhasil diperbarui' } });
     }
 
+    // 5. PUBLISH CONTENT
+    if (action === 'publish_content') {
+        const content = await db('contents').where('short_id', short_id).where('user_id', user.telegram_id).first();
+        if (!content) throw new Error('Konten tidak ditemukan');
+        if (content.status !== 'draft') throw new Error('Konten sudah dipublikasikan');
+        
+        await db('contents').where('short_id', short_id).where('user_id', user.telegram_id).update({ 
+            status: 'posted',
+            posted_at: db.fn.now()
+        });
+        return res.json({ success: true, data: { message: 'Konten berhasil dipublikasikan' } });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {
