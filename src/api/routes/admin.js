@@ -46,19 +46,37 @@ router.post('/admin', async (req, res) => {
 
     if (action === 'add_bot') {
         if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
-        const { name, username, token, type } = req.body;
-        if (!name || !username || !token) throw new Error('Data tidak lengkap');
+        const { token, type } = req.body;
+        if (!token) throw new Error('Bot token wajib diisi');
         
-        const [botId] = await db('bots').insert({ 
-            name, 
-            username, 
-            token, 
-            type: type || 'public',
-            is_active: 1 
-        });
+        // Fetch bot info from Telegram
+        try {
+            const response = await axios.get(`https://api.telegram.org/bot${token}/getMe`);
+            if (!response.data.ok) throw new Error('Token tidak valid');
+            
+            const botInfo = response.data.result;
+            const [botId] = await db('bots').insert({ 
+                name: botInfo.first_name, 
+                username: botInfo.username, 
+                token, 
+                type: type || 'public',
+                is_active: 1 
+            });
+            
+            await audit.logAdminAction('add_bot', { name: botInfo.first_name, username: botInfo.username }, user.telegram_id, 'bot', botId);
+            return res.json({ success: true, message: `Bot @${botInfo.username} berhasil ditambahkan` });
+        } catch (e) {
+            throw new Error('Gagal mengambil info bot: ' + (e.response?.data?.description || e.message));
+        }
+    }
+
+    if (action === 'toggle_bot') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { bot_id, is_active } = req.body;
+        await db('bots').where('id', bot_id).update({ is_active: is_active ? 1 : 0 });
         
-        await audit.logAdminAction('add_bot', { name, username }, user.telegram_id, 'bot', botId);
-        return res.json({ success: true, message: 'Bot berhasil ditambahkan' });
+        await audit.logAdminAction('toggle_bot', { bot_id, is_active }, user.telegram_id, 'bot', bot_id);
+        return res.json({ success: true, message: `Bot berhasil ${is_active ? 'diaktifkan' : 'dinonaktifkan'}` });
     }
 
     if (action === 'set_webhook') {

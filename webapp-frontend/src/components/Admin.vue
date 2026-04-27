@@ -12,8 +12,6 @@ const admins = ref([])
 // Bot Form
 const showAddBot = ref(false)
 const newBot = ref({
-    name: '',
-    username: '',
     token: '',
     type: 'public'
 })
@@ -82,12 +80,22 @@ const loadAdmins = async () => {
 const addBot = async () => {
     const result = await fetchAdminData('add_bot', newBot.value);
     if (result.success) {
-        tg.showAlert('Bot berhasil ditambahkan!');
+        tg.showAlert(result.message);
         showAddBot.value = false;
-        newBot.value = { name: '', username: '', token: '', type: 'public' };
+        newBot.value = { token: '', type: 'public' };
         loadBots();
     } else {
         tg.showAlert('Gagal: ' + result.message);
+    }
+}
+
+const toggleBot = async (botId, currentStatus) => {
+    const newStatus = !currentStatus;
+    const result = await fetchAdminData('toggle_bot', { bot_id: botId, is_active: newStatus });
+    if (result.success) {
+        loadBots();
+    } else {
+        tg.showAlert('Gagal ubah status: ' + result.message);
     }
 }
 
@@ -203,15 +211,22 @@ const changeTab = (tab) => {
             <div v-for="bot in bots" :key="bot.id" class="glass p-4 rounded-3xl border border-white/5 space-y-3">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-tg-secondary flex items-center justify-center text-lg">🤖</div>
+                        <div class="w-10 h-10 rounded-xl bg-tg-secondary flex items-center justify-center text-lg relative">
+                            🤖
+                            <div :class="bot.is_active ? 'bg-green-500' : 'bg-red-500'" class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-tg-secondary"></div>
+                        </div>
                         <div>
                             <p class="font-bold text-sm">{{ bot.name }}</p>
                             <p class="text-[10px] text-tg-hint">@{{ bot.username }}</p>
                         </div>
                     </div>
-                    <div :class="bot.is_active ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'" class="px-2 py-0.5 rounded-full text-[8px] font-black uppercase">
-                        {{ bot.is_active ? 'Active' : 'Inactive' }}
-                    </div>
+                    <button 
+                        @click="toggleBot(bot.id, bot.is_active)"
+                        :class="bot.is_active ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-red-500/20 text-red-500 border-red-500/30'" 
+                        class="px-3 py-1 rounded-lg text-[8px] font-black uppercase border transition-all active:scale-95"
+                    >
+                        {{ bot.is_active ? 'ENABLED' : 'DISABLED' }}
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
@@ -226,14 +241,16 @@ const changeTab = (tab) => {
                 <div @click="showAddBot = false" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
                 <div class="relative w-full max-w-sm glass p-6 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-4">
                     <h3 class="font-black text-lg">Tambah Bot Baru</h3>
+                    <p class="text-[10px] text-tg-hint">Masukkan token bot dari @BotFather. Sistem akan mengambil nama dan username secara otomatis.</p>
                     <div class="space-y-3">
-                        <input v-model="newBot.name" type="text" placeholder="Nama Bot (e.g. Vesper Public)" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-tg-button" />
-                        <input v-model="newBot.username" type="text" placeholder="Username (tanpa @)" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-tg-button" />
-                        <input v-model="newBot.token" type="text" placeholder="Bot Token (dari BotFather)" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-tg-button" />
-                        <select v-model="newBot.type" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-tg-button appearance-none">
-                            <option value="public">Public</option>
-                            <option value="private">Private</option>
-                        </select>
+                        <input v-model="newBot.token" type="text" placeholder="Bot Token (e.g. 123456:ABC...)" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-tg-button" />
+                        <div class="flex items-center justify-between glass p-4 rounded-2xl border border-white/5">
+                            <span class="text-xs font-bold text-tg-hint">Tipe Bot</span>
+                            <div class="flex gap-2">
+                                <button @click="newBot.type = 'public'" :class="newBot.type === 'public' ? 'bg-tg-button text-white' : 'bg-white/5 text-tg-hint'" class="px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all">Public</button>
+                                <button @click="newBot.type = 'private'" :class="newBot.type === 'private' ? 'bg-tg-button text-white' : 'bg-white/5 text-tg-hint'" class="px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all">Private</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="flex gap-2">
                         <button @click="showAddBot = false" class="flex-1 py-4 glass rounded-2xl font-bold text-sm">Batal</button>
