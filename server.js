@@ -127,24 +127,34 @@ app.post(['/vesper/webhook/:token'], async (req, res, next) => {
     }
 });
 
-// Bot Initialization (Pre-load active bots & handle polling)
+// Bot Initialization — Webhook-only mode
 const initBots = async () => {
   const bots = await db('bots').where('is_active', 1);
-  logger.info(`Initializing ${bots.length} active bots...`);
-  
+  logger.info(`Initializing ${bots.length} active bot(s) in webhook mode...`);
+
+  if (!domain) {
+    logger.error('WEBHOOK_DOMAIN is not set in .env! Bots cannot receive messages.');
+    return;
+  }
+
   for (const botData of bots) {
-    const bot = getOrInitBot(botData);
-    
-    if (!domain || process.env.APP_ENV !== 'production') {
-      logger.info(`[BOT] Starting Polling for ${botData.username}...`);
-      bot.launch().catch(err => logger.error(`Polling error: ${err.message}`));
-      
-      // Graceful stop for polling
-      process.once('SIGINT', () => { if (bot && bot.polling) bot.stop('SIGINT') });
-      process.once('SIGTERM', () => { if (bot && bot.polling) bot.stop('SIGTERM') });
+    try {
+      // Pre-load bot into memory with all handlers attached
+      const bot = getOrInitBot(botData);
+
+      // Auto-register webhook with Telegram
+      const webhookUrl = `${domain}/webhook/${botData.token}`;
+      await bot.telegram.setWebhook(webhookUrl, {
+        allowed_updates: ['message', 'callback_query']
+      });
+
+      logger.info(`[BOT] @${botData.username} webhook set → ${webhookUrl}`);
+    } catch (err) {
+      logger.error(`[BOT] Failed to init @${botData.username}: ${err.message}`);
     }
   }
 };
+
 
 app.listen(port, '0.0.0.0', () => {
   logger.info(`VesperApp API listening at http://localhost:${port}`);
