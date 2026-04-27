@@ -269,16 +269,27 @@ const handleMedia = async (ctx, botData) => {
     }
 
     // 3. Save media file
-    const [mediaId] = await db('media_files').insert({
-      content_id: content.id,
-      telegram_file_id: mediaInfo.file_id,
-      file_unique_id: mediaInfo.file_unique_id,
-      thumb_file_id: mediaInfo.thumb_file_id,
-      file_type: mediaInfo.type
-    });
+    let mediaId = null;
+    try {
+      const [newMediaId] = await db('media_files').insert({
+        content_id: content.id,
+        telegram_file_id: mediaInfo.file_id,
+        file_unique_id: mediaInfo.file_unique_id,
+        thumb_file_id: mediaInfo.thumb_file_id,
+        file_type: mediaInfo.type
+      });
+      mediaId = newMediaId;
 
-    // 4. Forward to backup channel (Save message ID for cross-bot access)
-    notifications.forwardToBackup(mediaInfo, user, shortId, mediaId);
+      // 4. Forward to backup channel (Save message ID for cross-bot access)
+      notifications.forwardToBackup(mediaInfo, user, shortId, mediaId);
+    } catch (insertErr) {
+      if (insertErr.code === 'ER_DUP_ENTRY') {
+        console.log(`[handleMedia] Duplicate media ignored: ${mediaInfo.file_unique_id}`);
+        // If it's a duplicate, we can just skip the insert and backup, but let the timer trigger
+      } else {
+        throw insertErr;
+      }
+    }
 
     // 5. Debounce Logic (Wait 5 seconds of silence)
     if (debounceTimers.has(telegramId)) {
