@@ -356,20 +356,35 @@ const processDonation = async () => {
     </div>
 
     <!-- Categories -->
-    <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
-      <button 
-        v-for="cat in categories" 
-        :key="cat"
-        @click="selectedCategory = cat"
-        :class="selectedCategory === cat ? 'bg-tg-button text-white shadow-lg shadow-tg-button/30 border-tg-button' : 'bg-white/5 text-tg-hint border-white/5 hover:bg-white/10'"
-        class="px-5 py-3 rounded-2xl text-[11px] font-black whitespace-nowrap border transition-all active:scale-95 flex items-center gap-2"
-      >
-        <span v-if="cat === 'Content'">🎬</span>
-        <span v-else-if="cat === 'User'">👤</span>
-        <span v-else-if="cat === 'Post'">📝</span>
-        <span v-else-if="cat === 'Menfess'">💌</span>
-        {{ $t(`explore.categories.${cat}`) }}
-      </button>
+    <div class="relative -mx-4">
+        <!-- Fade Edges for Scroll -->
+        <div class="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-tg-bg to-transparent z-10 pointer-events-none"></div>
+        <div class="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-tg-bg to-transparent z-10 pointer-events-none"></div>
+        
+        <div class="flex gap-3 overflow-x-auto pb-4 scrollbar-hide px-6">
+          <button 
+            v-for="cat in categories" 
+            :key="cat"
+            @click="selectedCategory = cat"
+            :class="[
+                selectedCategory === cat 
+                ? (cat === 'User' ? 'bg-blue-500 border-blue-400 shadow-blue-500/40 text-white' : 
+                   cat === 'Content' ? 'bg-pink-500 border-pink-400 shadow-pink-500/40 text-white' :
+                   cat === 'Post' ? 'bg-emerald-500 border-emerald-400 shadow-emerald-500/40 text-white' :
+                   'bg-amber-500 border-amber-400 shadow-amber-500/40 text-white')
+                : 'bg-white/5 text-tg-hint border-white/5 hover:bg-white/10'
+            ]"
+            class="px-6 py-4 rounded-[1.5rem] text-[11px] font-black whitespace-nowrap border transition-all active:scale-90 flex flex-col items-center justify-center gap-2 min-w-[90px] shadow-lg"
+          >
+            <span class="text-xl">
+                <span v-if="cat === 'Content'">🎬</span>
+                <span v-else-if="cat === 'User'">👤</span>
+                <span v-else-if="cat === 'Post'">📝</span>
+                <span v-else-if="cat === 'Menfess'">💌</span>
+            </span>
+            <span class="uppercase tracking-tighter">{{ $t(`explore.categories.${cat}`) }}</span>
+          </button>
+        </div>
     </div>
 
     <!-- Creator List -->
