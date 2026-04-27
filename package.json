@@ -8,16 +8,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mieburungdara/VesperApp.git"
+    "url": "git+https://github.com/fernathan/VesperApp.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/mieburungdara/VesperApp/issues"
+    "url": "https://github.com/fernathan/VesperApp/issues"
   },
-  "homepage": "https://github.com/mieburungdara/VesperApp#readme",
+  "homepage": "https://github.com/fernathan/VesperApp#readme",
   "dependencies": {
     "axios": "^1.15.2",
     "dotenv": "^17.4.2",
