@@ -104,8 +104,16 @@ const initBots = async () => {
     
     if (domain && process.env.APP_ENV === 'production') {
       const webhookPath = `/webhook/${botData.token}`;
-      app.use(bot.webhookCallback(webhookPath));
-      logger.info(`[BOT] Webhook path registered: ${webhookPath}`);
+      const fullWebhookUrl = `${domain}${webhookPath}`;
+      
+      // Set Webhook
+      bot.telegram.setWebhook(fullWebhookUrl)
+        .then(() => logger.info(`[BOT] Webhook set to: ${fullWebhookUrl}`))
+        .catch(err => logger.error(`[BOT] Set Webhook Error: ${err.message}`));
+
+      app.use(webhookPath, bot.webhookCallback(webhookPath));
+      app.use(`/vesper${webhookPath}`, bot.webhookCallback(webhookPath));
+      logger.info(`[BOT] Webhook routes registered for: ${webhookPath}`);
     } else {
       logger.info(`[BOT] Starting Polling for ${botData.username}...`);
       bot.launch().catch(err => logger.error(`Polling error: ${err.message}`));
