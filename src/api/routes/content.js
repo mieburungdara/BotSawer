@@ -17,7 +17,7 @@ router.post('/content', async (req, res) => {
       const content = await db('contents').where('short_id', short_id).whereNot('status', 'deleted').first();
       if (!content) throw new Error('Konten tidak ditemukan');
 
-      const isOwner = parseInt(content.user_id) === parseInt(user.id);
+      const isOwner = parseInt(content.user_id) === parseInt(user.telegram_id);
       
       if (content.status === 'draft' && !isOwner) {
         throw new Error('Konten ini belum dipublikasikan oleh kreator');
@@ -85,7 +85,7 @@ router.post('/content', async (req, res) => {
 
     // 2. GENERATE THUMBNAIL
     if (action === 'generate_thumbnail') {
-      const content = await db('contents').where('short_id', short_id).where('user_id', user.id).first();
+      const content = await db('contents').where('short_id', short_id).where('user_id', user.telegram_id).first();
       if (!content) throw new Error('Konten tidak ditemukan atau Anda bukan pemiliknya');
 
       const mediaFiles = await db('media_files').where('content_id', content.id).whereNull('imagekit_url');
@@ -127,7 +127,7 @@ router.post('/content', async (req, res) => {
 
     // 3. DELETE CONTENT
     if (action === 'delete_content') {
-        await db('contents').where('short_id', short_id).where('user_id', user.id).update({ status: 'deleted' });
+        await db('contents').where('short_id', short_id).where('user_id', user.telegram_id).update({ status: 'deleted' });
         return res.json({ success: true, data: { message: 'Konten berhasil dihapus' } });
     }
 
@@ -138,7 +138,7 @@ router.post('/content', async (req, res) => {
         if (!allowed.includes(privacy)) {
             throw new Error('Tipe privacy tidak valid');
         }
-        await db('contents').where('short_id', short_id).where('user_id', user.id).update({ privacy });
+        await db('contents').where('short_id', short_id).where('user_id', user.telegram_id).update({ privacy });
         return res.json({ success: true, data: { message: 'Privacy konten berhasil diperbarui' } });
     }
 
