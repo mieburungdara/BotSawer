@@ -43,31 +43,22 @@ async function run() {
       const wh = whRes.data.result;
       
       console.log(`\n📡 Webhook Info:`);
-      console.log(`   URL: ${wh.url || '(none)'}`);
+      console.log(`   URL: ${wh.url || '(none — polling mode)'}`);
       console.log(`   Pending updates: ${wh.pending_update_count}`);
       if (wh.last_error_message) {
         console.log(`   ⚠️  Last error: ${wh.last_error_message}`);
+        console.log(`   Last error date: ${wh.last_error_date}`);
       }
-
-      // 3. Fix: Delete webhook so polling can work
       if (wh.url) {
-        console.log(`\n🗑️  Deleting webhook to enable polling...`);
-        const delRes = await axios.post(`https://api.telegram.org/bot${bot.token}/deleteWebhook`, {
-          drop_pending_updates: true
-        });
-        if (delRes.data.ok) {
-          console.log(`   ✅ Webhook deleted. Polling will now work.`);
-        } else {
-          console.log(`   ❌ Failed to delete webhook: ${JSON.stringify(delRes.data)}`);
-        }
+        console.log(`\n✅ Webhook is registered.`);
       } else {
-        console.log(`\n✅ No webhook registered. Polling is ready.`);
+        console.log(`\n⚠️  No webhook registered. Run initBots on server to set it.`);
       }
 
-      // 4. Test: Try to get updates
+      // Test getUpdates (safe even with webhook, just returns empty)
       const updRes = await axios.get(`https://api.telegram.org/bot${bot.token}/getUpdates?limit=1&timeout=0`);
       if (updRes.data.ok) {
-        console.log(`\n✅ getUpdates works! Bot can receive messages via polling.`);
+        console.log(`✅ Telegram API connection: OK`);
       }
 
     } catch (err) {
