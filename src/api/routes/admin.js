@@ -49,7 +49,7 @@ router.post('/admin', async (req, res) => {
         const { name, username, token, type } = req.body;
         if (!name || !username || !token) throw new Error('Data tidak lengkap');
         
-        await db('bots').insert({ 
+        const [botId] = await db('bots').insert({ 
             name, 
             username, 
             token, 
@@ -57,7 +57,7 @@ router.post('/admin', async (req, res) => {
             is_active: 1 
         });
         
-        await audit.logAdminAction('add_bot', { name, username }, user.telegram_id);
+        await audit.logAdminAction('add_bot', { name, username }, user.telegram_id, 'bot', botId);
         return res.json({ success: true, message: 'Bot berhasil ditambahkan' });
     }
 
@@ -73,7 +73,7 @@ router.post('/admin', async (req, res) => {
         const webhookUrl = `${domain}/webhook/${botData.token}`;
         const response = await axios.get(`https://api.telegram.org/bot${botData.token}/setWebhook?url=${webhookUrl}&allowed_updates=["message","callback_query"]`);
         
-        await audit.logAdminAction('set_webhook', { bot_id, url: webhookUrl }, user.telegram_id);
+        await audit.logAdminAction('set_webhook', { bot_id, url: webhookUrl }, user.telegram_id, 'bot', bot_id);
         return res.json({ success: true, data: response.data });
     }
 
@@ -85,7 +85,7 @@ router.post('/admin', async (req, res) => {
 
         const response = await axios.get(`https://api.telegram.org/bot${botData.token}/deleteWebhook`);
         
-        await audit.logAdminAction('delete_webhook', { bot_id }, user.telegram_id);
+        await audit.logAdminAction('delete_webhook', { bot_id }, user.telegram_id, 'bot', bot_id);
         return res.json({ success: true, data: response.data });
     }
 
@@ -132,7 +132,7 @@ router.post('/admin', async (req, res) => {
                 await wallet.addBalance(payment.user_id, payment.amount, 'Topup disetujui oleh admin');
             });
 
-            await audit.logAdminAction('approve_topup', { payment_id, amount: payment.amount }, user.telegram_id);
+            await audit.logAdminAction('approve_topup', { payment_id, amount: payment.amount }, user.telegram_id, 'payment', payment_id);
             await notifications.notifyTopupApproved(payment.user_id, payment.amount);
             
             return res.json({ success: true, data: { message: 'Pembayaran disetujui' } });
