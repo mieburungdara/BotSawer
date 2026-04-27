@@ -140,7 +140,7 @@ router.post('/content', async (req, res) => {
             
             const upload = await ik.uploadFromUrl(directUrl, `${content.short_id}_${media.id}_thumb`);
             
-            await db('media_files').where('id', media.id).update({
+            await db('media_files_raw').where('id', media.id).update({
               imagekit_file_id: upload.fileId,
               imagekit_url: upload.url
             });

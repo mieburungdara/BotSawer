@@ -271,7 +271,7 @@ const handleMedia = async (ctx, botData) => {
     // 3. Save media file
     let mediaId = null;
     try {
-      const [newMediaId] = await db('media_files').insert({
+      const [newMediaId] = await db('media_files_raw').insert({
         content_id: content.id,
         telegram_file_id: mediaInfo.file_id,
         file_unique_id: mediaInfo.file_unique_id,
@@ -279,9 +279,10 @@ const handleMedia = async (ctx, botData) => {
         file_type: mediaInfo.type
       });
       mediaId = newMediaId;
+      console.log(`[handleMedia] Media saved: ${mediaId}`);
 
       // 4. Forward to backup channel (Save message ID for cross-bot access)
-      notifications.forwardToBackup(mediaInfo, user, shortId, mediaId);
+      await notifications.forwardToBackup(mediaInfo, user, shortId, mediaId);
     } catch (insertErr) {
       if (insertErr.code === 'ER_DUP_ENTRY') {
         console.log(`[handleMedia] Duplicate media ignored: ${mediaInfo.file_unique_id}`);

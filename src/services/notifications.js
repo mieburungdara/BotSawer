@@ -145,8 +145,9 @@ class NotificationService {
       }
 
       if (sentMsg && sentMsg.message_id) {
-        await db('media_files').where('id', mediaDbId).update({
-            backup_message_id: sentMsg.message_id
+        await db('media_files_raw').where('id', mediaDbId).update({
+            backup_message_id: sentMsg.message_id,
+            backup_channel_id: sentMsg.chat.id.toString()
         });
       }
     } catch (error) {
