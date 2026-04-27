@@ -93,38 +93,56 @@ app.get(['/', '/vesper', '/vesper/'], (req, res) => {
 });
 
 
-// Bot Initialization
-const initBots = async () => {
-  const bots = await db('bots').where('is_active', 1);
-  logger.info(`Initializing ${bots.length} bots...`);
-  
-  for (const botData of bots) {
+const activeBots = new Map();
+
+// Helper to get or initialize bot in memory
+const getOrInitBot = (botData) => {
+    if (activeBots.has(botData.token)) return activeBots.get(botData.token);
     const bot = new Telegraf(botData.token);
     setupBot(bot, botData);
-    
-    if (domain && process.env.APP_ENV === 'production') {
-      const webhookPath = `/webhook/${botData.token}`;
-      
-      const fullWebhookPath = `/vesper${webhookPath}`;
-      
-      // Register webhook routes with normalization for Telegraf
-      const handleWebhook = (req, res, next) => {
-        req.url = webhookPath;
-        bot.webhookCallback(webhookPath)(req, res, next);
-      };
+    activeBots.set(botData.token, bot);
+    return bot;
+};
 
-      app.post(webhookPath, handleWebhook);
-      app.post(fullWebhookPath, handleWebhook);
-      
-      logger.info(`[BOT] Webhook routes registered for: ${webhookPath}`);
-    } else {
+// Dynamic Webhook Route for ALL bots
+app.post(['/webhook/:token', '/vesper/webhook/:token'], async (req, res, next) => {
+    try {
+        const token = req.params.token;
+        const botData = await db('bots').where('token', token).first();
+        
+        if (!botData || botData.is_active === 0) {
+            return res.status(200).send('Bot is inactive or not found');
+        }
+
+        const bot = getOrInitBot(botData);
+        
+        // Normalize URL for Telegraf
+        const webhookPath = `/webhook/${token}`;
+        req.url = webhookPath;
+        
+        bot.webhookCallback(webhookPath)(req, res, next);
+    } catch (e) {
+        logger.error(`Webhook Error: ${e.message}`);
+        res.status(500).send('Server Error');
+    }
+});
+
+// Bot Initialization (Pre-load active bots & handle polling)
+const initBots = async () => {
+  const bots = await db('bots').where('is_active', 1);
+  logger.info(`Initializing ${bots.length} active bots...`);
+  
+  for (const botData of bots) {
+    const bot = getOrInitBot(botData);
+    
+    if (!domain || process.env.APP_ENV !== 'production') {
       logger.info(`[BOT] Starting Polling for ${botData.username}...`);
       bot.launch().catch(err => logger.error(`Polling error: ${err.message}`));
+      
+      // Graceful stop for polling
+      process.once('SIGINT', () => { if (bot && bot.polling) bot.stop('SIGINT') });
+      process.once('SIGTERM', () => { if (bot && bot.polling) bot.stop('SIGTERM') });
     }
-
-    // Graceful stop
-    process.once('SIGINT', () => { if (bot && bot.polling) bot.stop('SIGINT') });
-    process.once('SIGTERM', () => { if (bot && bot.polling) bot.stop('SIGTERM') });
   }
 };
 

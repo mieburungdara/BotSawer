@@ -90,7 +90,8 @@ const addBot = async () => {
 }
 
 const toggleBot = async (botId, currentStatus) => {
-    const newStatus = !currentStatus;
+    const isActiveBool = Boolean(Number(currentStatus));
+    const newStatus = !isActiveBool;
     const result = await fetchAdminData('toggle_bot', { bot_id: botId, is_active: newStatus });
     if (result.success) {
         loadBots();
