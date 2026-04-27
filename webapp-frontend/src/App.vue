@@ -251,26 +251,26 @@ const handleTouchEnd = (e) => {
       :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
       class="fixed top-0 left-0 bottom-0 w-72 glass border-r border-white/10 z-[70] transition-transform duration-500 ease-out flex flex-col shadow-2xl"
     >
-      <div class="p-6 border-b border-white/5 bg-gradient-to-br from-tg-button/20 to-transparent">
-        <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-2xl bg-tg-button p-0.5 shadow-lg shadow-tg-button/30">
-             <img src="https://ui-avatars.com/api/?name=User&background=17212b&color=fff" class="w-full h-full rounded-[14px] object-cover" />
+      <div class="p-4 border-b border-white/5 bg-gradient-to-br from-tg-button/20 to-transparent">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-tg-button p-0.5 shadow-lg shadow-tg-button/30">
+             <img src="https://ui-avatars.com/api/?name=User&background=17212b&color=fff" class="w-full h-full rounded-[10px] object-cover" />
           </div>
           <div>
-            <h3 class="font-bold text-lg leading-tight">Admin Vesper</h3>
-            <p class="text-xs text-tg-hint">@vesper_admin</p>
+            <h3 class="font-bold text-sm leading-tight">Admin Vesper</h3>
+            <p class="text-[10px] text-tg-hint">@vesper_admin</p>
           </div>
         </div>
       </div>
-      <nav class="flex-1 p-4 space-y-2 mt-4">
-        <button v-for="item in menuItems" :key="item.id" @click="navigate(item.id)" :class="activeTab === item.id ? 'bg-tg-button/20 text-tg-button border-tg-button/30' : 'text-tg-hint hover:bg-white/5 border-transparent'" class="w-full flex items-center gap-4 p-3 rounded-2xl border transition-all duration-300 group">
-          <div :class="[item.color, activeTab === item.id ? 'scale-110' : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100']" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg transition-all relative">
+      <nav class="flex-1 p-4 space-y-1 mt-2">
+        <button v-for="item in menuItems" :key="item.id" @click="navigate(item.id)" :class="activeTab === item.id ? 'bg-tg-button/20 text-tg-button border-tg-button/30' : 'text-tg-hint hover:bg-white/5 border-transparent'" class="w-full flex items-center gap-3 p-2 rounded-xl border transition-all duration-300 group">
+          <div :class="[item.color, activeTab === item.id ? 'scale-110' : 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100']" class="w-8 h-8 rounded-lg flex items-center justify-center text-base shadow-lg transition-all relative">
             {{ item.icon }}
-            <div v-if="item.id === 'messages' && unreadMessagesCount > 0" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] text-white font-black border border-tg-secondary">
+            <div v-if="item.id === 'messages' && unreadMessagesCount > 0" class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full flex items-center justify-center text-[8px] text-white font-black border border-tg-secondary">
               {{ unreadMessagesCount > 9 ? '9+' : unreadMessagesCount }}
             </div>
           </div>
-          <span class="font-bold text-sm">{{ item.label }}</span>
+          <span class="font-bold text-xs">{{ item.label }}</span>
         </button>
       </nav>
       <div class="p-6 text-[8px] text-tg-hint opacity-50 font-black uppercase tracking-[0.2em] mt-auto">
