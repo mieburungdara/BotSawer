@@ -23,7 +23,7 @@ router.post('/content', async (req, res) => {
         throw new Error('Konten ini belum dipublikasikan oleh kreator');
       }
 
-      const creator = await db('users').where('id', content.user_id).first();
+      const creator = await db('users').where('telegram_id', content.user_id).first() || {};
       const mediaFiles = await db('media_files').where('content_id', content.id);
 
       // ACCESS CHECK
