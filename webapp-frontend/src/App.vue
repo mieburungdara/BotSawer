@@ -9,6 +9,7 @@ import Mutasi from './components/Mutasi.vue'
 import Library from './components/Library.vue'
 import Achievements from './components/Achievements.vue'
 import Messages from './components/Messages.vue'
+import ContentDetail from './components/ContentDetail.vue'
 import Help from './components/Help.vue'
 import Admin from './components/Admin.vue'
 
@@ -87,7 +88,7 @@ onMounted(() => {
         } else if (startParam.startsWith('content_')) {
             const contentId = startParam.replace('content_', '');
             targetContentId.value = contentId;
-            activeTab.value = 'dashboard';
+            activeTab.value = 'content';
         }
     }
 
@@ -320,7 +321,8 @@ const handleTouchEnd = (e) => {
         <Messages v-if="activeTab === 'messages'" :initialTargetId="targetDmUserId" @view-profile="(id) => { targetProfileId = id; activeTab = 'profile' }" />
         <Wallet v-if="activeTab === 'wallet'" @mutasi="activeTab = 'mutasi'" />
         <Achievements v-if="activeTab === 'achievements'" />
-        <Library v-if="activeTab === 'library'" @view-content="(id) => { targetContentId = id; navigate('dashboard'); }" />
+        <Library v-if="activeTab === 'library'" @view-content="(id) => { targetContentId = id; activeTab = 'content'; }" />
+        <ContentDetail v-if="activeTab === 'content'" :shortId="targetContentId" @back="activeTab = 'dashboard'" />
         <Help v-if="activeTab === 'help'" />
         <Settings v-if="activeTab === 'settings'" />
         <Mutasi v-if="activeTab === 'mutasi'" @back="activeTab = 'wallet'" />
