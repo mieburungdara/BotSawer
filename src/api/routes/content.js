@@ -83,6 +83,38 @@ router.post('/content', async (req, res) => {
       });
     }
 
+    // 1.5. LIST MY CONTENT
+    if (action === 'list_my_content') {
+      const contents = await db('contents')
+        .where('user_id', user.telegram_id)
+        .whereNot('status', 'deleted')
+        .orderBy('created_at', 'desc')
+        .select('id', 'short_id', 'status', 'privacy', 'caption', 'created_at', 'total_donations', 'donation_count');
+
+      const list = await Promise.all(contents.map(async (content) => {
+        const media = await db('media_files').where('content_id', content.id).first();
+        
+        let thumbUrl = null;
+        if (media && media.imagekit_url) {
+            thumbUrl = await ik.signUrl(media.imagekit_url, [{ width: '100' }]);
+        }
+
+        return {
+          id: content.id,
+          short_id: content.short_id,
+          status: content.status,
+          privacy: content.privacy,
+          caption: content.caption,
+          created_at: content.created_at,
+          total_donations: parseFloat(content.total_donations || 0),
+          donation_count: parseInt(content.donation_count || 0),
+          thumb_url: thumbUrl
+        };
+      }));
+
+      return res.json({ success: true, data: list });
+    }
+
     // 2. GENERATE THUMBNAIL
     if (action === 'generate_thumbnail') {
       const content = await db('contents').where('short_id', short_id).where('user_id', user.telegram_id).first();

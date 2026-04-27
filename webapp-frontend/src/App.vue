@@ -320,7 +320,7 @@ const handleTouchEnd = (e) => {
         <Messages v-if="activeTab === 'messages'" :initialTargetId="targetDmUserId" @view-profile="(id) => { targetProfileId = id; activeTab = 'profile' }" />
         <Wallet v-if="activeTab === 'wallet'" @mutasi="activeTab = 'mutasi'" />
         <Achievements v-if="activeTab === 'achievements'" />
-        <Library v-if="activeTab === 'library'" />
+        <Library v-if="activeTab === 'library'" @view-content="(id) => { targetContentId = id; navigate('dashboard'); }" />
         <Help v-if="activeTab === 'help'" />
         <Settings v-if="activeTab === 'settings'" />
         <Mutasi v-if="activeTab === 'mutasi'" @back="activeTab = 'wallet'" />
