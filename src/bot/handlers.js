@@ -12,54 +12,68 @@ const debounceTimers = new Map();
  * Handle Start Command (Deep Links & Welcome)
  */
 const handleStart = async (ctx, botData) => {
-    const startParam = ctx.startPayload;
-    
-    // Ensure user is registered/updated
-    const telegramId = ctx.from.id;
-    let user = await db('users').where('telegram_id', telegramId).first();
-    if (!user) {
-        await db('users').insert({
-            telegram_id: telegramId,
-            first_name: ctx.from.first_name,
-            last_name: ctx.from.last_name,
-            username: ctx.from.username,
-            language_code: ctx.from.language_code || 'id'
-        });
-        user = { telegram_id: telegramId };
-    }
-
-    if (!startParam) {
-        // Welcome Message with Streak Data
-        const streak = await creator.getStreakData(telegramId);
-        
-        const message = `✨ <b>Selamat Datang di ${botData.name}!</b> ✨\n\n` +
-                        `🚀 <i>Platform donasi sukarela terbaik untuk kreator konten hebat seperti Anda.</i>\n\n` +
-                        `🔹 <b>Panduan Cepat:</b>\n` +
-                        `💰 <b>/saldo</b> - Cek pundi-pundi rupiahmu\n` +
-                        `📤 <b>Kirim Foto/Video</b> - Mulai kumpulkan dukungan\n` +
-                        `💸 <b>Sawer</b> - Melalui link di channel publik\n\n` +
-                        `🔥 <b>Statistik Streak Anda:</b>\n` +
-                        `📈 Current Streak: <b>${streak.current_streak} Hari</b>\n` +
-                        `🏅 Badge: <b>${streak.streak_badge}</b>\n` +
-                        `<i>Jaga api semangatmu, teruslah berkarya!</i> 🎨\n\n` +
-                        `❓ Butuh bantuan? Ketik <b>/help</b>`;
-
-        const keyboard = {
-            inline_keyboard: [
-                [
-                    { text: '🖥️ Buka Dashboard WebApp', url: `https://t.me/${botData.username}/webapp` }
-                ],
-                [
-                    { text: '💳 Topup Saldo', callback_data: 'topup_info' },
-                    { text: '👥 Komunitas', url: 'https://t.me/vesperapp_community' }
-                ]
-            ]
-        };
-
-        return ctx.replyWithHTML(message, { reply_markup: keyboard });
-    }
-
     try {
+        const startParam = ctx.startPayload;
+        
+        // Ensure user is registered/updated
+        const telegramId = ctx.from.id;
+        let user = await db('users').where('telegram_id', telegramId).first();
+        if (!user) {
+            await db('users').insert({
+                telegram_id: telegramId,
+                first_name: ctx.from.first_name,
+                last_name: ctx.from.last_name || null,
+                username: ctx.from.username || null,
+                language_code: ctx.from.language_code || 'id'
+            });
+            user = { telegram_id: telegramId };
+
+            // Auto-create wallet for new user
+            const walletExists = await db('wallets').where('user_id', telegramId).first();
+            if (!walletExists) {
+                await db('wallets').insert({ user_id: telegramId, balance: 0 });
+            }
+        }
+
+        if (!startParam) {
+            // Welcome Message with Streak Data
+            let streak = { current_streak: 0, streak_badge: 'Belum mulai' };
+            try {
+                streak = await creator.getStreakData(telegramId);
+            } catch (streakErr) {
+                console.error('[handleStart] getStreakData error:', streakErr.message);
+            }
+
+            const botName = botData.name || 'VesperApp';
+            const botUsername = botData.username || '';
+
+            const message = `✨ <b>Selamat Datang di ${botName}!</b> ✨\n\n` +
+                            `🚀 <i>Platform donasi sukarela terbaik untuk kreator konten hebat seperti Anda.</i>\n\n` +
+                            `🔹 <b>Panduan Cepat:</b>\n` +
+                            `💰 <b>/saldo</b> - Cek pundi-pundi rupiahmu\n` +
+                            `📤 <b>Kirim Foto/Video</b> - Mulai kumpulkan dukungan\n` +
+                            `💸 <b>Sawer</b> - Melalui link di channel publik\n\n` +
+                            `🔥 <b>Statistik Streak Anda:</b>\n` +
+                            `📈 Current Streak: <b>${streak.current_streak} Hari</b>\n` +
+                            `🏅 Badge: <b>${streak.streak_badge}</b>\n` +
+                            `<i>Jaga api semangatmu, teruslah berkarya!</i> 🎨\n\n` +
+                            `❓ Butuh bantuan? Ketik <b>/help</b>`;
+
+            const inlineButtons = [];
+            if (botUsername) {
+                inlineButtons.push([{ text: '🖥️ Buka Dashboard WebApp', url: `https://t.me/${botUsername}/webapp` }]);
+            }
+            inlineButtons.push([
+                { text: '💳 Topup Saldo', callback_data: 'topup_info' },
+                { text: '👥 Komunitas', url: 'https://t.me/vesperapp_community' }
+            ]);
+
+            const keyboard = { inline_keyboard: inlineButtons };
+
+            return ctx.replyWithHTML(message, { reply_markup: keyboard });
+        }
+
+        // Deep-link handling
         if (startParam.startsWith('content_')) {
             const shortId = startParam.replace('content_', '');
             const content = await db('contents').where('short_id', shortId).first();
@@ -94,14 +108,12 @@ const handleStart = async (ctx, botData) => {
             if (mediaFiles.length === 1) {
                 const media = mediaFiles[0];
                 
-                // If we have a backup message ID and backup channel, use copyMessage (Universal)
                 if (media.backup_message_id && backupChannel) {
                     await ctx.telegram.copyMessage(ctx.chat.id, backupChannel, media.backup_message_id, {
                         caption: caption,
                         reply_markup: keyboard
                     });
                 } else {
-                    // Fallback to file_id (Only works for the bot that uploaded it)
                     if (media.file_type === 'photo') {
                         await ctx.replyWithPhoto(media.telegram_file_id, { caption, reply_markup: keyboard });
                     } else if (media.file_type === 'video') {
@@ -109,9 +121,6 @@ const handleStart = async (ctx, botData) => {
                     }
                 }
             } else {
-                // For Albums, if all have backup_message_id, we could copy multiple, 
-                // but usually easier to send file_ids if it's the same bot.
-                // However, the best multi-bot way is copyMessage for each or a new media group.
                 const mediaGroup = mediaFiles.map((m, i) => ({
                     type: m.file_type === 'photo' ? 'photo' : 'video',
                     media: m.telegram_file_id,
@@ -122,8 +131,8 @@ const handleStart = async (ctx, botData) => {
             }
         }
     } catch (error) {
-        console.error('Start error:', error);
-        ctx.reply('Terjadi kesalahan.');
+        console.error('[handleStart] Uncaught error:', error);
+        try { ctx.reply('Terjadi kesalahan. Silakan coba lagi.'); } catch (_) {}
     }
 };
 
