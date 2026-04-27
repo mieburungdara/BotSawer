@@ -33,7 +33,7 @@ const notifications = ref([
   { id: 3, type: 'promo', text: '🎁 Bonus Topup 10% hari ini!', time: '3h ago', unread: false },
 ])
 
-const menuItems = [
+const menuItems = ref([
   { id: 'dashboard', label: 'Dashboard', icon: '⚡', color: 'bg-yellow-500' },
   { id: 'explore', label: 'Explore', icon: '🌍', color: 'bg-blue-500' },
   { id: 'profile', label: 'My Profile', icon: '👤', color: 'bg-purple-500' },
@@ -43,7 +43,7 @@ const menuItems = [
   { id: 'library', label: 'Library', icon: '📚', color: 'bg-orange-500' },
   { id: 'help', label: 'Bantuan', icon: '❓', color: 'bg-indigo-500' },
   { id: 'settings', label: 'Settings', icon: '⚙️', color: 'bg-gray-500' },
-]
+])
 
 onMounted(() => {
   if (tg) {
@@ -113,8 +113,8 @@ const checkAdminStatus = async () => {
     if (result.success) {
       isAdmin.value = true;
       // Add Admin tab to menu if not already there
-      if (!menuItems.find(i => i.id === 'admin')) {
-        menuItems.push({ id: 'admin', label: 'Admin Panel', icon: '🛠️', color: 'bg-red-500' });
+      if (!menuItems.value.find(i => i.id === 'admin')) {
+        menuItems.value.push({ id: 'admin', label: 'Admin Panel', icon: '🛠️', color: 'bg-red-500' });
       }
     }
   } catch (e) {
