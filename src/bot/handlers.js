@@ -234,10 +234,16 @@ const handleMedia = async (ctx, botData) => {
       await db('users').insert({
         telegram_id: telegramId,
         first_name: ctx.from.first_name,
-        last_name: ctx.from.last_name,
-        username: ctx.from.username,
+        last_name: ctx.from.last_name || null,
+        username: ctx.from.username || null,
         language_code: ctx.from.language_code || 'id'
       });
+      // Auto-create wallet for new user
+      const walletExists = await db('wallets').where('user_id', telegramId).first();
+      if (!walletExists) {
+        await db('wallets').insert({ user_id: telegramId, balance: 0 });
+      }
+      user = { telegram_id: telegramId };
     }
 
     // 2. Draft Session Logic

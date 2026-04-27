@@ -75,15 +75,22 @@ class AuthService {
     
     if (!user) {
         // Create user if not exists (Telegram WebApp guarantees data is valid here)
-        const [newUserId] = await db('users').insert({
+        await db('users').insert({
             telegram_id: telegramId,
             first_name: userData.first_name || '',
-            last_name: userData.last_name || '',
-            username: userData.username || '',
+            last_name: userData.last_name || null,
+            username: userData.username || null,
             language_code: userData.language_code || 'id',
             is_creator: 0
         });
-        user = await db('users').where('id', newUserId).first();
+
+        // Auto-create wallet for new user
+        const walletExists = await db('wallets').where('user_id', telegramId).first();
+        if (!walletExists) {
+            await db('wallets').insert({ user_id: telegramId, balance: 0 });
+        }
+
+        user = await db('users').where('telegram_id', telegramId).first();
     }
 
     // Return user with bot info for context
