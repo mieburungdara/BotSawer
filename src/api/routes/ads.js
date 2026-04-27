@@ -10,7 +10,11 @@ router.get('/ads/random', async (req, res) => {
     // Get a random active ad
     // For SQLite/MySQL compatibility, we fetch active ads and pick one randomly in JS
     // If the table grows large, `ORDER BY RAND()` (MySQL) or `ORDER BY RANDOM()` (SQLite) should be used cautiously.
-    const activeAds = await db('ads').where('is_active', 1);
+    const activeAds = await db('ads')
+        .where('is_active', 1)
+        .where(function() {
+            this.whereNull('expires_at').orWhere('expires_at', '>', db.fn.now());
+        });
     
     if (!activeAds || activeAds.length === 0) {
         return res.json({ success: true, data: null });
