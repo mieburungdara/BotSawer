@@ -10,6 +10,13 @@ const messages = {
       lastSearch: 'Recent Searches',
       clearAll: 'Clear All',
       noResults: 'No results found',
+      seeAll: 'See All',
+      categories: {
+        Content: 'Contents',
+        User: 'Users',
+        Post: 'Posts',
+        Menfess: 'Menfess'
+      }
     },
     profile: {
       title: 'My Profile',
@@ -114,6 +121,7 @@ const messages = {
       lastSearch: 'Pencarian Terakhir',
       clearAll: 'Hapus Semua',
       noResults: 'Hasil tidak ditemukan',
+      seeAll: 'Lihat Semua',
       categories: {
         Content: 'Konten',
         User: 'Pengguna',

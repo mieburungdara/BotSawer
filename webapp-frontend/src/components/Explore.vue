@@ -3,10 +3,16 @@ import { ref, onMounted, watch, computed } from 'vue'
 
 const creators = ref([])
 const trendingCreators = ref([])
+const ad = ref(null)
 const isLoading = ref(true)
 const isTrendingLoading = ref(true)
 const searchQuery = ref('')
 const selectedCategory = ref('User')
+
+const getInitials = (name) => {
+  if (!name) return '?'
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+}
 
 // Pagination State
 const currentPage = ref(1)
@@ -150,10 +156,21 @@ watch(selectedCategory, () => {
     fetchCreators();
 })
 
+const fetchAd = async () => {
+  try {
+    const response = await fetch('/vesper/api/ads/random')
+    const result = await response.json()
+    if (result.success) ad.value = result.data
+  } catch (e) {
+    console.error("Ad Fetch Error:", e)
+  }
+}
+
 onMounted(() => {
   loadHistory()
   fetchTrending()
   fetchCreators()
+  fetchAd()
 })
 
 const getAvatarColor = (name) => {
@@ -241,8 +258,11 @@ const processDonation = async () => {
     <!-- Trending Section -->
     <div v-if="isTrendingLoading || trendingCreators.length > 0" class="space-y-4">
       <div class="flex items-center justify-between px-1">
-        <h3 class="text-sm font-black uppercase tracking-widest text-tg-button">{{ $t('explore.trending') }} 🔥</h3>
-        <span class="w-1.5 h-1.5 rounded-full bg-tg-button animate-ping"></span>
+        <div class="flex items-center gap-2">
+            <h3 class="text-sm font-black uppercase tracking-widest text-white">{{ $t('explore.trending') }}</h3>
+            <span class="flex items-center justify-center w-5 h-5 bg-orange-500/20 text-orange-500 rounded-lg text-[10px] animate-pulse">🔥</span>
+        </div>
+        <button class="text-[10px] font-bold text-tg-button uppercase tracking-tight">{{ $t('explore.seeAll') || 'Lihat Semua' }}</button>
       </div>
       
       <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
@@ -257,11 +277,16 @@ const processDonation = async () => {
         <!-- Real Data -->
         <template v-else>
           <div 
-            v-for="trend in trendingCreators" 
+            v-for="(trend, index) in trendingCreators" 
             :key="trend.telegram_id"
             @click="emit('view-profile', trend.telegram_id)"
-            class="min-w-[140px] max-w-[140px] glass p-4 rounded-[2.5rem] flex flex-col items-center text-center gap-3 border border-white/5 bg-gradient-to-b from-white/5 to-transparent active:scale-95 transition-all cursor-pointer"
+            class="min-w-[140px] max-w-[140px] glass p-4 rounded-[2.5rem] flex flex-col items-center text-center gap-3 border border-white/5 bg-gradient-to-b from-white/5 to-transparent active:scale-95 transition-all cursor-pointer relative"
           >
+            <!-- Rank Badge -->
+            <div class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-[10px] font-black text-white border border-white/10">
+                #{{ index + 1 }}
+            </div>
+
             <div class="relative">
                 <div 
                     :class="getAvatarColor(trend.display_name)"
@@ -336,9 +361,13 @@ const processDonation = async () => {
         v-for="cat in categories" 
         :key="cat"
         @click="selectedCategory = cat"
-        :class="selectedCategory === cat ? 'bg-tg-button text-white shadow-lg shadow-tg-button/30 border-tg-button' : 'bg-white/5 text-tg-hint border-white/5'"
-        class="px-5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap border transition-all active:scale-95"
+        :class="selectedCategory === cat ? 'bg-tg-button text-white shadow-lg shadow-tg-button/30 border-tg-button' : 'bg-white/5 text-tg-hint border-white/5 hover:bg-white/10'"
+        class="px-5 py-3 rounded-2xl text-[11px] font-black whitespace-nowrap border transition-all active:scale-95 flex items-center gap-2"
       >
+        <span v-if="cat === 'Content'">🎬</span>
+        <span v-else-if="cat === 'User'">👤</span>
+        <span v-else-if="cat === 'Post'">📝</span>
+        <span v-else-if="cat === 'Menfess'">💌</span>
         {{ $t(`explore.categories.${cat}`) }}
       </button>
     </div>
@@ -361,6 +390,25 @@ const processDonation = async () => {
       <div v-else-if="creators.length === 0" class="py-12 text-center space-y-4">
         <div class="text-6xl opacity-20">🔎</div>
         <p class="text-tg-hint font-bold text-sm">{{ $t('explore.noResults') }}</p>
+      </div>
+
+      <!-- Sponsor Ad (Inserted if available) -->
+      <div v-if="ad" class="glass p-5 rounded-[2.5rem] border border-tg-button/20 bg-gradient-to-br from-tg-button/10 to-transparent relative overflow-hidden animate-in zoom-in duration-500">
+          <div class="flex items-start gap-4 relative z-10">
+              <div class="w-14 h-14 rounded-2xl overflow-hidden shrink-0 border border-white/10">
+                  <img :src="ad.photo_url" class="w-full h-full object-cover">
+              </div>
+              <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                      <h4 class="text-sm font-black text-white">{{ ad.display_name }}</h4>
+                      <span class="px-1.5 py-0.5 bg-tg-button text-white text-[7px] font-black uppercase rounded-md">SPONSORED</span>
+                  </div>
+                  <p class="text-xs text-white/70 mt-1 leading-relaxed line-clamp-2">{{ ad.caption }}</p>
+                  <a :href="ad.action_url" target="_blank" class="inline-block mt-3 px-4 py-2 bg-white text-black text-[10px] font-black rounded-xl active:scale-95 transition-all">Pelajari Selengkapnya</a>
+              </div>
+          </div>
+          <!-- Background Glow -->
+          <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-tg-button/20 blur-[50px] rounded-full"></div>
       </div>
 
       <!-- Real Data -->
