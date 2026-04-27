@@ -6,6 +6,7 @@ const db = require('../../services/database');
 const wallet = require('../../services/wallet');
 const notifications = require('../../services/notifications');
 const audit = require('../../services/audit');
+const axios = require('axios');
 
 /**
  * Admin API
@@ -36,11 +37,66 @@ router.post('/admin', async (req, res) => {
       });
     }
 
-    // 2. GET BOTS (Super Admin only)
+    // 2. BOT MANAGEMENT (Super Admin only)
     if (action === 'get_bots') {
         if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
-        const bots = await db('bots').select('id', 'name', 'username', 'is_active', 'created_at');
+        const bots = await db('bots').select('*');
         return res.json({ success: true, data: bots });
+    }
+
+    if (action === 'add_bot') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { name, username, token, type } = req.body;
+        if (!name || !username || !token) throw new Error('Data tidak lengkap');
+        
+        await db('bots').insert({ 
+            name, 
+            username, 
+            token, 
+            type: type || 'public',
+            is_active: 1 
+        });
+        
+        await audit.logAdminAction('add_bot', { name, username }, user.telegram_id);
+        return res.json({ success: true, message: 'Bot berhasil ditambahkan' });
+    }
+
+    if (action === 'set_webhook') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { bot_id } = req.body;
+        const botData = await db('bots').where('id', bot_id).first();
+        if (!botData) throw new Error('Bot tidak ditemukan');
+
+        const domain = process.env.WEBHOOK_DOMAIN;
+        if (!domain) throw new Error('WEBHOOK_DOMAIN belum dikonfigurasi di server');
+        
+        const webhookUrl = `${domain}/webhook/${botData.token}`;
+        const response = await axios.get(`https://api.telegram.org/bot${botData.token}/setWebhook?url=${webhookUrl}&allowed_updates=["message","callback_query"]`);
+        
+        await audit.logAdminAction('set_webhook', { bot_id, url: webhookUrl }, user.telegram_id);
+        return res.json({ success: true, data: response.data });
+    }
+
+    if (action === 'delete_webhook') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { bot_id } = req.body;
+        const botData = await db('bots').where('id', bot_id).first();
+        if (!botData) throw new Error('Bot tidak ditemukan');
+
+        const response = await axios.get(`https://api.telegram.org/bot${botData.token}/deleteWebhook`);
+        
+        await audit.logAdminAction('delete_webhook', { bot_id }, user.telegram_id);
+        return res.json({ success: true, data: response.data });
+    }
+
+    if (action === 'webhook_info') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { bot_id } = req.body;
+        const botData = await db('bots').where('id', bot_id).first();
+        if (!botData) throw new Error('Bot tidak ditemukan');
+
+        const response = await axios.get(`https://api.telegram.org/bot${botData.token}/getWebhookInfo`);
+        return res.json({ success: true, data: response.data });
     }
 
     // 3. GET PENDING PAYMENTS

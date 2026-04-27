@@ -10,6 +10,7 @@ import Library from './components/Library.vue'
 import Achievements from './components/Achievements.vue'
 import Messages from './components/Messages.vue'
 import Help from './components/Help.vue'
+import Admin from './components/Admin.vue'
 
 const activeTab = ref('dashboard')
 const isSidebarOpen = ref(false)
@@ -24,6 +25,7 @@ const targetContentId = ref(null)
 const targetDmUserId = ref(null)
 const unreadMessagesCount = ref(0)
 let unreadPollInterval = null
+const isAdmin = ref(false)
 
 const notifications = ref([
   { id: 1, type: 'donation', text: '💸 Anda menerima donasi Rp 50.000!', time: '5m ago', unread: true },
@@ -91,9 +93,34 @@ onMounted(() => {
 
     fetchBalance()
     fetchUnreadCount()
+    checkAdminStatus()
     unreadPollInterval = setInterval(fetchUnreadCount, 5000)
   }
 })
+
+const checkAdminStatus = async () => {
+  try {
+    const response = await fetch('/vesper/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            initData: tg?.initData,
+            botId: getBotId(),
+            action: 'stats'
+        })
+    });
+    const result = await response.json();
+    if (result.success) {
+      isAdmin.value = true;
+      // Add Admin tab to menu if not already there
+      if (!menuItems.find(i => i.id === 'admin')) {
+        menuItems.push({ id: 'admin', label: 'Admin Panel', icon: '🛠️', color: 'bg-red-500' });
+      }
+    }
+  } catch (e) {
+    console.error("Admin Status Check Error:", e);
+  }
+}
 
 const getBotId = () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -297,6 +324,7 @@ const handleTouchEnd = (e) => {
         <Help v-if="activeTab === 'help'" />
         <Settings v-if="activeTab === 'settings'" />
         <Mutasi v-if="activeTab === 'mutasi'" @back="activeTab = 'wallet'" />
+        <Admin v-if="activeTab === 'admin'" />
       </main>
     </div>
 
