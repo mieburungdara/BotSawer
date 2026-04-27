@@ -113,10 +113,6 @@ const checkAdminStatus = async () => {
     const result = await response.json();
     if (result.success) {
       isAdmin.value = true;
-      // Add Admin tab to menu if not already there
-      if (!menuItems.value.find(i => i.id === 'admin')) {
-        menuItems.value.push({ id: 'admin', label: 'Admin Panel', icon: '🛠️', color: 'bg-red-500' });
-      }
     }
   } catch (e) {
     console.error("Admin Status Check Error:", e);

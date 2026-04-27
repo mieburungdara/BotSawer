@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../../services/auth');
 const db = require('../../services/database');
+const admin = require('../../services/admin');
 
 /**
  * Dashboard API
@@ -40,6 +41,7 @@ router.post('/dashboard', async (req, res) => {
         success: true,
         data: {
             announcements,
+            is_admin: await admin.isAdmin(user.telegram_id),
             stats: {
                 balance: parseFloat(wallet ? wallet.balance : 0),
                 total_earnings: parseFloat(earnings.total || 0),

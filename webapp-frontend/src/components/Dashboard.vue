@@ -20,6 +20,7 @@ const quickLinks = [
   { id: 'library', label: 'Library', icon: '📚', color: 'bg-orange-500/10 text-orange-500' },
   { id: 'settings', label: 'Settings', icon: '⚙️', color: 'bg-gray-500/10 text-gray-500' },
 ]
+const isAdmin = ref(false)
 const balance = ref(0)
 const stats = ref({
   total_earnings: 0,
@@ -46,6 +47,7 @@ const fetchDashboardData = async () => {
     const result = await response.json();
     if (result.success) {
       stats.value = result.data.stats;
+      isAdmin.value = result.data.is_admin;
     }
   } catch (e) {
     console.error("Dashboard Fetch Error:", e);
@@ -229,6 +231,24 @@ onUnmounted(() => {
 
     <!-- Real Content -->
     <template v-else>
+      
+      <!-- Admin Quick Access Block -->
+      <div v-if="isAdmin" 
+           @click="$emit('navigate', 'admin')"
+           class="glass p-5 rounded-[2rem] border-2 border-tg-button/30 bg-tg-button/5 flex items-center justify-between group active:scale-95 transition-all cursor-pointer">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-tg-button flex items-center justify-center text-2xl shadow-lg shadow-tg-button/30">
+            🛡️
+          </div>
+          <div>
+            <h3 class="font-black text-sm uppercase tracking-wider text-tg-button">Admin Panel</h3>
+            <p class="text-[10px] text-tg-hint font-bold">Kelola sistem, bot, dan pembayaran</p>
+          </div>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-tg-button/10 flex items-center justify-center text-tg-button group-hover:translate-x-1 transition-transform">
+          →
+        </div>
+      </div>
 
 
       <!-- Quick Access Grid -->
