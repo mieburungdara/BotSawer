@@ -105,7 +105,7 @@ const getOrInitBot = (botData) => {
 };
 
 // Dynamic Webhook Route for ALL bots
-app.post(['/vesper/webhook/:token'], async (req, res, next) => {
+app.post(['/webhook/:token', '/vesper/webhook/:token'], async (req, res, next) => {
     try {
         const token = req.params.token;
         const botData = await db('bots').where('token', token).first();
