@@ -391,8 +391,31 @@ router.post('/admin', async (req, res) => {
                     chat_id: channel.username,
                     message_id: params.message_id
                 });
+            } else if (action_type === 'unpin_message') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/unpinChatMessage`, {
+                    chat_id: channel.username
+                });
+            } else if (action_type === 'delete_message') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/deleteMessage`, {
+                    chat_id: channel.username,
+                    message_id: params.message_id
+                });
+            } else if (action_type === 'set_title') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/setChatTitle`, {
+                    chat_id: channel.username,
+                    title: params.title
+                });
+            } else if (action_type === 'set_description') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/setChatDescription`, {
+                    chat_id: channel.username,
+                    description: params.description
+                });
+            } else if (action_type === 'export_link') {
+                const resLink = await axios.post(`https://api.telegram.org/bot${bot.token}/exportChatInviteLink`, {
+                    chat_id: channel.username
+                });
+                return res.json({ success: true, message: 'Invite Link baru berhasil dibuat', data: resLink.data.result });
             }
-            // Add more actions as needed
 
             return res.json({ success: true, message: 'Aksi berhasil dijalankan oleh bot' });
         } catch (e) {

@@ -15,6 +15,10 @@ const liveChannelInfo = ref(null)
 const channelBotAdmins = ref([])
 const selectedBotForAction = ref(null)
 const botActionText = ref('')
+const botToolTab = ref('message') // message, channel, links
+const toolInputMessageId = ref('')
+const toolInputTitle = ref('')
+const toolInputDesc = ref('')
 const newBot = ref({
     token: '',
     type: 'public'
@@ -267,6 +271,25 @@ const sendBotMessage = async () => {
         botActionText.value = '';
     } else {
         tg.showAlert('Gagal kirim pesan: ' + result.message);
+    }
+}
+
+const runToolAction = async (type, params = {}) => {
+    if (!selectedBotForAction.value) return;
+    const result = await fetchAdminData('channel_bot_action', {
+        bot_id: selectedBotForAction.value,
+        channel_id: editingChannelId.value,
+        action_type: type,
+        params: params
+    });
+    if (result.success) {
+        tg.showAlert(result.message + (result.data ? '\n\n' + result.data : ''));
+        // Clear inputs based on type
+        if (type === 'set_title') toolInputTitle.value = '';
+        if (type === 'set_description') toolInputDesc.value = '';
+        if (type === 'delete_message' || type === 'pin_message') toolInputMessageId.value = '';
+    } else {
+        tg.showAlert('Gagal: ' + result.message);
     }
 }
 
@@ -604,11 +627,46 @@ const changeTab = (tab) => {
                                 </select>
                             </div>
 
-                            <div class="space-y-2">
-                                <textarea v-model="botActionText" placeholder="Tulis pesan untuk dikirim ke channel..." class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all h-24 resize-none"></textarea>
-                                <button @click="sendBotMessage" class="w-full py-3 bg-tg-button text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-tg-button/20 active:scale-95 transition-all">
-                                    🚀 Kirim Pesan via Bot
+                            <!-- Tools Tab -->
+                            <div class="flex gap-1 bg-black/20 p-1 rounded-xl">
+                                <button @click="botToolTab = 'message'" :class="botToolTab === 'message' ? 'bg-tg-button text-white shadow-md' : 'text-tg-hint'" class="flex-1 py-2 rounded-lg text-[8px] font-black uppercase transition-all">Message</button>
+                                <button @click="botToolTab = 'channel'" :class="botToolTab === 'channel' ? 'bg-tg-button text-white shadow-md' : 'text-tg-hint'" class="flex-1 py-2 rounded-lg text-[8px] font-black uppercase transition-all">Channel</button>
+                                <button @click="botToolTab = 'links'" :class="botToolTab === 'links' ? 'bg-tg-button text-white shadow-md' : 'text-tg-hint'" class="flex-1 py-2 rounded-lg text-[8px] font-black uppercase transition-all">Links</button>
+                            </div>
+
+                            <div v-if="botToolTab === 'message'" class="space-y-3">
+                                <div class="space-y-2">
+                                    <textarea v-model="botActionText" placeholder="Tulis pesan (HTML supported)..." class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all h-20 resize-none"></textarea>
+                                    <button @click="sendBotMessage" class="w-full py-3 bg-tg-button text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-tg-button/20 active:scale-95 transition-all">
+                                        🚀 Kirim Pesan
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="space-y-1 col-span-2">
+                                        <input v-model="toolInputMessageId" type="number" placeholder="Message ID" class="w-full bg-tg-secondary border border-white/5 px-4 py-2 rounded-xl text-xs font-bold outline-none">
+                                    </div>
+                                    <button @click="runToolAction('pin_message', { message_id: toolInputMessageId })" class="py-3 bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all">📌 Pin</button>
+                                    <button @click="runToolAction('delete_message', { message_id: toolInputMessageId })" class="py-3 bg-red-500/20 text-red-500 border border-red-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all">🗑️ Delete</button>
+                                </div>
+                                <button @click="runToolAction('unpin_message')" class="w-full py-2 border border-white/5 rounded-xl text-[8px] text-tg-hint font-bold uppercase active:scale-95 transition-all">Unpin All Messages</button>
+                            </div>
+
+                            <div v-if="botToolTab === 'channel'" class="space-y-3">
+                                <div class="space-y-2">
+                                    <input v-model="toolInputTitle" placeholder="Ganti Judul Channel" class="w-full bg-tg-secondary border border-white/5 px-4 py-3 rounded-xl text-xs font-bold outline-none">
+                                    <button @click="runToolAction('set_title', { title: toolInputTitle })" class="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase active:scale-95">Update Title</button>
+                                </div>
+                                <div class="space-y-2">
+                                    <textarea v-model="toolInputDesc" placeholder="Ganti Deskripsi Channel" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none h-20 resize-none"></textarea>
+                                    <button @click="runToolAction('set_description', { description: toolInputDesc })" class="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase active:scale-95">Update Description</button>
+                                </div>
+                            </div>
+
+                            <div v-if="botToolTab === 'links'" class="space-y-3">
+                                <button @click="runToolAction('export_link')" class="w-full py-4 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
+                                    🔗 Generate New Invite Link
                                 </button>
+                                <p class="text-[9px] text-tg-hint text-center px-4 font-bold italic">Link lama akan tetap berlaku kecuali jika link baru ini dibuat untuk menggantikan link utama.</p>
                             </div>
                         </div>
                     </div>
