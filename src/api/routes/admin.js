@@ -240,6 +240,20 @@ router.post('/admin', async (req, res) => {
         return res.json({ success: true, message: `Channel ${name} berhasil diperbarui` });
     }
 
+    if (action === 'delete_channel') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { channel_id } = req.body;
+        if (!channel_id) throw new Error('ID Channel wajib diisi');
+
+        const channel = await db('channels').where('id', channel_id).first();
+        if (!channel) throw new Error('Channel tidak ditemukan');
+
+        await db('channels').where('id', channel_id).delete();
+        
+        await audit.logAdminAction('delete_channel', { name: channel.name, username: channel.username }, user.telegram_id, 'channel', channel_id);
+        return res.json({ success: true, message: `Channel ${channel.name} berhasil dihapus` });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {

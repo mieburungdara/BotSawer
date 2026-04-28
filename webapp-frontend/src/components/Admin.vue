@@ -150,6 +150,23 @@ const addChannel = async () => {
     }
 }
 
+const deleteChannel = async () => {
+    if (!editingChannelId.value) return;
+    
+    tg.showConfirm('Apakah Anda yakin ingin menghapus channel ini secara permanen?', async (ok) => {
+        if (!ok) return;
+        const result = await fetchAdminData('delete_channel', { channel_id: editingChannelId.value });
+        if (result.success) {
+            tg.showAlert(result.message);
+            showAddChannel.value = false;
+            editingChannelId.value = null;
+            loadChannels();
+        } else {
+            tg.showAlert('Gagal hapus channel: ' + result.message);
+        }
+    });
+}
+
 const editChannel = (channel) => {
     newChannel.value = {
         name: channel.name,
@@ -447,7 +464,10 @@ const changeTab = (tab) => {
                     </div>
 
                     <div class="flex gap-3 pt-2">
-                        <button @click="showAddChannel = false" class="flex-1 py-4 glass rounded-2xl text-xs font-black uppercase tracking-wider active:scale-95 transition-all">Batal</button>
+                        <button v-if="editingChannelId" @click="deleteChannel" class="w-12 h-14 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl flex items-center justify-center active:scale-95 transition-all">
+                            🗑️
+                        </button>
+                        <button @click="showAddChannel = false; editingChannelId = null" class="flex-1 py-4 glass rounded-2xl text-xs font-black uppercase tracking-wider active:scale-95 transition-all">Batal</button>
                         <button @click="addChannel" class="flex-1 py-4 bg-tg-button text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-tg-button/30 active:scale-95 transition-all">Simpan</button>
                     </div>
                 </div>
