@@ -304,17 +304,29 @@ const changeTab = (tab) => {
     </div>
 
     <div v-else class="space-y-6">
-        <!-- Sub Tabs -->
-        <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <button 
-                v-for="tab in ['stats', 'bots', 'channels', 'users', 'payments', 'admins']" 
-                :key="tab"
-                @click="changeTab(tab)"
-                :class="activeSubTab === tab ? 'bg-tg-button text-white' : 'glass text-tg-hint'"
-                class="px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all shrink-0"
-            >
-                {{ tab }}
-            </button>
+        <!-- Sub Tabs Navigation -->
+        <div class="sticky top-0 z-[50] bg-tg-bg/80 backdrop-blur-xl -mx-6 px-6 py-4 border-b border-white/5 mb-4">
+            <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                <button 
+                    v-for="tab in [
+                        { id: 'stats', name: 'Stats', icon: '📊' },
+                        { id: 'bots', name: 'Bots', icon: '🤖' },
+                        { id: 'channels', name: 'Channels', icon: '📺' },
+                        { id: 'users', name: 'Users', icon: '👥' },
+                        { id: 'payments', name: 'Payments', icon: '💳' },
+                        { id: 'admins', name: 'Admins', icon: '🛡️' }
+                    ]" 
+                    :key="tab.id"
+                    @click="changeTab(tab.id)"
+                    :class="activeSubTab === tab.id 
+                        ? 'bg-tg-button text-white shadow-lg shadow-tg-button/20 border-tg-button' 
+                        : 'bg-white/5 text-tg-hint border-transparent hover:bg-white/10'"
+                    class="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all shrink-0 border active:scale-95"
+                >
+                    <span class="text-sm">{{ tab.icon }}</span>
+                    {{ tab.name }}
+                </button>
+            </div>
         </div>
 
         <!-- STATS TAB -->
