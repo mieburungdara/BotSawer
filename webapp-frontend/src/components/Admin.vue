@@ -12,6 +12,9 @@ const showAddBot = ref(false)
 const showAddChannel = ref(false)
 const editingChannelId = ref(null)
 const liveChannelInfo = ref(null)
+const channelBotAdmins = ref([])
+const selectedBotForAction = ref(null)
+const botActionText = ref('')
 const newBot = ref({
     token: '',
     type: 'public'
@@ -233,9 +236,37 @@ const editChannel = async (channel) => {
     
     // Fetch live info
     liveChannelInfo.value = null;
-    const result = await fetchAdminData('get_channel_info', { channel_id: channel.id });
+    channelBotAdmins.value = [];
+    selectedBotForAction.value = null;
+
+    fetchAdminData('get_channel_info', { channel_id: channel.id }).then(result => {
+        if (result.success) liveChannelInfo.value = result.data;
+    });
+
+    fetchAdminData('get_channel_bot_admins', { channel_id: channel.id }).then(result => {
+        if (result.success) {
+            channelBotAdmins.value = result.data;
+            if (result.data.length > 0) selectedBotForAction.value = result.data[0].id;
+        }
+    });
+}
+
+const sendBotMessage = async () => {
+    if (!selectedBotForAction.value || !botActionText.value) {
+        tg.showAlert('Pilih bot dan isi pesan');
+        return;
+    }
+    const result = await fetchAdminData('channel_bot_action', {
+        bot_id: selectedBotForAction.value,
+        channel_id: editingChannelId.value,
+        action_type: 'send_message',
+        params: { text: botActionText.value }
+    });
     if (result.success) {
-        liveChannelInfo.value = result.data;
+        tg.showAlert(result.message);
+        botActionText.value = '';
+    } else {
+        tg.showAlert('Gagal kirim pesan: ' + result.message);
     }
 }
 
@@ -243,6 +274,9 @@ const openAddChannel = () => {
     newChannel.value = { name: '', username: '', description: '', category: '', type: 'public' };
     editingChannelId.value = null;
     liveChannelInfo.value = null;
+    channelBotAdmins.value = [];
+    selectedBotForAction.value = null;
+    botActionText.value = '';
     showAddChannel.value = true;
 }
 
@@ -513,9 +547,9 @@ const changeTab = (tab) => {
 
             <!-- Add Channel Form Overlay -->
             <div v-if="showAddChannel" class="fixed inset-0 z-[100] flex items-center justify-center p-6">
-                <div @click="showAddChannel = false; editingChannelId = null" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-                <div class="relative w-full max-w-sm glass p-6 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-4">
-                    <div class="text-center">
+                <div @click="showAddChannel = false; editingChannelId = null; liveChannelInfo = null" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+                <div class="relative w-full max-w-sm glass p-6 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-4 overflow-y-auto max-h-[85vh] scrollbar-hide">
+                    <div class="text-center shrink-0">
                         <h2 class="text-xl font-black uppercase tracking-tight">{{ editingChannelId ? 'Update' : 'Register' }} <span class="text-tg-button">Channel</span></h2>
                         <p class="text-[10px] text-tg-hint font-bold">{{ editingChannelId ? 'Perbarui informasi channel' : 'Masukkan informasi channel baru' }}</p>
                     </div>
@@ -539,6 +573,46 @@ const changeTab = (tab) => {
                             {{ liveChannelInfo.invite_link }}
                         </div>
                     </div>
+
+                    <!-- Managing Bots Section -->
+                    <div v-if="editingChannelId" class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <p class="text-[10px] font-black text-tg-hint uppercase ml-2">Managing Bots</p>
+                            <span class="text-[8px] bg-white/5 px-2 py-1 rounded-md font-bold uppercase">{{ channelBotAdmins.length }} Bots Found</span>
+                        </div>
+                        
+                        <div v-if="channelBotAdmins.length === 0" class="p-4 border border-dashed border-white/10 rounded-2xl text-center">
+                            <p class="text-[10px] font-bold text-tg-hint">Tidak ada bot yang terdeteksi sebagai admin.</p>
+                        </div>
+
+                        <div v-else class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                            <div v-for="bot in channelBotAdmins" :key="bot.id" class="px-3 py-2 bg-tg-secondary border border-white/5 rounded-xl flex items-center gap-2 shrink-0">
+                                <span class="text-xs">🤖</span>
+                                <div>
+                                    <p class="text-[10px] font-black leading-none">{{ bot.name }}</p>
+                                    <p class="text-[8px] text-tg-hint font-bold uppercase">@{{ bot.username }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bot Actions Tool -->
+                        <div v-if="channelBotAdmins.length > 0" class="bg-white/5 border border-white/5 rounded-3xl p-4 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <p class="text-[10px] font-black text-tg-button uppercase tracking-wider">Bot Tools</p>
+                                <select v-model="selectedBotForAction" class="bg-tg-secondary border border-white/5 px-2 py-1 rounded-lg text-[9px] font-bold outline-none">
+                                    <option v-for="bot in channelBotAdmins" :key="bot.id" :value="bot.id">Via @{{ bot.username }}</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-2">
+                                <textarea v-model="botActionText" placeholder="Tulis pesan untuk dikirim ke channel..." class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all h-24 resize-none"></textarea>
+                                <button @click="sendBotMessage" class="w-full py-3 bg-tg-button text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-tg-button/20 active:scale-95 transition-all">
+                                    🚀 Kirim Pesan via Bot
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div v-else-if="editingChannelId" class="py-4 text-center">
                         <p class="text-[10px] font-bold animate-pulse text-tg-hint uppercase">Fetching live data from Telegram...</p>
                     </div>

@@ -334,6 +334,72 @@ router.post('/admin', async (req, res) => {
         }
     }
 
+    if (action === 'get_channel_bot_admins') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { channel_id } = req.body;
+        
+        const channel = await db('channels').where('id', channel_id).first();
+        if (!channel) throw new Error('Channel tidak ditemukan');
+
+        const activeBots = await db('bots').where('is_active', 1);
+        const adminBots = [];
+
+        for (const bot of activeBots) {
+            try {
+                const meRes = await axios.get(`https://api.telegram.org/bot${bot.token}/getMe`);
+                const botId = meRes.data.result.id;
+
+                const resMember = await axios.get(`https://api.telegram.org/bot${bot.token}/getChatMember`, {
+                    params: { chat_id: channel.username, user_id: botId }
+                });
+
+                const status = resMember.data.result.status;
+                if (status === 'administrator' || status === 'creator') {
+                    adminBots.push({
+                        id: bot.id,
+                        username: bot.username,
+                        name: bot.name,
+                        status: status
+                    });
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+
+        return res.json({ success: true, data: adminBots });
+    }
+
+    if (action === 'channel_bot_action') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { bot_id, channel_id, action_type, params } = req.body;
+
+        const bot = await db('bots').where('id', bot_id).first();
+        const channel = await db('channels').where('id', channel_id).first();
+        
+        if (!bot || !channel) throw new Error('Bot atau Channel tidak ditemukan');
+
+        try {
+            if (action_type === 'send_message') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/sendMessage`, {
+                    chat_id: channel.username,
+                    text: params.text,
+                    parse_mode: 'HTML'
+                });
+            } else if (action_type === 'pin_message') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/pinChatMessage`, {
+                    chat_id: channel.username,
+                    message_id: params.message_id
+                });
+            }
+            // Add more actions as needed
+
+            return res.json({ success: true, message: 'Aksi berhasil dijalankan oleh bot' });
+        } catch (e) {
+            throw new Error('Gagal menjalankan aksi via bot: ' + (e.response?.data?.description || e.message));
+        }
+    }
+
     // 7. USER MANAGEMENT
     if (action === 'get_users') {
         if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
