@@ -205,7 +205,7 @@ router.post('/admin', async (req, res) => {
 
     if (action === 'add_channel') {
         if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
-        const { name, username, description, category, type } = req.body;
+        const { name, username, description, category, type, chat_type } = req.body;
         
         if (!name || !username) throw new Error('Nama dan Username wajib diisi');
 
@@ -215,6 +215,7 @@ router.post('/admin', async (req, res) => {
             description,
             category,
             type: type || 'public',
+            chat_type: chat_type || 'channel',
             is_active: 1
         });
 
@@ -425,6 +426,22 @@ router.post('/admin', async (req, res) => {
                     chat_id: channel.username,
                     user_id: params.user_id,
                     only_if_banned: true
+                });
+            } else if (action_type === 'restrict_user') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/restrictChatMember`, {
+                    chat_id: channel.username,
+                    user_id: params.user_id,
+                    permissions: JSON.stringify({
+                        can_send_messages: params.can_send || false,
+                        can_send_media_messages: params.can_send_media || false,
+                        can_send_polls: params.can_send_polls || false,
+                        can_send_other_messages: params.can_send_other || false,
+                        can_add_web_page_previews: params.can_web_preview || false,
+                        can_change_info: false,
+                        can_invite_users: true,
+                        can_pin_messages: false
+                    }),
+                    until_date: params.until_date || Math.floor(Date.now() / 1000) + (24 * 60 * 60) // Default 24h
                 });
             } else if (action_type === 'get_member_info') {
                 const resMember = await axios.get(`https://api.telegram.org/bot${bot.token}/getChatMember`, {

@@ -42,7 +42,8 @@ const newChannel = ref({
     username: '',
     description: '',
     category: '',
-    type: 'public'
+    type: 'public',
+    chat_type: 'channel'
 })
 
 const tg = window.Telegram?.WebApp
@@ -236,7 +237,8 @@ const editChannel = async (channel) => {
         username: channel.username,
         description: channel.description,
         category: channel.category,
-        type: channel.type
+        type: channel.type,
+        chat_type: channel.chat_type || 'channel'
     };
     editingChannelId.value = channel.id;
     showAddChannel.value = true;
@@ -297,7 +299,7 @@ const runToolAction = async (type, params = {}) => {
 }
 
 const openAddChannel = () => {
-    newChannel.value = { name: '', username: '', description: '', category: '', type: 'public' };
+    newChannel.value = { name: '', username: '', description: '', category: '', type: 'public', chat_type: 'channel' };
     editingChannelId.value = null;
     liveChannelInfo.value = null;
     channelBotAdmins.value = [];
@@ -584,7 +586,7 @@ const changeTab = (tab) => {
                     <div v-if="liveChannelInfo" class="bg-white/5 border border-white/5 rounded-3xl p-4 space-y-3">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 rounded-2xl bg-tg-button/20 flex items-center justify-center text-2xl">
-                                📢
+                                {{ liveChannelInfo.chat_type === 'group' ? '👥' : '📢' }}
                             </div>
                             <div>
                                 <p class="font-black text-sm">{{ liveChannelInfo.title }}</p>
@@ -678,6 +680,7 @@ const changeTab = (tab) => {
                                         <button @click="runToolAction('promote_member', { user_id: toolInputUserId })" class="py-3 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Make Admin</button>
                                         <button @click="runToolAction('ban_user', { user_id: toolInputUserId })" class="py-3 bg-red-500/20 text-red-500 border border-red-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Ban User</button>
                                         <button @click="runToolAction('unban_user', { user_id: toolInputUserId })" class="py-3 bg-green-500/20 text-green-500 border border-green-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Unban User</button>
+                                        <button v-if="newChannel.chat_type === 'group'" @click="runToolAction('restrict_user', { user_id: toolInputUserId, can_send: false })" class="col-span-2 py-3 bg-orange-500/20 text-orange-500 border border-orange-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">🔇 Mute / Read Only (24h)</button>
                                     </div>
                                 </div>
                             </div>
@@ -732,16 +735,25 @@ const changeTab = (tab) => {
                             <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Category</label>
                             <input v-model="newChannel.category" type="text" placeholder="Contoh: News, Entertainment" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all" />
                         </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Chat Type</label>
+                                <select v-model="newChannel.chat_type" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all appearance-none">
+                                    <option value="channel">Channel</option>
+                                    <option value="group">Group</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Visibility</label>
+                                <select v-model="newChannel.type" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all appearance-none">
+                                    <option value="public">Public</option>
+                                    <option value="private">Private</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="space-y-1">
                             <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Description</label>
                             <textarea v-model="newChannel.description" placeholder="Deskripsi singkat..." class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all h-20 resize-none"></textarea>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Type</label>
-                            <select v-model="newChannel.type" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all appearance-none">
-                                <option value="public">Public</option>
-                                <option value="private">Private</option>
-                            </select>
                         </div>
                     </div>
 
