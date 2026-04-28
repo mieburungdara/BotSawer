@@ -203,6 +203,25 @@ router.post('/admin', async (req, res) => {
         return res.json({ success: true, message: `Channel berhasil ${is_active ? 'diaktifkan' : 'dinonaktifkan'}` });
     }
 
+    if (action === 'add_channel') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { name, username, description, category, type } = req.body;
+        
+        if (!name || !username) throw new Error('Nama dan Username wajib diisi');
+
+        const [id] = await db('channels').insert({
+            name,
+            username: username.startsWith('@') ? username : `@${username}`,
+            description,
+            category,
+            type: type || 'public',
+            is_active: 1
+        });
+
+        await audit.logAdminAction('add_channel', { name, username }, user.telegram_id, 'channel', id);
+        return res.json({ success: true, message: `Channel ${name} berhasil ditambahkan`, channel_id: id });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {

@@ -7,20 +7,26 @@ const activeSubTab = ref('stats') // stats, bots, payments, admins
 const stats = ref({})
 const bots = ref([])
 const loadingBotId = ref(null)
-const channels = ref([])
-const pendingPayments = ref([])
-const admins = ref([])
-
-// Bot Form
 const showAddBot = ref(false)
+const showAddChannel = ref(false)
 const newBot = ref({
     token: '',
     type: 'public'
 })
-
-// Webhook Info Modal
 const showWebhookInfo = ref(false)
 const selectedWebhookInfo = ref(null)
+const channels = ref([])
+const pendingPayments = ref([])
+const admins = ref([])
+
+// Channel Form
+const newChannel = ref({
+    name: '',
+    username: '',
+    description: '',
+    category: '',
+    type: 'public'
+})
 
 const tg = window.Telegram?.WebApp
 
@@ -117,6 +123,22 @@ const toggleChannel = async (channelId, currentStatus) => {
         loadChannels();
     } else {
         tg.showAlert('Gagal ubah status: ' + result.message);
+    }
+}
+
+const addChannel = async () => {
+    if (!newChannel.value.name || !newChannel.value.username) {
+        tg.showAlert('Nama dan Username wajib diisi');
+        return;
+    }
+    const result = await fetchAdminData('add_channel', newChannel.value);
+    if (result.success) {
+        tg.showAlert(result.message);
+        showAddChannel.value = false;
+        newChannel.value = { name: '', username: '', description: '', category: '', type: 'public' };
+        loadChannels();
+    } else {
+        tg.showAlert('Gagal tambah channel: ' + result.message);
     }
 }
 
@@ -322,6 +344,7 @@ const changeTab = (tab) => {
         <div v-if="activeSubTab === 'channels'" class="space-y-4">
             <div class="flex items-center justify-between">
                 <h3 class="font-bold text-sm text-tg-hint uppercase tracking-wider">Channel List</h3>
+                <button @click="showAddChannel = true" class="px-3 py-1.5 bg-tg-button text-white rounded-lg text-[10px] font-black uppercase">Tambah Channel</button>
             </div>
 
             <div v-if="channels.length === 0" class="py-12 text-center glass rounded-3xl border border-white/5 opacity-50">
@@ -354,6 +377,48 @@ const changeTab = (tab) => {
                 <div class="flex gap-2">
                     <span class="px-2 py-1 bg-white/5 rounded-md text-[8px] font-bold uppercase">{{ channel.category || 'NO CATEGORY' }}</span>
                     <span class="px-2 py-1 bg-white/5 rounded-md text-[8px] font-bold uppercase">{{ channel.type }}</span>
+                </div>
+            </div>
+
+            <!-- Add Channel Form Overlay -->
+            <div v-if="showAddChannel" class="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                <div @click="showAddChannel = false" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+                <div class="relative w-full max-w-sm glass p-6 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-4">
+                    <div class="text-center">
+                        <h2 class="text-xl font-black uppercase tracking-tight">Register <span class="text-tg-button">Channel</span></h2>
+                        <p class="text-[10px] text-tg-hint font-bold">Masukkan informasi channel baru</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Channel Name</label>
+                            <input v-model="newChannel.name" type="text" placeholder="Contoh: Vesper Official" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all" />
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Username</label>
+                            <input v-model="newChannel.username" type="text" placeholder="@username" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all" />
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Category</label>
+                            <input v-model="newChannel.category" type="text" placeholder="Contoh: News, Entertainment" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all" />
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Description</label>
+                            <textarea v-model="newChannel.description" placeholder="Deskripsi singkat..." class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all h-20 resize-none"></textarea>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Type</label>
+                            <select v-model="newChannel.type" class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all appearance-none">
+                                <option value="public">Public</option>
+                                <option value="private">Private</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button @click="showAddChannel = false" class="flex-1 py-4 glass rounded-2xl text-xs font-black uppercase tracking-wider active:scale-95 transition-all">Batal</button>
+                        <button @click="addChannel" class="flex-1 py-4 bg-tg-button text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-tg-button/30 active:scale-95 transition-all">Simpan</button>
+                    </div>
                 </div>
             </div>
         </div>
