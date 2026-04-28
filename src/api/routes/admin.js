@@ -337,38 +337,64 @@ router.post('/admin', async (req, res) => {
 
     if (action === 'get_channel_bot_admins') {
         if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
-        const { channel_id } = req.body;
-        
-        const channel = await db('channels').where('id', channel_id).first();
-        if (!channel) throw new Error('Channel tidak ditemukan');
+        const { channel_id, sync } = req.body;
+        if (!channel_id) throw new Error('Channel ID wajib diisi');
 
-        const activeBots = await db('bots').where('is_active', 1);
-        const adminBots = [];
+        // Get existing relations
+        let bots = await db('bot_chats')
+            .join('bots', 'bot_chats.bot_id', 'bots.id')
+            .where('bot_chats.chat_id', channel_id)
+            .select('bots.id', 'bots.username', 'bots.name', 'bots.token', 'bots.bot_id', 'bot_chats.role');
 
-        for (const bot of activeBots) {
-            try {
-                const meRes = await axios.get(`https://api.telegram.org/bot${bot.token}/getMe`);
-                const botId = meRes.data.result.id;
+        // If sync is requested or no bots found, scan all bots
+        if (sync === true || sync === 'true' || bots.length === 0) {
+            const channel = await db('channels').where('id', channel_id).first();
+            if (!channel) throw new Error('Channel tidak ditemukan');
 
-                const resMember = await axios.get(`https://api.telegram.org/bot${bot.token}/getChatMember`, {
-                    params: { chat_id: channel.username, user_id: botId }
-                });
+            const allActiveBots = await db('bots').where('is_active', 1);
+            const validBots = [];
 
-                const status = resMember.data.result.status;
-                if (status === 'administrator' || status === 'creator') {
-                    adminBots.push({
-                        id: bot.id,
-                        username: bot.username,
-                        name: bot.name,
-                        status: status
+            for (const bot of allActiveBots) {
+                try {
+                    let botUid = bot.bot_id;
+                    if (!botUid) {
+                        const me = await axios.get(`https://api.telegram.org/bot${bot.token}/getMe`);
+                        botUid = me.data.result.id;
+                        await db('bots').where('id', bot.id).update({ bot_id: botUid });
+                    }
+
+                    const res = await axios.get(`https://api.telegram.org/bot${bot.token}/getChatMember`, {
+                        params: { chat_id: channel.username, user_id: botUid }
                     });
+                    
+                    const status = res.data.result.status;
+                    if (['administrator', 'creator'].includes(status)) {
+                        const botData = {
+                            id: bot.id,
+                            username: bot.username,
+                            name: bot.name,
+                            role: status
+                        };
+                        validBots.push(botData);
+                        
+                        // Save relation
+                        await db('bot_chats').insert({
+                            bot_id: bot.id,
+                            chat_id: channel_id,
+                            role: status,
+                            last_checked: db.fn.now()
+                        }).onConflict(['bot_id', 'chat_id']).merge();
+                    } else {
+                        await db('bot_chats').where({ bot_id: bot.id, chat_id: channel_id }).delete();
+                    }
+                } catch (e) {
+                    await db('bot_chats').where({ bot_id: bot.id, chat_id: channel_id }).delete();
                 }
-            } catch (e) {
-                continue;
             }
+            bots = validBots;
         }
 
-        return res.json({ success: true, data: adminBots });
+        return res.json({ success: true, data: bots });
     }
 
     if (action === 'channel_bot_action') {

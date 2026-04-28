@@ -252,12 +252,7 @@ const editChannel = async (channel) => {
         if (result.success) liveChannelInfo.value = result.data;
     });
 
-    fetchAdminData('get_channel_bot_admins', { channel_id: channel.id }).then(result => {
-        if (result.success) {
-            channelBotAdmins.value = result.data;
-            if (result.data.length > 0) selectedBotForAction.value = result.data[0].id;
-        }
-    });
+    fetchChannelBotAdmins();
 }
 
 const sendBotMessage = async () => {
@@ -604,23 +599,21 @@ const changeTab = (tab) => {
 
                     <!-- Managing Bots Section -->
                     <div v-if="editingChannelId" class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <p class="text-[10px] font-black text-tg-hint uppercase ml-2">Managing Bots</p>
-                            <span class="text-[8px] bg-white/5 px-2 py-1 rounded-md font-bold uppercase">{{ channelBotAdmins.length }} Bots Found</span>
-                        </div>
-                        
-                        <div v-if="channelBotAdmins.length === 0" class="p-4 border border-dashed border-white/10 rounded-2xl text-center">
-                            <p class="text-[10px] font-bold text-tg-hint">Tidak ada bot yang terdeteksi sebagai admin.</p>
-                        </div>
-
-                        <div v-else class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                            <div v-for="bot in channelBotAdmins" :key="bot.id" class="px-3 py-2 bg-tg-secondary border border-white/5 rounded-xl flex items-center gap-2 shrink-0">
-                                <span class="text-xs">🤖</span>
-                                <div>
-                                    <p class="text-[10px] font-black leading-none">{{ bot.name }}</p>
-                                    <p class="text-[8px] text-tg-hint font-bold uppercase">@{{ bot.username }}</p>
+                        <div class="bg-white/5 border border-white/5 rounded-3xl p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="text-[10px] font-black text-tg-hint uppercase ml-2">Managing Bots ({{ channelBotAdmins.length }})</label>
+                                <button @click="fetchChannelBotAdmins(true)" class="text-[8px] font-black bg-white/5 border border-white/10 px-2 py-1 rounded-lg text-tg-button uppercase active:scale-95 transition-all">🔄 Sync</button>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <div v-for="bot in channelBotAdmins" :key="bot.id" class="px-3 py-2 bg-tg-button/10 border border-tg-button/20 rounded-xl flex items-center gap-2">
+                                    <span class="text-xs">🤖</span>
+                                    <div>
+                                        <p class="text-[10px] font-black">@{{ bot.username }}</p>
+                                        <p class="text-[8px] text-tg-hint font-bold uppercase">{{ bot.role }}</p>
+                                    </div>
                                 </div>
                             </div>
+                            <p v-if="channelBotAdmins.length === 0" class="text-[9px] text-tg-hint italic text-center py-2">No bots detected as admin. Try clicking Sync.</p>
                         </div>
 
                         <!-- Bot Actions Tool -->
