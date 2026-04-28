@@ -222,6 +222,24 @@ router.post('/admin', async (req, res) => {
         return res.json({ success: true, message: `Channel ${name} berhasil ditambahkan`, channel_id: id });
     }
 
+    if (action === 'update_channel') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { id, name, username, description, category, type } = req.body;
+        
+        if (!id || !name || !username) throw new Error('ID, Nama, dan Username wajib diisi');
+
+        await db('channels').where('id', id).update({
+            name,
+            username: username.startsWith('@') ? username : `@${username}`,
+            description,
+            category,
+            type: type || 'public'
+        });
+
+        await audit.logAdminAction('update_channel', { name, username }, user.telegram_id, 'channel', id);
+        return res.json({ success: true, message: `Channel ${name} berhasil diperbarui` });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {

@@ -9,6 +9,7 @@ const bots = ref([])
 const loadingBotId = ref(null)
 const showAddBot = ref(false)
 const showAddChannel = ref(false)
+const editingChannelId = ref(null)
 const newBot = ref({
     token: '',
     type: 'public'
@@ -131,15 +132,40 @@ const addChannel = async () => {
         tg.showAlert('Nama dan Username wajib diisi');
         return;
     }
-    const result = await fetchAdminData('add_channel', newChannel.value);
+    
+    const action = editingChannelId.value ? 'update_channel' : 'add_channel';
+    const payload = editingChannelId.value 
+        ? { ...newChannel.value, id: editingChannelId.value }
+        : newChannel.value;
+
+    const result = await fetchAdminData(action, payload);
     if (result.success) {
         tg.showAlert(result.message);
         showAddChannel.value = false;
+        editingChannelId.value = null;
         newChannel.value = { name: '', username: '', description: '', category: '', type: 'public' };
         loadChannels();
     } else {
-        tg.showAlert('Gagal tambah channel: ' + result.message);
+        tg.showAlert('Gagal simpan channel: ' + result.message);
     }
+}
+
+const editChannel = (channel) => {
+    newChannel.value = {
+        name: channel.name,
+        username: channel.username,
+        description: channel.description,
+        category: channel.category,
+        type: channel.type
+    };
+    editingChannelId.value = channel.id;
+    showAddChannel.value = true;
+}
+
+const openAddChannel = () => {
+    newChannel.value = { name: '', username: '', description: '', category: '', type: 'public' };
+    editingChannelId.value = null;
+    showAddChannel.value = true;
 }
 
 const updateBotInfo = async (botId) => {
@@ -344,27 +370,32 @@ const changeTab = (tab) => {
         <div v-if="activeSubTab === 'channels'" class="space-y-4">
             <div class="flex items-center justify-between">
                 <h3 class="font-bold text-sm text-tg-hint uppercase tracking-wider">Channel List</h3>
-                <button @click="showAddChannel = true" class="px-3 py-1.5 bg-tg-button text-white rounded-lg text-[10px] font-black uppercase">Tambah Channel</button>
+                <button @click="openAddChannel" class="px-3 py-1.5 bg-tg-button text-white rounded-lg text-[10px] font-black uppercase">Tambah Channel</button>
             </div>
 
             <div v-if="channels.length === 0" class="py-12 text-center glass rounded-3xl border border-white/5 opacity-50">
                 <p class="text-sm font-bold">Belum ada channel terdaftar</p>
             </div>
 
-            <div v-for="channel in channels" :key="channel.id" class="glass p-4 rounded-3xl border border-white/5 space-y-3">
+            <div v-for="channel in channels" :key="channel.id" 
+                 @click="editChannel(channel)"
+                 class="glass p-4 rounded-3xl border border-white/5 space-y-3 active:scale-95 transition-all cursor-pointer group">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-tg-secondary flex items-center justify-center text-lg relative">
+                        <div class="w-10 h-10 rounded-xl bg-tg-secondary flex items-center justify-center text-lg relative group-hover:bg-tg-button/20 transition-all">
                             📺
                             <div :class="channel.is_active ? 'bg-green-500' : 'bg-red-500'" class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-tg-secondary"></div>
                         </div>
                         <div>
-                            <p class="font-bold text-sm">{{ channel.name }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="font-bold text-sm">{{ channel.name }}</p>
+                                <span class="text-[8px] opacity-0 group-hover:opacity-100 transition-opacity bg-tg-button/20 text-tg-button px-1.5 py-0.5 rounded uppercase font-black">Edit</span>
+                            </div>
                             <p class="text-[10px] text-tg-hint">{{ channel.username }}</p>
                         </div>
                     </div>
                     <button 
-                        @click="toggleChannel(channel.id, channel.is_active)"
+                        @click.stop="toggleChannel(channel.id, channel.is_active)"
                         :class="channel.is_active ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-red-500/20 text-red-500 border-red-500/30'" 
                         class="px-3 py-1 rounded-lg text-[8px] font-black uppercase border transition-all active:scale-95"
                     >
@@ -382,11 +413,11 @@ const changeTab = (tab) => {
 
             <!-- Add Channel Form Overlay -->
             <div v-if="showAddChannel" class="fixed inset-0 z-[100] flex items-center justify-center p-6">
-                <div @click="showAddChannel = false" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+                <div @click="showAddChannel = false; editingChannelId = null" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
                 <div class="relative w-full max-w-sm glass p-6 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-4">
                     <div class="text-center">
-                        <h2 class="text-xl font-black uppercase tracking-tight">Register <span class="text-tg-button">Channel</span></h2>
-                        <p class="text-[10px] text-tg-hint font-bold">Masukkan informasi channel baru</p>
+                        <h2 class="text-xl font-black uppercase tracking-tight">{{ editingChannelId ? 'Update' : 'Register' }} <span class="text-tg-button">Channel</span></h2>
+                        <p class="text-[10px] text-tg-hint font-bold">{{ editingChannelId ? 'Perbarui informasi channel' : 'Masukkan informasi channel baru' }}</p>
                     </div>
 
                     <div class="space-y-3">
