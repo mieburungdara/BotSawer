@@ -254,6 +254,46 @@ router.post('/admin', async (req, res) => {
         return res.json({ success: true, message: `Channel ${channel.name} berhasil dihapus` });
     }
 
+    if (action === 'check_channel_admin') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { channel_id } = req.body;
+        
+        const channel = await db('channels').where('id', channel_id).first();
+        if (!channel) throw new Error('Channel tidak ditemukan');
+
+        const activeBots = await db('bots').where('is_active', 1);
+        let adminFound = false;
+        let adminBotUsername = '';
+
+        for (const bot of activeBots) {
+            try {
+                // Get bot info first to get its ID
+                const meRes = await axios.get(`https://api.telegram.org/bot${bot.token}/getMe`);
+                const botId = meRes.data.result.id;
+
+                const resMember = await axios.get(`https://api.telegram.org/bot${bot.token}/getChatMember`, {
+                    params: { chat_id: channel.username, user_id: botId }
+                });
+
+                const status = resMember.data.result.status;
+                if (status === 'administrator' || status === 'creator') {
+                    adminFound = true;
+                    adminBotUsername = bot.username;
+                    break;
+                }
+            } catch (e) {
+                // Skip if bot fails or is not in channel
+                continue;
+            }
+        }
+
+        if (adminFound) {
+            return res.json({ success: true, message: `Bot @${adminBotUsername} terdeteksi sebagai Admin di channel ini.` });
+        } else {
+            return res.json({ success: false, message: 'Tidak ada bot yang terdeteksi sebagai Admin. Pastikan salah satu bot Anda sudah ditambahkan ke channel sebagai Administrator.' });
+        }
+    }
+
     // 7. USER MANAGEMENT
     if (action === 'get_users') {
         if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');

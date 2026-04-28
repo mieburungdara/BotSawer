@@ -7,6 +7,7 @@ const activeSubTab = ref('stats') // stats, bots, payments, admins
 const stats = ref({})
 const bots = ref([])
 const loadingBotId = ref(null)
+const loadingChannelId = ref(null)
 const showAddBot = ref(false)
 const showAddChannel = ref(false)
 const editingChannelId = ref(null)
@@ -209,6 +210,13 @@ const deleteChannel = async () => {
             tg.showAlert('Gagal hapus channel: ' + result.message);
         }
     });
+}
+
+const checkChannelAdmin = async (channelId) => {
+    loadingChannelId.value = channelId;
+    const result = await fetchAdminData('check_channel_admin', { channel_id: channelId });
+    loadingChannelId.value = null;
+    tg.showAlert(result.message);
 }
 
 const editChannel = (channel) => {
@@ -468,13 +476,22 @@ const changeTab = (tab) => {
                             <p class="text-[10px] text-tg-hint">{{ channel.username }}</p>
                         </div>
                     </div>
-                    <button 
-                        @click.stop="toggleChannel(channel.id, channel.is_active)"
-                        :class="channel.is_active ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-red-500/20 text-red-500 border-red-500/30'" 
-                        class="px-3 py-1 rounded-lg text-[8px] font-black uppercase border transition-all active:scale-95"
-                    >
-                        {{ channel.is_active ? 'ACTIVE' : 'INACTIVE' }}
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button 
+                            @click.stop="toggleChannel(channel.id, channel.is_active)"
+                            :class="channel.is_active ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-red-500/20 text-red-500 border-red-500/30'" 
+                            class="px-3 py-1 rounded-lg text-[8px] font-black uppercase border transition-all active:scale-95"
+                        >
+                            {{ channel.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                        </button>
+                        <button 
+                            @click.stop="checkChannelAdmin(channel.id)"
+                            :disabled="loadingChannelId === channel.id"
+                            class="px-3 py-1 bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-lg text-[8px] font-black uppercase transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {{ loadingChannelId === channel.id ? 'CHECKING...' : 'CHECK ADMIN' }}
+                        </button>
+                    </div>
                 </div>
                 <div v-if="channel.description" class="p-3 bg-white/5 rounded-2xl text-[10px] text-tg-hint italic">
                     {{ channel.description }}
