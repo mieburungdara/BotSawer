@@ -6,6 +6,7 @@ const isAdmin = ref(false)
 const activeSubTab = ref('stats') // stats, bots, payments, admins
 const stats = ref({})
 const bots = ref([])
+const loadingBotId = ref(null)
 const channels = ref([])
 const pendingPayments = ref([])
 const admins = ref([])
@@ -120,7 +121,9 @@ const toggleChannel = async (channelId, currentStatus) => {
 }
 
 const updateBotInfo = async (botId) => {
+    loadingBotId.value = botId;
     const result = await fetchAdminData('update_bot_info', { bot_id: botId });
+    loadingBotId.value = null;
     if (result.success) {
         tg.showAlert(result.message);
         loadBots();
@@ -239,7 +242,16 @@ const changeTab = (tab) => {
                 <button @click="showAddBot = true" class="px-3 py-1.5 bg-tg-button text-white rounded-lg text-[10px] font-black uppercase">Tambah Bot</button>
             </div>
 
-            <div v-for="bot in bots" :key="bot.id" class="glass p-4 rounded-3xl border border-white/5 space-y-3">
+            <div v-for="bot in bots" :key="bot.id" 
+                 :class="[bot.is_active ? 'border-white/5' : 'opacity-70 grayscale border-red-500/20', loadingBotId === bot.id ? 'pointer-events-none scale-[0.98]' : '']"
+                 class="glass p-4 rounded-3xl border space-y-3 relative transition-all duration-300 overflow-hidden">
+                
+                <!-- Loading Overlay -->
+                <div v-if="loadingBotId === bot.id" class="absolute inset-0 z-10 bg-tg-secondary/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
+                    <div class="w-6 h-6 border-2 border-tg-button border-t-transparent rounded-full animate-spin"></div>
+                    <span class="text-[8px] font-black uppercase tracking-widest text-tg-button animate-pulse">Updating...</span>
+                </div>
+
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-tg-secondary flex items-center justify-center text-lg relative">
