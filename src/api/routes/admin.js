@@ -443,6 +443,41 @@ router.post('/admin', async (req, res) => {
                     options: JSON.stringify(params.options),
                     is_anonymous: params.is_anonymous !== false
                 });
+            } else if (action_type === 'edit_message') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/editMessageText`, {
+                    chat_id: channel.username,
+                    message_id: params.message_id,
+                    text: params.text,
+                    parse_mode: 'HTML'
+                });
+            } else if (action_type === 'edit_caption') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/editMessageCaption`, {
+                    chat_id: channel.username,
+                    message_id: params.message_id,
+                    caption: params.text,
+                    parse_mode: 'HTML'
+                });
+            } else if (action_type === 'promote_member') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/promoteChatMember`, {
+                    chat_id: channel.username,
+                    user_id: params.user_id,
+                    can_post_messages: true,
+                    can_edit_messages: true,
+                    can_delete_messages: true,
+                    can_invite_users: true,
+                    can_restrict_members: true,
+                    can_promote_members: false,
+                    can_change_info: true
+                });
+            } else if (action_type === 'set_photo') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/setChatPhoto`, {
+                    chat_id: channel.username,
+                    photo: params.photo_url
+                });
+            } else if (action_type === 'leave_chat') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/leaveChat`, {
+                    chat_id: channel.username
+                });
             }
 
             return res.json({ success: true, message: 'Aksi berhasil dijalankan oleh bot' });

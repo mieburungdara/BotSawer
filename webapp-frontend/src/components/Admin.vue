@@ -637,14 +637,17 @@ const changeTab = (tab) => {
                                 <button @click="botToolTab = 'members'" :class="botToolTab === 'members' ? 'bg-tg-button text-white shadow-md' : 'text-tg-hint'" class="px-4 py-2 rounded-lg text-[8px] font-black uppercase transition-all shrink-0">Members</button>
                                 <button @click="botToolTab = 'polls'" :class="botToolTab === 'polls' ? 'bg-tg-button text-white shadow-md' : 'text-tg-hint'" class="px-4 py-2 rounded-lg text-[8px] font-black uppercase transition-all shrink-0">Engagement</button>
                                 <button @click="botToolTab = 'links'" :class="botToolTab === 'links' ? 'bg-tg-button text-white shadow-md' : 'text-tg-hint'" class="px-4 py-2 rounded-lg text-[8px] font-black uppercase transition-all shrink-0">Links</button>
+                                <button @click="botToolTab = 'maintenance'" :class="botToolTab === 'maintenance' ? 'bg-tg-button text-white shadow-md' : 'text-tg-hint'" class="px-4 py-2 rounded-lg text-[8px] font-black uppercase transition-all shrink-0">System</button>
                             </div>
 
                             <div v-if="botToolTab === 'message'" class="space-y-3">
                                 <div class="space-y-2">
                                     <textarea v-model="botActionText" placeholder="Tulis pesan (HTML supported)..." class="w-full bg-tg-secondary border border-white/5 p-4 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all h-20 resize-none"></textarea>
-                                    <button @click="sendBotMessage" class="w-full py-3 bg-tg-button text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-tg-button/20 active:scale-95 transition-all">
-                                        🚀 Kirim Pesan
-                                    </button>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button @click="sendBotMessage" class="py-3 bg-tg-button text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-tg-button/20 active:scale-95 transition-all">🚀 Send</button>
+                                        <button @click="runToolAction('edit_message', { message_id: toolInputMessageId, text: botActionText })" class="py-3 bg-white/5 border border-white/10 text-white rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all">✏️ Edit Text</button>
+                                        <button @click="runToolAction('edit_caption', { message_id: toolInputMessageId, text: botActionText })" class="col-span-2 py-3 bg-white/5 border border-white/10 text-white rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all">📝 Edit Media Caption</button>
+                                    </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <div class="space-y-1 col-span-2">
@@ -672,8 +675,9 @@ const changeTab = (tab) => {
                                     <input v-model="toolInputUserId" type="number" placeholder="User Telegram ID" class="w-full bg-tg-secondary border border-white/5 px-4 py-3 rounded-xl text-xs font-bold outline-none">
                                     <div class="grid grid-cols-2 gap-2">
                                         <button @click="runToolAction('get_member_info', { user_id: toolInputUserId })" class="py-3 bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Check Info</button>
+                                        <button @click="runToolAction('promote_member', { user_id: toolInputUserId })" class="py-3 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Make Admin</button>
                                         <button @click="runToolAction('ban_user', { user_id: toolInputUserId })" class="py-3 bg-red-500/20 text-red-500 border border-red-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Ban User</button>
-                                        <button @click="runToolAction('unban_user', { user_id: toolInputUserId })" class="col-span-2 py-3 bg-green-500/20 text-green-500 border border-green-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Unban / Unrestrict</button>
+                                        <button @click="runToolAction('unban_user', { user_id: toolInputUserId })" class="py-3 bg-green-500/20 text-green-500 border border-green-500/30 rounded-xl text-[9px] font-black uppercase active:scale-95">Unban User</button>
                                     </div>
                                 </div>
                             </div>
@@ -693,6 +697,20 @@ const changeTab = (tab) => {
                                     🔗 Generate New Invite Link
                                 </button>
                                 <p class="text-[9px] text-tg-hint text-center px-4 font-bold italic">Link lama akan tetap berlaku kecuali jika link baru ini dibuat untuk menggantikan link utama.</p>
+                            </div>
+
+                            <div v-if="botToolTab === 'maintenance'" class="space-y-3">
+                                <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl space-y-3">
+                                    <p class="text-[10px] font-black text-red-500 uppercase text-center">Danger Zone</p>
+                                    <button @click="tg?.showConfirm('Bot akan keluar dari channel ini. Lanjutkan?', (ok) => ok && runToolAction('leave_chat'))" class="w-full py-3 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all">
+                                        🚪 Bot Leave Channel
+                                    </button>
+                                </div>
+                                <div class="space-y-2">
+                                    <p class="text-[9px] font-bold text-tg-hint uppercase ml-2">Channel Photo (URL)</p>
+                                    <input v-model="toolInputTitle" placeholder="https://example.com/photo.jpg" class="w-full bg-tg-secondary border border-white/5 px-4 py-3 rounded-xl text-xs font-bold outline-none">
+                                    <button @click="runToolAction('set_photo', { photo_url: toolInputTitle })" class="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase active:scale-95">Set New Photo</button>
+                                </div>
                             </div>
                         </div>
                     </div>
