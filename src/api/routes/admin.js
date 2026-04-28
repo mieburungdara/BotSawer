@@ -117,6 +117,29 @@ router.post('/admin', async (req, res) => {
         return res.json({ success: true, data: response.data });
     }
 
+    if (action === 'update_bot_info') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { bot_id } = req.body;
+        const botData = await db('bots').where('id', bot_id).first();
+        if (!botData) throw new Error('Bot tidak ditemukan');
+
+        try {
+            const response = await axios.get(`https://api.telegram.org/bot${botData.token}/getMe`);
+            if (!response.data.ok) throw new Error('Token tidak valid');
+            
+            const botInfo = response.data.result;
+            await db('bots').where('id', bot_id).update({ 
+                name: botInfo.first_name, 
+                username: botInfo.username 
+            });
+            
+            await audit.logAdminAction('update_bot_info', { name: botInfo.first_name, username: botInfo.username }, user.telegram_id, 'bot', bot_id);
+            return res.json({ success: true, message: `Info bot @${botInfo.username} berhasil diperbarui` });
+        } catch (e) {
+            throw new Error('Gagal memperbarui info bot: ' + (e.response?.data?.description || e.message));
+        }
+    }
+
     // 3. GET PENDING PAYMENTS
     if (action === 'get_pending_payments') {
         if (!await admin.hasRole(user.telegram_id, 'finance')) throw new Error('Akses ditolak');

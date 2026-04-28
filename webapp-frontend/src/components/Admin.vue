@@ -119,6 +119,16 @@ const toggleChannel = async (channelId, currentStatus) => {
     }
 }
 
+const updateBotInfo = async (botId) => {
+    const result = await fetchAdminData('update_bot_info', { bot_id: botId });
+    if (result.success) {
+        tg.showAlert(result.message);
+        loadBots();
+    } else {
+        tg.showAlert('Gagal perbarui info: ' + result.message);
+    }
+}
+
 const checkWebhook = async (botId) => {
     const result = await fetchAdminData('webhook_info', { bot_id: botId });
     if (result.success) {
@@ -251,9 +261,12 @@ const changeTab = (tab) => {
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
-                    <button @click="checkWebhook(bot.id)" class="py-2 glass rounded-xl text-[9px] font-bold hover:bg-white/10 transition-all">CHECK INFO</button>
-                    <button @click="setWebhook(bot.id)" class="py-2 bg-tg-button/20 text-tg-button border border-tg-button/30 rounded-xl text-[9px] font-bold">SET WEBHOOK</button>
-                    <button @click="deleteWebhook(bot.id)" class="py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[9px] font-bold">DELETE</button>
+                    <button @click="updateBotInfo(bot.id)" class="py-2 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl text-[9px] font-bold">UPDATE</button>
+                    <button @click="checkWebhook(bot.id)" class="py-2 glass rounded-xl text-[9px] font-bold hover:bg-white/10 transition-all">INFO</button>
+                    <button @click="setWebhook(bot.id)" class="py-2 bg-tg-button/20 text-tg-button border border-tg-button/30 rounded-xl text-[9px] font-bold">WEBHOOK</button>
+                </div>
+                <div class="grid grid-cols-1 gap-2">
+                    <button @click="deleteWebhook(bot.id)" class="py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[9px] font-bold">DELETE WEBHOOK</button>
                 </div>
             </div>
 
