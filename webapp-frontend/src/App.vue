@@ -16,6 +16,7 @@ import Admin from './components/Admin.vue'
 const activeTab = ref('dashboard')
 const isSidebarOpen = ref(false)
 const isNotifOpen = ref(false)
+const securityError = ref(null)
 const tg = window.Telegram?.WebApp
 const balance = ref(0)
 const isLoadingBalance = ref(true)
@@ -97,7 +98,21 @@ onMounted(() => {
     checkAdminStatus()
     unreadPollInterval = setInterval(fetchUnreadCount, 5000)
   }
+
+  window.addEventListener('unhandledrejection', (event) => {
+      if (event.reason?.message?.includes('KEAMANAN')) {
+          securityError.value = event.reason.message;
+      }
+  });
 })
+
+const handleSecurityError = (msg) => {
+    if (msg.includes('KEAMANAN')) {
+        securityError.value = msg;
+        return true;
+    }
+    return false;
+}
 
 const checkAdminStatus = async () => {
   try {
@@ -111,6 +126,10 @@ const checkAdminStatus = async () => {
         })
     });
     const result = await response.json();
+    if (result.message && result.message.includes('KEAMANAN')) {
+        securityError.value = result.message;
+        return;
+    }
     if (result.success) {
       isAdmin.value = true;
     }
@@ -214,6 +233,22 @@ const handleTouchEnd = (e) => {
     class="min-h-screen bg-tg-bg text-tg-text relative overflow-hidden"
   >
     
+    <!-- Global Security Overlay -->
+    <div v-if="securityError" class="fixed inset-0 z-[9999] bg-tg-bg flex items-center justify-center p-8 text-center">
+        <div class="space-y-6 max-w-xs">
+            <div class="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center text-4xl mx-auto border border-red-500/20">
+                🔒
+            </div>
+            <div class="space-y-2">
+                <h2 class="text-xl font-black uppercase tracking-tight">Akses <span class="text-red-500">Ditolak</span></h2>
+                <p class="text-xs font-bold text-tg-hint leading-relaxed">{{ securityError }}</p>
+            </div>
+            <button @click="tg?.close()" class="w-full py-4 bg-tg-button text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-tg-button/30 active:scale-95 transition-all">
+                Tutup Aplikasi
+            </button>
+        </div>
+    </div>
+
     <!-- Sidebar Overlay -->
     <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"></div>
 

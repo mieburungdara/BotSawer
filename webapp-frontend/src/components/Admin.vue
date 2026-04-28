@@ -51,6 +51,13 @@ const fetchAdminData = async (action, body = {}) => {
             })
         });
         const result = await response.json();
+        if (result.message && result.message.includes('KEAMANAN')) {
+            window.dispatchEvent(new PromiseRejectionEvent('unhandledrejection', {
+                promise: Promise.reject(new Error(result.message)),
+                reason: new Error(result.message)
+            }));
+            return { success: false, message: result.message };
+        }
         return result;
     } catch (e) {
         console.error(`Admin API Error (${action}):`, e);

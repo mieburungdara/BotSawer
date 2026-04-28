@@ -45,6 +45,13 @@ const fetchDashboardData = async () => {
         })
     });
     const result = await response.json();
+    if (result.message && result.message.includes('KEAMANAN')) {
+        window.dispatchEvent(new PromiseRejectionEvent('unhandledrejection', {
+            promise: Promise.reject(new Error(result.message)),
+            reason: new Error(result.message)
+        }));
+        return;
+    }
     if (result.success) {
       stats.value = result.data.stats;
       isAdmin.value = result.data.is_admin;
@@ -82,6 +89,14 @@ const fetchFeed = async (reset = false) => {
     });
     const result = await response.json();
     
+    if (result.message && result.message.includes('KEAMANAN')) {
+        window.dispatchEvent(new PromiseRejectionEvent('unhandledrejection', {
+            promise: Promise.reject(new Error(result.message)),
+            reason: new Error(result.message)
+        }));
+        return;
+    }
+
     if (result.success) {
       const items = result.data.list;
       if (items.length < feedLimit) {

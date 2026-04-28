@@ -60,7 +60,7 @@ class AuthService {
         }
         
         if (!foundValid) {
-            throw new Error('Invalid request signature. Pastikan Anda membuka aplikasi melalui bot resmi.');
+            throw new Error('KEAMANAN: Sesi Anda tidak valid atau telah berakhir. Silakan TUTUP WebApp ini dan BUKA KEMBALI melalui Bot resmi Vesper.');
         }
     }
 
