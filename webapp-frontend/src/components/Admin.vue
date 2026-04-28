@@ -11,6 +11,7 @@ const loadingChannelId = ref(null)
 const showAddBot = ref(false)
 const showAddChannel = ref(false)
 const editingChannelId = ref(null)
+const liveChannelInfo = ref(null)
 const newBot = ref({
     token: '',
     type: 'public'
@@ -219,7 +220,7 @@ const checkChannelAdmin = async (channelId) => {
     tg.showAlert(result.message);
 }
 
-const editChannel = (channel) => {
+const editChannel = async (channel) => {
     newChannel.value = {
         name: channel.name,
         username: channel.username,
@@ -229,11 +230,19 @@ const editChannel = (channel) => {
     };
     editingChannelId.value = channel.id;
     showAddChannel.value = true;
+    
+    // Fetch live info
+    liveChannelInfo.value = null;
+    const result = await fetchAdminData('get_channel_info', { channel_id: channel.id });
+    if (result.success) {
+        liveChannelInfo.value = result.data;
+    }
 }
 
 const openAddChannel = () => {
     newChannel.value = { name: '', username: '', description: '', category: '', type: 'public' };
     editingChannelId.value = null;
+    liveChannelInfo.value = null;
     showAddChannel.value = true;
 }
 
@@ -509,6 +518,29 @@ const changeTab = (tab) => {
                     <div class="text-center">
                         <h2 class="text-xl font-black uppercase tracking-tight">{{ editingChannelId ? 'Update' : 'Register' }} <span class="text-tg-button">Channel</span></h2>
                         <p class="text-[10px] text-tg-hint font-bold">{{ editingChannelId ? 'Perbarui informasi channel' : 'Masukkan informasi channel baru' }}</p>
+                    </div>
+
+                    <!-- Live Channel Stats -->
+                    <div v-if="liveChannelInfo" class="bg-white/5 border border-white/5 rounded-3xl p-4 space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-tg-button/20 flex items-center justify-center text-2xl">
+                                📢
+                            </div>
+                            <div>
+                                <p class="font-black text-sm">{{ liveChannelInfo.title }}</p>
+                                <p class="text-[10px] text-tg-hint font-bold uppercase tracking-widest">{{ liveChannelInfo.member_count }} Members • {{ liveChannelInfo.type }}</p>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-black/20 rounded-2xl">
+                            <p class="text-[9px] font-bold text-tg-hint uppercase mb-1">Live Description</p>
+                            <p class="text-[10px] leading-relaxed italic">{{ liveChannelInfo.description }}</p>
+                        </div>
+                        <div v-if="liveChannelInfo.invite_link" class="text-[9px] bg-tg-button/10 text-tg-button p-2 rounded-xl text-center font-bold break-all">
+                            {{ liveChannelInfo.invite_link }}
+                        </div>
+                    </div>
+                    <div v-else-if="editingChannelId" class="py-4 text-center">
+                        <p class="text-[10px] font-bold animate-pulse text-tg-hint uppercase">Fetching live data from Telegram...</p>
                     </div>
 
                     <div class="space-y-3">

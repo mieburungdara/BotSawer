@@ -294,6 +294,46 @@ router.post('/admin', async (req, res) => {
         }
     }
 
+    if (action === 'get_channel_info') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { channel_id } = req.body;
+        
+        const channel = await db('channels').where('id', channel_id).first();
+        if (!channel) throw new Error('Channel tidak ditemukan');
+
+        const activeBots = await db('bots').where('is_active', 1);
+        if (activeBots.length === 0) throw new Error('Tidak ada bot aktif untuk mengecek data');
+
+        const bot = activeBots[0]; // Use first active bot
+        try {
+            const resChat = await axios.get(`https://api.telegram.org/bot${bot.token}/getChat`, {
+                params: { chat_id: channel.username }
+            });
+
+            const resCount = await axios.get(`https://api.telegram.org/bot${bot.token}/getChatMemberCount`, {
+                params: { chat_id: channel.username }
+            });
+
+            const chat = resChat.data.result;
+            const memberCount = resCount.data.result;
+
+            return res.json({ 
+                success: true, 
+                data: {
+                    title: chat.title,
+                    username: chat.username,
+                    description: chat.description || 'Tidak ada deskripsi',
+                    member_count: memberCount,
+                    invite_link: chat.invite_link,
+                    type: chat.type,
+                    photo: chat.photo ? chat.photo.small_file_id : null
+                } 
+            });
+        } catch (e) {
+            throw new Error('Gagal mengambil data dari Telegram. Pastikan username benar dan bot ada di channel.');
+        }
+    }
+
     // 7. USER MANAGEMENT
     if (action === 'get_users') {
         if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
