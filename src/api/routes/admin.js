@@ -415,6 +415,34 @@ router.post('/admin', async (req, res) => {
                     chat_id: channel.username
                 });
                 return res.json({ success: true, message: 'Invite Link baru berhasil dibuat', data: resLink.data.result });
+            } else if (action_type === 'ban_user') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/banChatMember`, {
+                    chat_id: channel.username,
+                    user_id: params.user_id
+                });
+            } else if (action_type === 'unban_user') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/unbanChatMember`, {
+                    chat_id: channel.username,
+                    user_id: params.user_id,
+                    only_if_banned: true
+                });
+            } else if (action_type === 'get_member_info') {
+                const resMember = await axios.get(`https://api.telegram.org/bot${bot.token}/getChatMember`, {
+                    params: { chat_id: channel.username, user_id: params.user_id }
+                });
+                const m = resMember.data.result;
+                return res.json({ 
+                    success: true, 
+                    message: `User Status: ${m.status}`,
+                    data: `User: ${m.user.first_name} ${m.user.last_name || ''}\nUsername: @${m.user.username || '-'}\nID: ${m.user.id}\nStatus: ${m.status}`
+                });
+            } else if (action_type === 'send_poll') {
+                await axios.post(`https://api.telegram.org/bot${bot.token}/sendPoll`, {
+                    chat_id: channel.username,
+                    question: params.question,
+                    options: JSON.stringify(params.options),
+                    is_anonymous: params.is_anonymous !== false
+                });
             }
 
             return res.json({ success: true, message: 'Aksi berhasil dijalankan oleh bot' });
