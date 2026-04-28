@@ -254,6 +254,53 @@ router.post('/admin', async (req, res) => {
         return res.json({ success: true, message: `Channel ${channel.name} berhasil dihapus` });
     }
 
+    // 7. USER MANAGEMENT
+    if (action === 'get_users') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { search, filter, sort, offset = 0, limit = 20 } = req.body;
+        
+        let query = db('users');
+
+        if (search) {
+            query = query.where(function() {
+                this.where('first_name', 'like', `%${search}%`)
+                    .orWhere('last_name', 'like', `%${search}%`)
+                    .orWhere('username', 'like', `%${search}%`)
+                    .orWhere('telegram_id', 'like', `%${search}%`);
+            });
+        }
+
+        if (filter === 'creator') query = query.where('is_creator', 1);
+        if (filter === 'banned') query = query.where('is_banned', 1);
+        if (filter === 'verified') query = query.where('is_verified', 1);
+
+        if (sort === 'newest') query = query.orderBy('created_at', 'desc');
+        else if (sort === 'oldest') query = query.orderBy('created_at', 'asc');
+        else if (sort === 'streak') query = query.orderBy('donation_streak', 'desc');
+        else query = query.orderBy('created_at', 'desc');
+
+        const [countResult] = await query.clone().count('id as total');
+        const usersList = await query.limit(limit).offset(offset);
+
+        return res.json({ 
+            success: true, 
+            data: { 
+                list: usersList, 
+                total: countResult.total 
+            } 
+        });
+    }
+
+    if (action === 'toggle_ban_user') {
+        if (!await admin.isSuperAdmin(user.telegram_id)) throw new Error('Akses ditolak');
+        const { target_telegram_id, is_banned } = req.body;
+        
+        await db('users').where('telegram_id', target_telegram_id).update({ is_banned: is_banned ? 1 : 0 });
+        
+        await audit.logAdminAction('toggle_ban', { target_telegram_id, is_banned }, user.telegram_id, 'user', target_telegram_id);
+        return res.json({ success: true, message: `User berhasil ${is_banned ? 'dibanned' : 'diunbanned'}` });
+    }
+
     throw new Error('Action tidak dikenal');
 
   } catch (error) {

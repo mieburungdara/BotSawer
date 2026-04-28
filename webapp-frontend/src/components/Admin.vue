@@ -17,6 +17,10 @@ const newBot = ref({
 const showWebhookInfo = ref(false)
 const selectedWebhookInfo = ref(null)
 const channels = ref([])
+const usersData = ref({ list: [], total: 0 })
+const userSearch = ref('')
+const userFilter = ref('all') // all, creator, banned, verified
+const userSort = ref('newest') // newest, oldest, streak
 const pendingPayments = ref([])
 const admins = ref([])
 
@@ -90,6 +94,39 @@ const loadAdmins = async () => {
     const result = await fetchAdminData('get_admins');
     if (result.success) {
         admins.value = result.data;
+    }
+}
+
+const loadUsers = async (reset = true) => {
+    const result = await fetchAdminData('get_users', {
+        search: userSearch.value,
+        filter: userFilter.value,
+        sort: userSort.value,
+        offset: reset ? 0 : usersData.value.list.length,
+        limit: 20
+    });
+    if (result.success) {
+        if (reset) {
+            usersData.value = result.data;
+        } else {
+            usersData.value.list = [...usersData.value.list, ...result.data.list];
+            usersData.value.total = result.data.total;
+        }
+    }
+}
+
+const toggleBanUser = async (userObj) => {
+    const isBannedBool = Boolean(Number(userObj.is_banned));
+    const newStatus = !isBannedBool;
+    const result = await fetchAdminData('toggle_ban_user', { 
+        target_telegram_id: userObj.telegram_id, 
+        is_banned: newStatus 
+    });
+    if (result.success) {
+        tg.showAlert(result.message);
+        loadUsers(true);
+    } else {
+        tg.showAlert('Gagal ubah status ban: ' + result.message);
     }
 }
 
@@ -239,6 +276,7 @@ const changeTab = (tab) => {
     activeSubTab.value = tab;
     if (tab === 'bots') loadBots();
     if (tab === 'channels') loadChannels();
+    if (tab === 'users') loadUsers();
     if (tab === 'payments') loadPayments();
     if (tab === 'admins') loadAdmins();
 }
@@ -269,7 +307,7 @@ const changeTab = (tab) => {
         <!-- Sub Tabs -->
         <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button 
-                v-for="tab in ['stats', 'bots', 'channels', 'payments', 'admins']" 
+                v-for="tab in ['stats', 'bots', 'channels', 'users', 'payments', 'admins']" 
                 :key="tab"
                 @click="changeTab(tab)"
                 :class="activeSubTab === tab ? 'bg-tg-button text-white' : 'glass text-tg-hint'"
@@ -280,10 +318,10 @@ const changeTab = (tab) => {
         </div>
 
         <!-- STATS TAB -->
-        <div v-if="activeSubTab === 'stats'" class="grid grid-cols-2 gap-4">
-            <div class="glass p-4 rounded-3xl border border-white/5">
-                <span class="text-[10px] font-bold text-tg-hint uppercase tracking-wider">Total Users</span>
-                <p class="text-2xl font-black">{{ stats.total_users }}</p>
+        <div v-if="activeSubTab === 'stats'" class="grid grid-cols-2 gap-3">
+            <div @click="changeTab('users')" class="glass p-4 rounded-3xl border border-white/5 space-y-1 cursor-pointer active:scale-95 transition-all">
+                <p class="text-[10px] font-black text-tg-hint uppercase">Total Users</p>
+                <p class="text-2xl font-black">{{ stats.total_users || 0 }}</p>
             </div>
             <div class="glass p-4 rounded-3xl border border-white/5">
                 <span class="text-[10px] font-bold text-tg-hint uppercase tracking-wider">Total Bots</span>
@@ -472,6 +510,98 @@ const changeTab = (tab) => {
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- USERS TAB -->
+        <div v-if="activeSubTab === 'users'" class="space-y-4">
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-tg-hint uppercase tracking-wider">User Management</h3>
+                    <span class="text-[10px] font-black bg-tg-button/20 text-tg-button px-2 py-1 rounded-lg">{{ usersData.total }} TOTAL</span>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="space-y-3">
+                    <div class="relative">
+                        <input 
+                            v-model="userSearch" 
+                            @input="loadUsers(true)"
+                            type="text" 
+                            placeholder="Cari nama, username, atau ID..." 
+                            class="w-full bg-tg-secondary border border-white/5 p-4 pl-12 rounded-2xl text-xs font-bold outline-none focus:border-tg-button/50 transition-all"
+                        />
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg">🔍</span>
+                    </div>
+
+                    <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <select v-model="userFilter" @change="loadUsers(true)" class="bg-tg-secondary border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold outline-none">
+                            <option value="all">Semua User</option>
+                            <option value="creator">Kreator Saja</option>
+                            <option value="verified">Terverifikasi</option>
+                            <option value="banned">Dibanned</option>
+                        </select>
+
+                        <select v-model="userSort" @change="loadUsers(true)" class="bg-tg-secondary border border-white/5 px-4 py-2 rounded-xl text-[10px] font-bold outline-none">
+                            <option value="newest">Terbaru</option>
+                            <option value="oldest">Terlama</option>
+                            <option value="streak">Streak Tertinggi</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="usersData.list.length === 0" class="py-12 text-center glass rounded-3xl border border-white/5 opacity-50">
+                <p class="text-sm font-bold">Tidak ada user ditemukan</p>
+            </div>
+
+            <div v-for="userItem in usersData.list" :key="userItem.id" class="glass p-4 rounded-3xl border border-white/5 space-y-3 relative overflow-hidden">
+                <div :class="userItem.is_banned ? 'bg-red-500' : 'bg-green-500'" class="absolute top-0 left-0 w-1 h-full"></div>
+                
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-tg-secondary p-0.5 relative">
+                            <img :src="userItem.photo_url || 'https://ui-avatars.com/api/?name=' + (userItem.first_name || 'User')" class="w-full h-full rounded-[14px] object-cover" />
+                            <div v-if="userItem.is_verified" class="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-[10px] border-2 border-tg-secondary">✅</div>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <p class="font-bold text-sm">{{ userItem.first_name }} {{ userItem.last_name || '' }}</p>
+                                <span v-if="userItem.is_creator" class="text-[8px] bg-purple-500/20 text-purple-500 px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">Creator</span>
+                            </div>
+                            <p class="text-[10px] text-tg-hint">@{{ userItem.username || userItem.telegram_id }}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="text-[8px] text-tg-hint font-bold uppercase tracking-tighter">{{ new Date(userItem.created_at).toLocaleDateString() }}</span>
+                        <button 
+                            @click="toggleBanUser(userItem)"
+                            :class="userItem.is_banned ? 'bg-green-500/20 text-green-500 border-green-500/30' : 'bg-red-500/20 text-red-500 border-red-500/30'" 
+                            class="px-3 py-1 rounded-lg text-[8px] font-black uppercase border transition-all active:scale-95"
+                        >
+                            {{ userItem.is_banned ? 'UNBAN' : 'BAN USER' }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 pt-1">
+                    <div class="bg-white/5 p-2 rounded-xl text-center">
+                        <p class="text-[8px] text-tg-hint uppercase font-black">Streak</p>
+                        <p class="text-xs font-black">{{ userItem.donation_streak || 0 }} 🔥</p>
+                    </div>
+                    <div class="bg-white/5 p-2 rounded-xl text-center">
+                        <p class="text-[8px] text-tg-hint uppercase font-black">ID</p>
+                        <p class="text-[10px] font-bold">{{ userItem.telegram_id }}</p>
+                    </div>
+                    <div class="bg-white/5 p-2 rounded-xl text-center">
+                        <p class="text-[8px] text-tg-hint uppercase font-black">Lang</p>
+                        <p class="text-[10px] font-bold uppercase">{{ userItem.language_code || 'ID' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <button v-if="usersData.list.length < usersData.total" @click="loadUsers(false)" class="w-full py-4 glass border border-white/5 rounded-2xl text-xs font-black uppercase tracking-wider active:scale-95 transition-all text-tg-hint">
+                Muat Lebih Banyak
+            </button>
         </div>
 
         <!-- PAYMENTS TAB -->
